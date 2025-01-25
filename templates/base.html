@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fuzzy Prompts</title>
+
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/baseTheme.css') }}">
+</head>
+<body>
+  <header>
+      <!-- Start Navigation -->
+      <nav>
+        <ul>
+            <li><a href="{{ url_for('index') }}">Home</a></li>
+            <!-- Link to the test_suites_bp.create_test_suite endpoint -->
+            <li><a href="{{ url_for('test_suites_bp.create_test_suite') }}">Create Test Suite</a></li>
+        </ul>
+    </nav>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <p>Kevin McMurdie - 2025</p>
+  </footer>
+
+  <!-- Example of linking your external JS -->
+  <script src="{{ url_for('static', filename='js/typewriter.js') }}"></script>
+</body>
+</html>
