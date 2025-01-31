@@ -37,3 +37,38 @@ input[type="radio"] {
   width: auto;
   margin-right: 0.5rem;
 }
+
+.form-card {
+  background-color: #111; /* or #fff, depending on your theme */
+  max-width: 600px;
+  margin: 2rem auto;       /* center horizontally */
+  border: 2px dashed var(--accent-color); /* or a solid border */
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 0 10px rgba(0,0,0,0.2); /* optional shadow */
+}
+
+.form-card h2 {
+  margin-bottom: 1rem;
+  color: var(--accent-color); /* match your hacker theme if desired */
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: bold;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  background-color: #000;      /* for 80s hacker black background */
+  color: var(--text-color);
+}

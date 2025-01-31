@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Create Test Case{% endblock %}
+
+{% block content %}
+<h1>Create Test Case</h1>
+<form action="{{ url_for('test_cases_bp.handle_create_test_case_form') }}" method="POST">
+  <label for="description">Description:</label><br>
+  <input type="text" name="description" id="description" required><br><br>
+
+  <button type="submit">Create</button>
+</form>
+{% endblock %}

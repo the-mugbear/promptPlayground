@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Test Cases{% endblock %}
+
+{% block head %}
+  <!-- New list test suite styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+{% endblock %}
+
+{% block content %}
+<h1>All Test Cases</h1>
+
+<!-- Optional: a search bar to filter test cases by description, etc. -->
+<input 
+  type="text" 
+  id="searchCase" 
+  placeholder="Filter by description..." 
+  style="margin-bottom: 1rem; width: 60%;"
+/>
+
+<table id="casesTable">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Description</th>
+      <th>Created At</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for case in test_cases %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ case.description }}</td>
+        <td>
+          {% if case.created_at %}
+            {{ case.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+          {% else %}
+            --
+          {% endif %}
+        </td>
+        <td>
+          <!-- If you want Edit/Delete links, or toggles for more details -->
+          <button 
+            type="button" 
+            class="view-case-details-btn" 
+            data-case-id="{{ case.id }}"
+          >
+            View Details
+          </button>
+        </td>
+      </tr>
+
+      <!-- Hidden row for additional details (like steps) if you want a toggle approach -->
+      <tr class="case-details-row" style="display: none;">
+        <td colspan="4">
+          <div class="case-details-container">
+            <!-- You could show more info about the test case or steps here -->
+            <p>Additional info for test case ID {{ case.id }} would go here.</p>
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Page-Specific JavaScript for filtering or toggling details -->
+<script src="{{ url_for('static', filename='js/listTestCases.js') }}"></script>
+
+{% endblock %}

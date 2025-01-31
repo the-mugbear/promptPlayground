@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block head %}
+  <!-- New list test suite styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  {% endblock %}
+
+  {% block content %}
+  <div class="two-column-container">
+    <!-- Left Card (form) -->
+    <div class="left-card">
+      <h2>Create Endpoint</h2>
+      <form 
+        action="{{ url_for('endpoints_bp.handle_create_endpoint') }}" 
+        method="POST" 
+        id="create-endpoint-form"
+      >
+        <div class="form-group">
+          <label for="hostname">Hostname</label>
+          <input 
+            type="text" 
+            id="hostname" 
+            name="hostname" 
+            required 
+            placeholder="e.g., https://api.example.com"
+          >
+        </div>
+  
+        <div class="form-group">
+          <label for="endpoint">Endpoint Path</label>
+          <input 
+            type="text" 
+            id="endpoint" 
+            name="endpoint" 
+            required
+            placeholder="e.g., /v1/submit"
+          >
+        </div>
+  
+        <div class="form-group">
+          <label for="http_payload">HTTP Payload (optional)</label>
+          <textarea 
+            id="http_payload" 
+            name="http_payload" 
+            rows="4"
+            placeholder='{"sample": "data"}'
+          ></textarea>
+        </div>
+  
+        <div class="form-group">
+          <label for="raw_headers">Headers (Key: Value per line)</label>
+          <textarea 
+            id="raw_headers" 
+            name="raw_headers" 
+            rows="4"
+            placeholder="Content-Type: application/json&#10;Authorization: Bearer <token>"
+          ></textarea>
+        </div>
+  
+        <button type="submit">Create Endpoint</button>
+      </form>
+    </div>
+  
+    <!-- Right Card (suggestions) -->
+    <div class="right-card">
+      <h2>Suggestions</h2>
+      <p>Select or focus a field on the left to see relevant suggestions. Click a suggestion to copy it.</p>
+      <ul id="suggestion-list"></ul>
+    </div>
+  </div>
+  {% endblock %}
+  
+  {% block scripts %}
+  <!-- Page-specific JS that handles focus events and suggestion clicks -->
+  <script src="{{ url_for('static', filename='js/createEndpointSuggestions.js') }}"></script>
+  {% endblock %}

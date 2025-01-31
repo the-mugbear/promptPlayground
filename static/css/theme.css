@@ -117,3 +117,56 @@ code, pre {
   color: #000;
 }
 
+.two-column-container {
+  display: flex;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 2rem auto;
+}
+
+.left-card, .right-card {
+  flex: 1;  /* Each column takes equal width, or you could do flex: 2 / flex: 1 for a 2/1 split */
+  background-color: #111;  /* Match your 80s hacker theme or adjust */
+  border: 2px dashed var(--accent-color); 
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+/* Headings for each card */
+.left-card h2, .right-card h2 {
+  margin-top: 0;
+  color: var(--accent-color);
+}
+
+/* Basic form styling, if not already in your theme */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: bold;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  background-color: #000; 
+  color: var(--text-color);
+}
+
+/* Suggestion list */
+#suggestion-list {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin-top: 1rem;
+}
+
+#suggestion-list li {
+  margin-bottom: 0.5rem;
+  cursor: pointer; /* if you want them clickable to auto-fill */
+}

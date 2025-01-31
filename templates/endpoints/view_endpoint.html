@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Endpoint Details{% endblock %}
+
+{% block content %}
+<h1>Endpoint #{{ endpoint.id }}</h1>
+<p>Hostname: {{ endpoint.hostname }}</p>
+<p>Path: {{ endpoint.endpoint }}</p>
+<p>Payload: {{ endpoint.http_payload }}</p>
+
+<h3>Headers</h3>
+<ul>
+  {% for hdr in endpoint.headers %}
+    <li>{{ hdr.key }}: {{ hdr.value }}</li>
+  {% endfor %}
+</ul>
+
+<a href="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}">Test This Endpoint</a>
+{% endblock %}

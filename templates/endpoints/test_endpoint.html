@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Test Endpoint{% endblock %}
+
+{% block content %}
+<h1>Test Endpoint #{{ endpoint.id }}</h1>
+<p>Hostname: {{ endpoint.hostname }}</p>
+<p>Path: {{ endpoint.endpoint }}</p>
+<p>Current Payload: {{ endpoint.http_payload }}</p>
+<ul>
+  {% for hdr in endpoint.headers %}
+    <li>{{ hdr.key }}: {{ hdr.value }}</li>
+  {% endfor %}
+</ul>
+
+<form action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}" method="POST">
+  <label for="test_payload">Override Payload (optional):</label><br>
+  <textarea id="test_payload" name="test_payload" rows="4" cols="50">{{ endpoint.http_payload }}</textarea>
+  <br><br>
+  <button type="submit">Send Test POST</button>
+</form>
+{% endblock %}
