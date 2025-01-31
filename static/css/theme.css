@@ -1,0 +1,119 @@
+/* theme.css */
+:root {
+  /* Colors */
+  --bg-color: #000000;         /* black */
+  --text-color: #00FF41;       /* neon green */
+  --accent-color: #FF00AA;     /* pink or magenta */
+  --secondary-color: #00FFFF;  /* cyan */
+
+  /* Font */
+  --main-font: 'Press Start 2P', monospace;
+  --base-font-size: 16px;
+}
+
+/* Reset or baseline */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Global body style */
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--main-font);
+  font-size: var(--base-font-size);
+  line-height: 1.4;
+}
+
+/* Links */
+a {
+  color: var(--accent-color);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+  color: var(--secondary-color);
+}
+
+/* Headings, for that retro vibe */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--accent-color);
+  margin: 1rem 0 0.5rem;
+}
+
+/* Buttons (add neon borders, etc.) */
+button {
+  font-family: var(--main-font);
+  color: var(--text-color);
+  background: transparent;
+  border: 2px solid var(--accent-color);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+button:hover {
+  background: var(--accent-color);
+  color: #000; /* black text when neon background */
+}
+
+/* Example .container class for page sections */
+.container {
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 0;
+}
+
+/* hacker chic blink */
+/* hacker chic blink */
+/* hacker chic blink */
+.blink {
+  animation: blink 1s infinite alternate;
+}
+@keyframes blink {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.glitch {
+  position: relative;
+  color: var(--accent-color);
+  animation: glitch 2s infinite;
+}
+@keyframes glitch {
+  0% { clip: rect(24px, 550px, 90px, 0); transform: skew(0.3deg); }
+  5% { clip: rect(85px, 550px, 140px, 0); transform: skew(0.8deg); }
+  /* etc... create random glitch frames */
+}
+/* Subtle neon pulse on hover */
+.neon-hover:hover {
+  box-shadow: 0 0 5px var(--accent-color), 0 0 15px var(--accent-color);
+}
+.neon-box {
+  box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color);
+}
+
+
+
+hr {
+  border: none;
+  border-top: 1px dashed var(--accent-color);
+  margin: 1rem 0;
+}
+
+code, pre {
+  background-color: #111;
+  color: var(--secondary-color);
+  font-family: var(--main-font);
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+::selection {
+  background-color: var(--accent-color);
+  color: #000;
+}
+

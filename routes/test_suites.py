@@ -1,131 +1,75 @@
-from flask import Blueprint, request, jsonify, render_template
-import sqlite3
+from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
+from extensions import db
+from models.model_TestCase import TestCase
+from models.model_TestSuite import TestSuite
 from datetime import datetime
-from dbInit import get_db_connection  # or wherever your DB logic is
 
-test_suites_bp = Blueprint(
-    "test_suites_bp",  # Blueprint name
-    __name__,
-    url_prefix="/test_suites"  # All routes here will be prefixed with /test_suites
-)
+test_suites_bp = Blueprint("test_suites_bp", __name__, url_prefix="/test_suites")
 
-@test_suites_bp.route("/", methods=["GET", "POST"])
-def handle_test_suites():
+#
+# ROUTES
+# List test suites ('/')
+# Get test suite ('<int:suiteID>') GET
+# Update test suite ('<int:suiteID>') PUT
+# Create test suite ('/create_test_suite') 
+# GET /test_suites/list
+# GET /test_suites/create
+# POST /test_suites/create
+
+
+@test_suites_bp.route('/list', methods=['GET'])
+def list_test_suites():
     """
-    GET  /test_suites        -> Get a list of all test suites
-    POST /test_suites        -> Create a new test suite
+    GET /test_suites/list -> Display a page with all existing test suites
     """
-    if request.method == "GET":
-        conn = get_db_connection()
-        rows = conn.execute("SELECT * FROM test_suites").fetchall()
-        conn.close()
-        suites = [dict(row) for row in rows]
-        return jsonify(suites), 200
+    # Query the DB for all test suites
+    test_suites = TestSuite.query.all()
+    return render_template('test_suites/list_test_suites.html', test_suites=test_suites)
 
-    if request.method == "POST":
-        data = request.get_json()
-        description = data.get("description")
-        behavior = data.get("behavior")
-        attack = data.get("attack")
-        created_at = data.get("created_at", datetime.utcnow().isoformat())
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO test_suites (description, behavior, attack, created_at)
-            VALUES (?, ?, ?, ?)
-            """,
-            (description, behavior, attack, created_at)
-        )
-        conn.commit()
-        new_id = cursor.lastrowid
-        conn.close()
-
-        return jsonify({"id": new_id, "message": "Test suite created"}), 201
-
-@test_suites_bp.route("/<int:suite_id>", methods=["GET", "PUT", "DELETE"])
-def handle_single_test_suite(suite_id):
+@test_suites_bp.route('/create', methods=['GET'])
+def create_test_suite_form():
     """
-    GET    /test_suites/<id> -> Get details of a specific test suite
-    PUT    /test_suites/<id> -> Update an existing test suite
-    DELETE /test_suites/<id> -> Delete a test suite
+    GET /test_suites/create -> Display an HTML form to create a new test suite
     """
-    if request.method == "GET":
-        conn = get_db_connection()
-        row = conn.execute("SELECT * FROM test_suites WHERE id = ?", (suite_id,)).fetchone()
-        conn.close()
+    # If you want to display existing test cases to add to the new suite, fetch them:
+    existing_test_cases = TestCase.query.all()
+    return render_template('test_suites/create_suite.html', existing_test_cases=existing_test_cases)
 
-        if row is None:
-            return jsonify({"error": "Test suite not found"}), 404
-        return jsonify(dict(row)), 200
-
-    elif request.method == "PUT":
-        data = request.get_json()
-        description = data.get("description")
-        behavior = data.get("behavior")
-        attack = data.get("attack")
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            UPDATE test_suites
-            SET description = ?, behavior = ?, attack = ?
-            WHERE id = ?
-            """,
-            (description, behavior, attack, suite_id)
-        )
-        conn.commit()
-        rows_affected = cursor.rowcount
-        conn.close()
-
-        if rows_affected == 0:
-            return jsonify({"error": "Test suite not found"}), 404
-        return jsonify({"message": "Test suite updated"}), 200
-
-    elif request.method == "DELETE":
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM test_suites WHERE id = ?", (suite_id,))
-        conn.commit()
-        rows_affected = cursor.rowcount
-        conn.close()
-
-        if rows_affected == 0:
-            return jsonify({"error": "Test suite not found"}), 404
-        return jsonify({"message": "Test suite deleted"}), 200
-
-@test_suites_bp.route("/create", methods=["GET", "POST"])
+@test_suites_bp.route('/create', methods=['POST'])
 def create_test_suite():
     """
-    GET  /test_suites/create  -> Show form to create a new test suite
-    POST /test_suites/create  -> Handle form submission and insert new suite
+    POST /test_suites/create -> Handle the form submission to create a new test suite
     """
-    if request.method == "GET":
-        # Render an HTML form (e.g., templates/TestSuites/create_suite.html)
-        return render_template("TestSuites/create_suite.html")
+    description = request.form.get('description')
+    behavior = request.form.get('behavior')
+    attack = request.form.get('attack')
 
-    elif request.method == "POST":
-        # Parse form data
-        description = request.form.get("description")
-        behavior = request.form.get("behavior")
-        attack = request.form.get("attack")
-        created_at = datetime.utcnow().isoformat()
+    # 1. Create the suite
+    new_suite = TestSuite(description=description, behavior=behavior, attack=attack)
+    db.session.add(new_suite)
+    db.session.commit()
 
-        # Insert into the database
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO test_suites (description, behavior, attack, created_at)
-            VALUES (?, ?, ?, ?)
-            """,
-            (description, behavior, attack, created_at)
-        )
-        conn.commit()
-        new_id = cursor.lastrowid
-        conn.close()
+    # 2. Check for new test cases data
+    new_test_cases_data = request.form.get('new_test_cases')
+    if new_test_cases_data:
+        lines = [line.strip() for line in new_test_cases_data.split('\n') if line.strip()]
+        for line in lines:
+            test_case = TestCase(description=line)
+            db.session.add(test_case)
+            # we could commit later, but let's flush first:
+            db.session.flush()
+            new_suite.test_cases.append(test_case)
+        db.session.commit()
 
-        # You could redirect somewhere (e.g., /test_suites/<new_id>)
-        return redirect(url_for('test_suites_bp.handle_single_test_suite', suite_id=new_id))
+    # 3. Associate existing test cases
+    selected_test_case_ids = request.form.getlist('selected_test_cases')
+    for tc_id in selected_test_case_ids:
+        existing_tc = TestCase.query.get(tc_id)
+        if existing_tc:
+            new_suite.test_cases.append(existing_tc)
+
+    db.session.commit()
+
+    flash('New test suite created successfully!', 'success')
+    # Redirect to the list page (or somewhere else)
+    return redirect(url_for('test_suites_bp.list_test_suites'))

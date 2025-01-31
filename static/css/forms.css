@@ -1,0 +1,39 @@
+/* Basic form elements */
+input,
+textarea,
+select {
+  background: #111;
+  color: var(--text-color);
+  border: 1px solid var(--accent-color);
+  font-family: var(--main-font);
+  font-size: 1rem;
+  padding: 0.5rem;
+  margin: 0.25rem 0;
+  border-radius: 4px;
+  width: 100%; /* optional, to make them full-width */
+  transition: border-color 0.2s;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none; 
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 5px var(--secondary-color);
+}
+
+/* Labels to keep consistent spacing */
+label {
+  display: inline-block;
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+  font-weight: bold;
+  color: var(--accent-color);
+}
+
+/* For checkboxes or radio, you might have separate styling: */
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  margin-right: 0.5rem;
+}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block head %}
+  <!-- New list test suite styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+{% endblock %}
+
+{% block content %}
+<h1>All Test Suites</h1>
+
+<!-- Optional: a search bar to filter suites by description, etc. -->
+<input 
+  type="text" 
+  id="searchSuite" 
+  placeholder="Filter by description..." 
+  style="margin-bottom: 1rem; width: 60%;"
+>
+
+<table id="suitesTable">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Description</th>
+      <th>Behavior</th>
+      <th>Attack</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for suite in test_suites %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ suite.description }}</td>
+        <td>{{ suite.behavior }}</td>
+        <td>{{ suite.attack }}</td>
+        <td>
+          <!-- Button to toggle the row below that displays test cases -->
+          <button 
+            type="button" 
+            class="view-test-cases-btn" 
+            data-suite-id="{{ suite.id }}"
+          >
+            View Test Cases
+          </button>
+        </td>
+      </tr>
+
+      <!-- Hidden row for test cases (initially) -->
+      <tr class="test-cases-row" style="display: none;">
+        <td colspan="5">
+          <div class="test-cases-container">
+            {% if suite.test_cases %}
+              <ul>
+                {% for tc in suite.test_cases %}
+                  <li>{{ tc.description }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p>No test cases associated with this suite.</p>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+  <!-- Script for the list test suite logic -->
+  <script src="{{ url_for('static', filename='js/listTestSuites.js') }}"></script>
+
+{% endblock %}

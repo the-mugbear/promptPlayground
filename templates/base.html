@@ -2,20 +2,45 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Fuzzy Prompts</title>
+  <title>{% block title %}Fuzzy Prompts{% endblock %}</title>
 
+  <!-- Global CSS (all site pages) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/baseTheme.css') }}">
+  {% block head %}{% endblock %}
 </head>
 <body>
   <header>
-      <!-- Start Navigation -->
-      <nav>
-        <ul>
-            <li><a href="{{ url_for('index') }}">Home</a></li>
-            <!-- Link to the test_suites_bp.create_test_suite endpoint -->
-            <li><a href="{{ url_for('test_suites_bp.create_test_suite') }}">Create Test Suite</a></li>
-        </ul>
+    <nav class="navbar">
+      <div class="nav-brand">
+        <a href="{{ url_for('core_bp.index') }}">Fuzzy Prompts</a>
+      </div>
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span class="hamburger"></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="{{ url_for('core_bp.index') }}">Home</a></li>
+        
+        <!-- Dropdown for Test Suites -->
+        <li class="dropdown">
+          <a href="#">Test Suites</a>
+          <ul class="dropdown-menu">
+            <li><a href="{{ url_for('test_suites_bp.list_test_suites') }}">View Suites</a></li>
+            <li><a href="{{ url_for('test_suites_bp.create_test_suite_form') }}">Create Suite</a></li>
+          </ul>
+        </li>
+
+        <!-- Dropdown for Test Cases -->
+        <li class="dropdown">
+          <a href="#">Test Cases</a>
+          <ul class="dropdown-menu">
+            <!-- Example routes, adjust as needed -->
+            <li><a href="#">View Cases</a></li>
+            <li><a href="#">Create Case</a></li>
+          </ul>
+        </li>
+      </ul>
     </nav>
   </header>
 
@@ -27,7 +52,9 @@
     <p>Kevin McMurdie - 2025</p>
   </footer>
 
-  <!-- Example of linking your external JS -->
-  <script src="{{ url_for('static', filename='js/typewriter.js') }}"></script>
+  <!-- Global JS (scripts for the navbar, etc.) -->
+  <script src="{{ url_for('static', filename='js/base.js') }}"></script>
+
+  {% block scripts %}{% endblock %}
 </body>
 </html>
