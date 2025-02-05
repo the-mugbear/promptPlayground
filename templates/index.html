@@ -1,6 +1,23 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Welcome to the Index Page</h2>
-<p>This is where you can put homepage content!</p>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centered Image</title>
+    <style>
+        .image-container {
+            text-align: center; /* Centers the image horizontally */
+        }
+        .image-container img {
+            display: block; /* Makes the image a block element */
+            margin: 0 auto; /* Centers the image horizontally */
+        }
+    </style>
+</head>
+<body>
+    <div class="image-container">
+        <img src="{{ url_for('static', filename='images/j5.png') }}" alt="Description of the image">
+    </div>
+</body>
 {% endblock %}

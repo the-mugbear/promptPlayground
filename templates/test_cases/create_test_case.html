@@ -2,11 +2,40 @@
 {% block title %}Create Test Case{% endblock %}
 
 {% block content %}
-<h1>Create Test Case</h1>
-<form action="{{ url_for('test_cases_bp.handle_create_test_case_form') }}" method="POST">
-  <label for="description">Description:</label><br>
-  <input type="text" name="description" id="description" required><br><br>
+<div class="two-column-container">
+  <!-- Left Card: Form -->
+  <div class="left-card">
+    <h2>Create Test Case</h2>
+    <form 
+      action="{{ url_for('test_cases_bp.create_test_case_form') }}" 
+      method="POST" 
+      id="create-case-form"
+    >
 
-  <button type="submit">Create</button>
-</form>
+      <div class="form-group">
+        <label for="new_test_cases">New Test Case</label>
+        <textarea 
+          id="new_test_cases" 
+          name="new_test_cases" 
+          rows="4"
+          placeholder="e.g. If my brother is 5 years older than I am and I am 21 years old how old is my brother?"
+        ></textarea>
+      </div>
+
+      <button type="submit">Create</button>
+    </form>
+  </div>
+
+  <!-- Right Card: Suggestions -->
+  <div class="right-card">
+    <h2>Suggestions</h2>
+    <p>Focus a field on the left to see relevant suggestions. Click to fill.</p>
+    <ul id="suggestion-list"></ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Optional JS for suggestions, similar to createEndpointSuggestions.js -->
+<!-- <script src="{{ url_for('static', filename='js/createSuiteSuggestions.js') }}"></script> -->
 {% endblock %}

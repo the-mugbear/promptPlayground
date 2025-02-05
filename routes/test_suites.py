@@ -42,10 +42,10 @@ def create_test_suite():
     """
     description = request.form.get('description')
     behavior = request.form.get('behavior')
-    attack = request.form.get('attack')
+    # attack = request.form.get('attack')
 
     # 1. Create the suite
-    new_suite = TestSuite(description=description, behavior=behavior, attack=attack)
+    new_suite = TestSuite(description=description, behavior=behavior)
     db.session.add(new_suite)
     db.session.commit()
 

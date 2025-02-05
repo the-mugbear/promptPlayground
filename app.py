@@ -5,6 +5,7 @@ from models import model_TestSuite as TestSuite, model_TestCase as TestCase
 from routes.test_suites import test_suites_bp
 from routes.test_cases import test_cases_bp
 from routes.endpoints import endpoints_bp
+from routes.test_runs import test_runs_bp
 from routes.core import core_bp
 
 migrate = Migrate()  # Instantiate the Migrate object outside create_app
@@ -27,6 +28,7 @@ def create_app():
     app.register_blueprint(test_suites_bp)
     app.register_blueprint(test_cases_bp)
     app.register_blueprint(endpoints_bp)
+    app.register_blueprint(test_runs_bp)
 
     # The below is meant to be executed in a terminal/cmd window as is for my awful memory on performing a flask migration
     # flask db init         # creates a migrations folder

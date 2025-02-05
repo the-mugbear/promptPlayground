@@ -21,6 +21,15 @@
       </button>
       <ul class="nav-links">
 
+        <!-- Dropdown for Test Runs -->
+        <li class="dropdown">
+          <a href="#">Run</a>
+          <ul class="dropdown-menu">
+            <li><a href="{{ url_for('endpoints_bp.list_endpoints') }}">Design a new Test</a></li>
+            <!-- <li><a href="{{ url_for('test_runs_bp.handle_create_test_run') }}">Register Endpoint</a></li> -->
+          </ul>
+        </li>
+
         <!-- Dropdown for Endpoints -->
         <li class="dropdown">
           <a href="#">Endpoints</a>

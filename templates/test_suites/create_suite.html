@@ -1,105 +1,93 @@
 {% extends "base.html" %}
+{% block title %}Create Test Suite{% endblock %}
 
 {% block head %}
-  <!-- New list test suite styles -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
 {% endblock %}
 
-
 {% block content %}
-<h1>Create Test Suite</h1>
-
-<form 
-  id="createSuiteForm" 
-  action="{{ url_for('test_suites_bp.create_test_suite') }}" 
-  method="POST"
->
-  <!-- Suite Details -->
-  <fieldset>
-    <legend>Test Suite Details</legend>
-    
-    <label for="description">Description <span class="required">*</span></label>
-    <input 
-      type="text" 
-      name="description" 
-      id="description" 
-      placeholder="E.g., Regression Suite for Payment Module"
+<div class="two-column-container">
+  <!-- Left Card: Form -->
+  <div class="left-card">
+    <h2>Create Test Suite</h2>
+    <form 
+      action="{{ url_for('test_suites_bp.create_test_suite') }}" 
+      method="POST" 
+      id="create-suite-form"
     >
-    <br><br>
+      <div class="form-group">
+        <label for="description">Description</label>
+        <input 
+          type="text" 
+          id="description" 
+          name="description" 
+          required
+          placeholder="A brief description of the suite"
+        >
+      </div>
 
-    <!-- Example of a tooltip on Behavior: -->
-    <div class="tooltip" style="display:inline-block;">
-      <label for="behavior">Behavior</label>
-      <span class="tooltiptext">
-        Provide the main expected behavior of your test suite.
-      </span>
-    </div>
-    <br>
-    <input 
-      type="text" 
-      name="behavior" 
-      id="behavior" 
-      placeholder="E.g., Payment success scenarios"
-    >
-    <br><br>
+      <div class="form-group">
+        <label for="behavior">Behavior</label>
+        <input 
+          type="text" 
+          id="behavior" 
+          name="behavior"
+          placeholder="Behavior or scenario this suite tests"
+        >
+      </div>
 
-    <div class="tooltip" style="display:inline-block;">
-      <label for="attack">Attack</label>
-      <span class="tooltiptext">
-        Describe negative/security edge cases if applicable.
-      </span>
-    </div>
-    <br>
-    <input 
-      type="text" 
-      name="attack" 
-      id="attack" 
-      placeholder="E.g., Payment error or hack attempts"
-    >
-  </fieldset>
+      <!-- <div class="form-group">
+        <label for="attack">Attack</label>
+        <input 
+          type="text" 
+          id="attack" 
+          name="attack"
+          placeholder="Any negative or attack scenario"
+        >
+      </div> -->
 
-  <!-- New Test Cases -->
-  <fieldset>
-    <legend>Add New Test Cases</legend>
-    <textarea 
-      name="new_test_cases" 
-      id="new_test_cases" 
-      rows="4" 
-      placeholder="Test case #1\nTest case #2"
-    ></textarea>
-    <small class="help-text">
-      Enter one test case per line.  
-      Each line will become a new test case.
-    </small>
-  </fieldset>
+      <div class="form-group">
+        <label for="new_test_cases">New Test Cases (one per line)</label>
+        <textarea 
+          id="new_test_cases" 
+          name="new_test_cases" 
+          rows="4"
+          placeholder="e.g. Test case #1&#10;Test case #2"
+        ></textarea>
+      </div>
 
-  <!-- Existing Test Cases -->
-  <fieldset>
-    <legend>Select Existing Test Cases</legend>
-    <input 
-      type="text" 
-      id="tcSearch" 
-      placeholder="Search existing test cases..."
-      style="margin-bottom: 1rem; width: 80%;"
-    >
-    <div id="testCasesContainer">
-      {% if existing_test_cases %}
-        {% for test_case in existing_test_cases %}
-          <label class="test-case-item">
-            <input 
-              type="checkbox" 
-              name="selected_test_cases" 
-              value="{{ test_case.id }}"
-            >
-            {{ test_case.description }}
-          </label>
-        {% endfor %}
-      {% else %}
-        <p>No existing test cases available.</p>
-      {% endif %}
-    </div>
-  </fieldset>
+      <!-- <div class="form-group">
+        <label>Select Existing Test Cases</label>
+        {% if existing_test_cases %}
+          {% for test_case in existing_test_cases %}
+            <label style="display: block;">
+              <input 
+                type="checkbox" 
+                name="selected_test_cases" 
+                value="{{ test_case.id }}"
+              >
+              {{ test_case.description }}
+            </label>
+          {% endfor %}
+        {% else %}
+          <p>No existing test cases available.</p>
+        {% endif %}
+      </div> -->
 
-  <button type="submit">Create Suite</button>
-</form>
+      <button type="submit">Create</button>
+    </form>
+  </div>
+
+  <!-- Right Card: Suggestions -->
+  <div class="right-card">
+    <h2>Suggestions</h2>
+    <p>Focus a field on the left to see relevant suggestions. Click to fill.</p>
+    <ul id="suggestion-list"></ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Optional JS for suggestions, similar to createEndpointSuggestions.js -->
+<script src="{{ url_for('static', filename='js/createSuiteSuggestions.js') }}"></script>
 {% endblock %}

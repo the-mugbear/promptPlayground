@@ -1,5 +1,6 @@
 from datetime import datetime
 from extensions import db
+from models.associations import test_run_suites
 
 class TestSuite(db.Model):
     __tablename__ = 'test_suites'
@@ -7,8 +8,9 @@ class TestSuite(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(255), nullable=False)
     behavior = db.Column(db.String(255), nullable=True)
-    attack = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # originally inspired by JPLHughes' Best of N dataset I believe the transformations will carry this data instead
+    # attack = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     
     # Relationship to TestCase
     test_cases = db.relationship(

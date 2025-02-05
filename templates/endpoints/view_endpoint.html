@@ -1,18 +1,170 @@
 {% extends "base.html" %}
-{% block title %}Endpoint Details{% endblock %}
+{% block title %}View & Test Endpoint #{{ endpoint.id }}{% endblock %}
+
+{% block head %}
+<style>
+  .two-column-container {
+    display: flex;
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 2rem auto;
+  }
+  .left-card, .right-card {
+    flex: 1;
+    background-color: #111; /* match your 80s hacker or main theme style */
+    border: 2px dashed var(--accent-color);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  .left-card h2, .right-card h2 {
+    margin-top: 0;
+    color: var(--accent-color);
+  }
+
+  /* Endpoint data styling */
+  .endpoint-field {
+    margin-bottom: 1rem;
+  }
+  .endpoint-field label {
+    font-weight: bold;
+  }
+
+  /* Headers list */
+  .headers-list {
+    list-style: disc;
+    margin-left: 1.5rem;
+    margin-top: 0.5rem;
+  }
+
+  /* Form for testing: small margin top */
+  .test-form {
+    margin-top: 1.5rem;
+  }
+
+  /* Right card content for test results */
+  .test-section {
+    margin-top: 1rem;
+  }
+  .test-section label {
+    display: block;
+    margin: 0.5rem 0 0.25rem;
+    font-weight: bold;
+  }
+  /* results box for sent/received data */
+  .results-box {
+    background-color: #000;
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    padding: 0.5rem;
+    white-space: pre-wrap; /* preserve newlines */
+    min-height: 4em;
+  }
+  textarea {
+    width: 100%;
+    padding: 0.5rem;
+    background-color: #000;
+    color: var(--text-color);
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<h1>Endpoint #{{ endpoint.id }}</h1>
-<p>Hostname: {{ endpoint.hostname }}</p>
-<p>Path: {{ endpoint.endpoint }}</p>
-<p>Payload: {{ endpoint.http_payload }}</p>
+<div class="two-column-container">
 
-<h3>Headers</h3>
-<ul>
-  {% for hdr in endpoint.headers %}
-    <li>{{ hdr.key }}: {{ hdr.value }}</li>
-  {% endfor %}
-</ul>
+  <!-- Left Card: Endpoint Configuration + Headers + Button to Test -->
+  <div class="left-card">
+    <h2>Endpoint #{{ endpoint.id }}</h2>
 
-<a href="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}">Test This Endpoint</a>
+    <!-- Basic info fields -->
+    <div class="endpoint-field">
+      <label>Hostname:</label><br>
+      <span>{{ endpoint.hostname }}</span>
+    </div>
+
+    <div class="endpoint-field">
+      <label>Path:</label><br>
+      <span>{{ endpoint.endpoint }}</span>
+    </div>
+
+    <div class="endpoint-field">
+      <label>Timestamp:</label><br>
+      <span>
+        {% if endpoint.timestamp %}
+          {{ endpoint.timestamp }}
+        {% else %}
+          N/A
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="endpoint-field">
+      <label>Payload:</label><br>
+      <span>
+        {% if endpoint.http_payload %}
+          {{ endpoint.http_payload }}
+        {% else %}
+          <em>No payload</em>
+        {% endif %}
+      </span>
+    </div>
+
+    <!-- Headers -->
+    <div class="endpoint-field">
+      <label>Headers:</label><br>
+      {% if endpoint.headers and endpoint.headers|length > 0 %}
+        <ul class="headers-list">
+          {% for hdr in endpoint.headers %}
+            <li><strong>{{ hdr.key }}:</strong> {{ hdr.value }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p style="margin: 0;"><em>No headers available.</em></p>
+      {% endif %}
+    </div>
+
+    <!-- Test form -->
+    <form 
+      class="test-form" 
+      action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}" 
+      method="POST"
+    >
+      <label for="testPayload">Override Payload (optional):</label>
+      <textarea id="testPayload" name="test_payload" rows="3"
+       placeholder="Enter a custom payload to test..."
+      >{% if override_payload %}{{ override_payload }}{% endif %}</textarea>
+
+      <button type="submit" style="margin-top: 1rem;">Test This Endpoint</button>
+    </form>
+  </div>
+
+  <!-- Right Card: Display "What Was Sent" and "What Was Received" -->
+  <div class="right-card">
+    <h2>Test Results</h2>
+
+    <div class="test-section">
+      <label>What was sent:</label>
+      <div class="results-box">
+        {% if test_payload %}
+          {{ test_payload }}
+        {% else %}
+          <em>No test performed yet.</em>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="test-section">
+      <label>What was received:</label>
+      <div class="results-box">
+        {% if test_response %}
+          {{ test_response }}
+        {% else %}
+          <em>No response yet.</em>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
 {% endblock %}
