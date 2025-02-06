@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Create Test Run{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+<style>
+  /* Optional small tweaks */
+  .search-form {
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .search-form input[type="text"] {
+    width: 200px; /* or auto */
+  }
+  .pagination-links a {
+    margin: 0 0.3rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+  <h2>Create a New Test Run</h2>
+
+  <!-- A separate GET form for searching and paginating test suites -->
+  <form class="search-form" method="GET" action="{{ url_for('test_runs_bp.create_test_run_form') }}">
+    <label for="searchInput">Filter Test Suites:</label>
+    <input
+      id="searchInput"
+      type="text" 
+      name="search" 
+      placeholder="Enter search term..." 
+      value="{{ search|default('') }}"
+    >
+    <button type="submit">Search</button>
+  </form>
+
+  <!-- The main POST form for creating a test run -->
+  <form action="{{ url_for('test_runs_bp.handle_create_test_run') }}" method="POST">
+    
+    <!-- Optional: Name for the run -->
+    <div class="form-group">
+      <label for="run_name">Run Name (optional)</label>
+      <input type="text" name="run_name" id="run_name" placeholder="e.g., Payment Regression Run">
+    </div>
+
+    <!-- Select an Endpoint -->
+    <div class="form-group">
+      <label for="endpoint_id">Select Endpoint:</label>
+      <select name="endpoint_id" id="endpoint_id" required>
+        <option value="" disabled selected>-- Choose an Endpoint --</option>
+        {% for endpoint in endpoints %}
+          <option value="{{ endpoint.id }}">{{ endpoint.hostname }} / {{ endpoint.endpoint }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Display the test suites filtered & paginated from the GET request -->
+    <div class="form-group">
+      <label>Select Test Suites:</label>
+      
+      {% if test_suites %}
+        {% for suite in test_suites %}
+          <div style="margin-bottom: 0.5rem;">
+            <label style="display: inline-flex; align-items: center;">
+              <input
+                type="checkbox"
+                name="suite_ids"
+                value="{{ suite.id }}"
+                style="margin-right: 0.5rem;"
+              >
+              {{ suite.description }}
+            </label>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p>No test suites found.</p>
+      {% endif %}
+
+      <!-- Pagination controls, if multiple pages -->
+      {% if pagination.pages > 1 %}
+        <div class="pagination-links" style="margin-top: 1rem;">
+          <!-- Previous link -->
+          {% if pagination.has_prev %}
+            <a href="{{ url_for('test_runs_bp.create_test_run_form', page=pagination.prev_num, search=search) }}">Previous</a>
+          {% endif %}
+
+          <!-- Show page numbers -->
+          {% for p in range(1, pagination.pages + 1) %}
+            {% if p == pagination.page %}
+              <strong>{{ p }}</strong>
+            {% else %}
+              <a href="{{ url_for('test_runs_bp.create_test_run_form', page=p, search=search) }}">{{ p }}</a>
+            {% endif %}
+          {% endfor %}
+
+          <!-- Next link -->
+          {% if pagination.has_next %}
+            <a href="{{ url_for('test_runs_bp.create_test_run_form', page=pagination.next_num, search=search) }}">Next</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <button type="submit">Create Test Run</button>
+  </form>
+</div>
+{% endblock %}

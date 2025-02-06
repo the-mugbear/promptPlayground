@@ -2,72 +2,8 @@
 {% block title %}View & Test Endpoint #{{ endpoint.id }}{% endblock %}
 
 {% block head %}
-<style>
-  .two-column-container {
-    display: flex;
-    gap: 2rem;
-    max-width: 1200px;
-    margin: 2rem auto;
-  }
-  .left-card, .right-card {
-    flex: 1;
-    background-color: #111; /* match your 80s hacker or main theme style */
-    border: 2px dashed var(--accent-color);
-    border-radius: 8px;
-    padding: 1rem;
-  }
-  .left-card h2, .right-card h2 {
-    margin-top: 0;
-    color: var(--accent-color);
-  }
+  <!--  -->
 
-  /* Endpoint data styling */
-  .endpoint-field {
-    margin-bottom: 1rem;
-  }
-  .endpoint-field label {
-    font-weight: bold;
-  }
-
-  /* Headers list */
-  .headers-list {
-    list-style: disc;
-    margin-left: 1.5rem;
-    margin-top: 0.5rem;
-  }
-
-  /* Form for testing: small margin top */
-  .test-form {
-    margin-top: 1.5rem;
-  }
-
-  /* Right card content for test results */
-  .test-section {
-    margin-top: 1rem;
-  }
-  .test-section label {
-    display: block;
-    margin: 0.5rem 0 0.25rem;
-    font-weight: bold;
-  }
-  /* results box for sent/received data */
-  .results-box {
-    background-color: #000;
-    border: 1px solid var(--accent-color);
-    border-radius: 4px;
-    padding: 0.5rem;
-    white-space: pre-wrap; /* preserve newlines */
-    min-height: 4em;
-  }
-  textarea {
-    width: 100%;
-    padding: 0.5rem;
-    background-color: #000;
-    color: var(--text-color);
-    border: 1px solid var(--accent-color);
-    border-radius: 4px;
-  }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -131,9 +67,19 @@
       method="POST"
     >
       <label for="testPayload">Override Payload (optional):</label>
-      <textarea id="testPayload" name="test_payload" rows="3"
+      <textarea id="testPayload" name="test_payload" rows="8"
        placeholder="Enter a custom payload to test..."
       >{% if override_payload %}{{ override_payload }}{% endif %}</textarea>
+
+      <!-- Optional headers override -->
+    <label for="raw_headers">Override Headers (Key: Value per line):</label>
+    <textarea
+      id="raw_headers"
+      name="raw_headers"
+      rows="4"
+      placeholder="Content-Type: application/json
+Authorization: Bearer <token>"
+    ></textarea>
 
       <button type="submit" style="margin-top: 1rem;">Test This Endpoint</button>
     </form>

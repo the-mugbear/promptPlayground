@@ -9,15 +9,33 @@ test_runs_bp = Blueprint('test_runs_bp', __name__, url_prefix='/test_runs')
 
 @test_runs_bp.route('/create', methods=['GET'])
 def create_test_run_form():
-    """
-    GET /test_runs/create -> Show a form for selecting an endpoint & one or more test suites
-    """
-    # 1. Query endpoints, test suites from the DB
+    # 1. Get page & search from query params
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '', type=str)
+    
+    # 2. Base query for test suites
+    suites_query = TestSuite.query
+    
+    # 3. If there's a search term, filter by description
+    if search:
+        # e.g. case-insensitive match
+        suites_query = suites_query.filter(TestSuite.description.ilike(f'%{search}%'))
+    
+    # 4. Paginate, 10 per page
+    pagination = suites_query.paginate(page=page, per_page=10, error_out=False)
+    test_suites = pagination.items  # the current page’s suite objects
+    
+    # 5. We'll also fetch endpoints for the dropdown
     endpoints = Endpoint.query.all()
-    test_suites = TestSuite.query.all()
+    
+    return render_template(
+        'test_runs/create_test_run.html',
+        endpoints=endpoints,
+        test_suites=test_suites,
+        pagination=pagination,
+        search=search
+    )
 
-    # 2. Render a template, passing these lists
-    return render_template('test_runs/create_test_run.html', endpoints=endpoints, test_suites=test_suites)
 
 @test_runs_bp.route('/create', methods=['POST'])
 def handle_create_test_run():

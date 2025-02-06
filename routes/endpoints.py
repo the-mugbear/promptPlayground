@@ -1,7 +1,9 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
 from extensions import db
 from models.model_Endpoints import Endpoint, APIHeader
+from services.endpoint_services import parse_headers_from_form, parse_headers_from_list_of_dict, headers_from_apiheader_list, parse_raw_headers
 import requests
+import json
 
 endpoints_bp = Blueprint('endpoints_bp', __name__, url_prefix='/endpoints')
 
@@ -60,30 +62,48 @@ def handle_create_endpoint():
 def test_endpoint(endpoint_id):
     endpoint = Endpoint.query.get_or_404(endpoint_id)
 
-    # Grab any override from the form
-    override_payload = request.form.get('test_payload', '')
+    # 1) Payload override vs. stored payload
+    override_payload = request.form.get('test_payload', '').strip()
+    actual_payload = override_payload or (endpoint.http_payload or "")
 
-    # If no override, default to the endpoint's stored payload
-    actual_payload = override_payload if override_payload.strip() else endpoint.http_payload
+    # 2) Headers from DB
+    existing_headers_dict = headers_from_apiheader_list(endpoint.headers)
+    
+    # 3) Possibly parse user's raw header overrides
+    raw_headers = request.form.get('raw_headers', '').strip()
+    user_headers_dict = parse_raw_headers(raw_headers)
 
-    # Perform the POST request
+    # Merge them. If the user typed a key that already exists, they override it
+    final_headers = {**existing_headers_dict, **user_headers_dict}
+
     response_text = ""
     try:
-        # Example using requests:
-        # Construct the URL
+        # lstrip and rstrip used to remove leading chars from left and right sides respectively
         url = f"{endpoint.hostname.rstrip('/')}/{endpoint.endpoint.lstrip('/')}"
-        # Possibly parse JSON or do something else
-        # Here's a minimal approach
-        resp = requests.post(url, data=actual_payload, timeout=10)
+        
+        # If actual_payload is valid JSON, we do requests.post(..., json=...)
+        # else we do data=... 
+        # We'll do a quick JSON parse attempt:
+        try:
+            parsed_json = json.loads(actual_payload)
+            # If parse succeeded, let's ensure we have "Content-Type" set if user didn't
+            final_headers.setdefault("Content-Type", "application/json")
+            resp = requests.post(url, json=parsed_json, headers=final_headers, timeout=120)
+        except json.JSONDecodeError:
+            # fallback to raw text
+            # if user didn't specify Content-Type, let's default to something
+            final_headers.setdefault("Content-Type", "application/json")
+            resp = requests.post(url, data=actual_payload, headers=final_headers, timeout=120)
+
         resp.raise_for_status()
         response_text = resp.text
     except requests.exceptions.RequestException as e:
         response_text = f"Error: {str(e)}"
 
-    # Render the same template, passing "what was sent" and "what was received"
     return render_template(
         'endpoints/view_endpoint.html',
         endpoint=endpoint,
+        override_payload=override_payload,
         test_payload=actual_payload,
         test_response=response_text
     )
