@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Test Run #{{ run.id }}{% endblock %}
+
+{% block content %}
+<h1>Test Run #{{ run.id }}</h1>
+
+<div style="margin-bottom: 1rem;">
+  <strong>Name:</strong> {{ run.name or 'N/A' }}<br>
+  <strong>Status:</strong> {{ run.status or 'pending' }}<br>
+  <strong>Created:</strong> {{ run.created_at if run.created_at else 'N/A' }}<br>
+  <strong>Finished:</strong> 
+  {% if run.finished_at %}
+    {{ run.finished_at }}
+  {% else %}
+    <em>Not finished</em>
+  {% endif %}
+</div>
+
+<!-- If your run links to an endpoint in some way, you could display it here -->
+
+<!-- Associated Suites -->
+{% if run.test_suites and run.test_suites|length > 0 %}
+  <h2>Associated Test Suites</h2>
+
+  {% for suite in run.test_suites %}
+    <div style="margin-bottom: 1rem; padding-left: 1rem; border-left: 2px solid #ccc;">
+      <h3 style="margin-top: 0;">{{ suite.description }}</h3>
+      <p>
+        Created at: {{ suite.created_at }}<br>
+        Behavior: {{ suite.behavior or 'N/A' }}
+      </p>
+
+      <!-- Suite's Test Cases -->
+      {% set case_list = suite.test_cases.all() if suite.test_cases.lazy == 'dynamic' else suite.test_cases %}
+      {% if case_list and case_list|length > 0 %}
+        <ul>
+          {% for tc in case_list %}
+            {% set tresult = result_map.get(tc.id) %}
+            <li>
+              <strong>{{ tc.description }}</strong>
+              {# If there's a TestResult for this (run_id, test_case_id), show status #}
+              {% if tresult %}
+                - Status: {{ tresult.status or 'pending' }}
+                {# Optionally show started_at, finished_at, response_data, etc. #}
+              {% else %}
+                - No result / not executed
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p><em>No test cases in this suite.</em></p>
+      {% endif %}
+    </div>
+  {% endfor %}
+{% else %}
+  <p>No test suites associated with this run.</p>
+{% endif %}
+
+<!-- If you want to also list run.results or do more advanced data, you can add it below -->
+
+{% endblock %}

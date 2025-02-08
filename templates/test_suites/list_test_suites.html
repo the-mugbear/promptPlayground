@@ -52,7 +52,7 @@
             {% if suite.test_cases %}
               <ul>
                 {% for tc in suite.test_cases %}
-                  <li>{{ tc.description }}</li>
+                  <li>{{ tc.prompt }}</li>
                 {% endfor %}
               </ul>
             {% else %}

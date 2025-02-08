@@ -22,7 +22,7 @@
   <thead>
     <tr>
       <th>#</th>
-      <th>Description</th>
+      <th>Prompt</th>
       <th>Created At</th>
       <th>Actions</th>
     </tr>
@@ -31,7 +31,7 @@
     {% for case in test_cases %}
       <tr>
         <td>{{ loop.index }}</td>
-        <td>{{ case.description }}</td>
+        <td>{{ case.prompt }}</td>
         <td>
           {% if case.created_at %}
             {{ case.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
@@ -55,8 +55,17 @@
       <tr class="case-details-row" style="display: none;">
         <td colspan="4">
           <div class="case-details-container">
-            <!-- You could show more info about the test case or steps here -->
-            <p>Additional info for test case ID {{ case.id }} would go here.</p>
+            <strong>Test Case ID {{ case.id }}</strong><br>
+            <em>Suites:</em>
+            {% if case.test_suites and case.test_suites|length > 0 %}
+              <ul>
+                {% for suite in case.test_suites %}
+                  <li>{{ suite.description }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p><em>No suites associated.</em></p>
+            {% endif %}
           </div>
         </td>
       </tr>

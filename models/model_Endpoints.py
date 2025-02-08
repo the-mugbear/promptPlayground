@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.dialects.sqlite import JSON  # For storing template data in SQLite
 
 # ---------------------------------
-# Endpoint (API Log) Model
+# Endpoint 
 # ---------------------------------
 class Endpoint(db.Model):
     """
@@ -23,9 +23,10 @@ class Endpoint(db.Model):
     endpoint = db.Column(db.String, nullable=False)
     http_payload = db.Column(db.Text, nullable=True)   # HTTP payload sent with the request
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)  # <--- ADDED TIMESTAMP
-    # Relationship to APIHeader
-    # Rename `api_log` -> `endpoint` so it's consistent with 'endpoint_id' in APIHeader
-    headers = db.relationship('APIHeader', backref='endpoint', lazy=True)
+    
+    # Relationships
+    headers = db.relationship('APIHeader', back_populates='endpoint', cascade='all, delete-orphan')
+    test_runs = db.relationship('TestRun', back_populates='endpoint')
 
     def to_dict(self):
         """Convert the endpoint log instance into a dictionary."""
@@ -43,7 +44,7 @@ class Endpoint(db.Model):
         return f'<EndpointLog {self.hostname} -> {self.endpoint} @ {self.timestamp}>'
 
 # ---------------------------------
-# API Header Model
+# API Header
 # ---------------------------------
 class APIHeader(db.Model):
     """
@@ -60,6 +61,9 @@ class APIHeader(db.Model):
     endpoint_id = db.Column(db.Integer, db.ForeignKey('endpoints.id'), nullable=False)
     key = db.Column(db.String, nullable=False)
     value = db.Column(db.String, nullable=False)
+
+    # Relationship
+    endpoint = db.relationship('Endpoint', back_populates='headers')
 
     def to_dict(self):
         """Convert the API header instance into a dictionary."""
@@ -90,13 +94,18 @@ class EndpointTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)  # Template name
     template = db.Column(JSON, nullable=False)    # JSON structure for the API template
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
 
     def to_dict(self):
         """Convert the API template instance into a dictionary."""
         return {
             "id": self.id,
             "name": self.name,
-            "template": self.template
+            "template": self.template,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
 
     def __repr__(self):

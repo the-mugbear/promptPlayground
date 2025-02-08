@@ -7,6 +7,35 @@ from models.model_TestRun import TestRun
 
 test_runs_bp = Blueprint('test_runs_bp', __name__, url_prefix='/test_runs')
 
+@test_runs_bp.route('/', methods=['GET'])
+def list_test_runs():
+    """
+    GET /test_runs -> Displays a table or list of existing test runs
+    """
+    # Optional: handle pagination
+    page = request.args.get('page', 1, type=int)
+    pagination = TestRun.query.order_by(TestRun.id.desc()).paginate(page=page, per_page=10, error_out=False)
+    runs = pagination.items
+
+    return render_template('test_runs/list_test_runs.html', test_runs=runs, pagination=pagination)
+
+@test_runs_bp.route('/<int:run_id>', methods=['GET'])
+def view_test_run(run_id):
+    """
+    GET /test_runs/<run_id> -> Show details for a single test run,
+    including associated suites, test cases, and statuses.
+    """
+    run = TestRun.query.get_or_404(run_id)
+
+    # Build a dict so we can quickly find the TestResult for each test_case_id
+    # E.g. { test_case_id: TestResult object }
+    result_map = {}
+    if run.results:
+        for r in run.results:
+            result_map[r.test_case_id] = r
+    
+    return render_template('test_runs/view_test_run.html', run=run, result_map=result_map)
+
 @test_runs_bp.route('/create', methods=['GET'])
 def create_test_run_form():
     # 1. Get page & search from query params
@@ -39,14 +68,11 @@ def create_test_run_form():
 
 @test_runs_bp.route('/create', methods=['POST'])
 def handle_create_test_run():
-    """
-    POST /test_runs/create -> Handle form submission to create a new Test Run
-    """
+    # get form data
+    run_name = request.form.get('run_name')
     endpoint_id = request.form.get('endpoint_id')
-    selected_suites = request.form.getlist('suite_ids')  # multiple suite checkboxes
-
-    # (Optional) user might provide a name for the run:
-    run_name = request.form.get('run_name') or "New Test Run"
+    # user might submit suite_ids as multiple values e.g. suite_ids=10, suite_ids=12, ...
+    selected_suite_ids = request.form.getlist('suite_ids')
 
     # 1. Create a new TestRun record
     new_run = TestRun(
@@ -64,7 +90,7 @@ def handle_create_test_run():
     # or if you store it in a linking table or on each TestResult, adapt accordingly.)
 
     # 3. For each selected suite, gather its test cases or link them to this run
-    for suite_id in selected_suites:
+    for suite_id in selected_suite_ids:
         # You might store in a many-to-many table between TestRun and TestSuite,
         # or create TestResult entries for each test case in that suite, etc.
         # Example if you have a relationship:

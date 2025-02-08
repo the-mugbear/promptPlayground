@@ -1,7 +1,7 @@
 from extensions import db
 
-class TestResult(db.Model):
-    __tablename__ = 'test_results'
+class TestExecution(db.Model):
+    __tablename__ = 'test_executions'
 
     id = db.Column(db.Integer, primary_key=True)
     test_run_id = db.Column(db.Integer, db.ForeignKey('test_runs.id'), nullable=False)
@@ -21,8 +21,8 @@ class TestResult(db.Model):
     finished_at = db.Column(db.DateTime, nullable=True)
 
     # Relationships
-    test_run = db.relationship("TestRun", backref="results")
-    test_case = db.relationship("TestCase")
+    test_run = db.relationship('TestRun', back_populates='executions')
+    test_case = db.relationship('TestCase', back_populates='executions')
 
     def __repr__(self):
         return (
