@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}All Test Runs{% endblock %}
 
+{% block head %}
+  <!-- New list test suite styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+{% endblock %}
+
 {% block content %}
 <h1>All Test Runs</h1>
 

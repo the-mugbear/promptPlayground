@@ -2,61 +2,131 @@
 {% block title %}Test Run #{{ run.id }}{% endblock %}
 
 {% block content %}
-<h1>Test Run #{{ run.id }}</h1>
-
-<div style="margin-bottom: 1rem;">
-  <strong>Name:</strong> {{ run.name or 'N/A' }}<br>
-  <strong>Status:</strong> {{ run.status or 'pending' }}<br>
-  <strong>Created:</strong> {{ run.created_at if run.created_at else 'N/A' }}<br>
-  <strong>Finished:</strong> 
-  {% if run.finished_at %}
-    {{ run.finished_at }}
-  {% else %}
-    <em>Not finished</em>
-  {% endif %}
-</div>
-
-<!-- If your run links to an endpoint in some way, you could display it here -->
-
-<!-- Associated Suites -->
-{% if run.test_suites and run.test_suites|length > 0 %}
-  <h2>Associated Test Suites</h2>
-
-  {% for suite in run.test_suites %}
-    <div style="margin-bottom: 1rem; padding-left: 1rem; border-left: 2px solid #ccc;">
-      <h3 style="margin-top: 0;">{{ suite.description }}</h3>
-      <p>
-        Created at: {{ suite.created_at }}<br>
-        Behavior: {{ suite.behavior or 'N/A' }}
-      </p>
-
-      <!-- Suite's Test Cases -->
-      {% set case_list = suite.test_cases.all() if suite.test_cases.lazy == 'dynamic' else suite.test_cases %}
-      {% if case_list and case_list|length > 0 %}
-        <ul>
-          {% for tc in case_list %}
-            {% set tresult = result_map.get(tc.id) %}
-            <li>
-              <strong>{{ tc.description }}</strong>
-              {# If there's a TestResult for this (run_id, test_case_id), show status #}
-              {% if tresult %}
-                - Status: {{ tresult.status or 'pending' }}
-                {# Optionally show started_at, finished_at, response_data, etc. #}
-              {% else %}
-                - No result / not executed
-              {% endif %}
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p><em>No test cases in this suite.</em></p>
-      {% endif %}
+<div class="container mx-auto p-4">
+    <!-- Test Run Header -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h1 class="text-2xl font-bold mb-4">Test Run #{{ run.id }}</h1>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <strong class="text-gray-700">Name:</strong> 
+                <span>{{ run.name or 'N/A' }}</span>
+            </div>
+            <div>
+                <strong class="text-gray-700">Status:</strong>
+                <span class="px-2 py-1 rounded-full text-sm
+                    {% if run.status == 'pending' %}bg-yellow-100 text-yellow-800
+                    {% elif run.status == 'running' %}bg-blue-100 text-blue-800
+                    {% elif run.status == 'completed' %}bg-green-100 text-green-800
+                    {% elif run.status == 'paused' %}bg-gray-100 text-gray-800
+                    {% endif %}">
+                    {{ run.status or 'pending' }}
+                </span>
+            </div>
+            <div>
+                <strong class="text-gray-700">Created:</strong>
+                <span>{{ run.created_at.strftime('%Y-%m-%d %H:%M:%S') if run.created_at else 'N/A' }}</span>
+            </div>
+            <div>
+                <strong class="text-gray-700">Finished:</strong>
+                <span>
+                    {% if run.finished_at %}
+                        {{ run.finished_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                    {% else %}
+                        <em class="text-gray-500">Not finished</em>
+                    {% endif %}
+                </span>
+            </div>
+            <div>
+                <strong class="text-gray-700">Current Sequence:</strong>
+                <span>{{ run.current_sequence }}</span>
+            </div>
+            <div>
+                <strong class="text-gray-700">Endpoint:</strong>
+                <span>{{ run.endpoint.name if run.endpoint else 'N/A' }}</span>
+            </div>
+        </div>
     </div>
-  {% endfor %}
-{% else %}
-  <p>No test suites associated with this run.</p>
-{% endif %}
 
-<!-- If you want to also list run.results or do more advanced data, you can add it below -->
+    <!-- Test Executions Summary -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-bold mb-4">Test Executions</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full table-auto">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="px-4 py-2 text-left">Sequence</th>
+                        <th class="px-4 py-2 text-left">Test Case</th>
+                        <th class="px-4 py-2 text-left">Status</th>
+                        <th class="px-4 py-2 text-left">Started</th>
+                        <th class="px-4 py-2 text-left">Finished</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for execution in run.executions %}
+                    <tr class="border-t">
+                        <td class="px-4 py-2">{{ execution.sequence }}</td>
+                        <td class="px-4 py-2">{{ execution.test_case.description if execution.test_case else 'N/A' }}</td>
+                        <td class="px-4 py-2">
+                            <span class="px-2 py-1 rounded-full text-sm
+                                {% if execution.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                {% elif execution.status == 'passed' %}bg-green-100 text-green-800
+                                {% elif execution.status == 'failed' %}bg-red-100 text-red-800
+                                {% elif execution.status == 'skipped' %}bg-gray-100 text-gray-800
+                                {% endif %}">
+                                {{ execution.status }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-2">{{ execution.started_at.strftime('%H:%M:%S') if execution.started_at else '-' }}</td>
+                        <td class="px-4 py-2">{{ execution.finished_at.strftime('%H:%M:%S') if execution.finished_at else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
+    <!-- Associated Test Suites -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Associated Test Suites</h2>
+        {% if run.test_suites and run.test_suites|length > 0 %}
+            {% for suite in run.test_suites %}
+            <div class="border-l-4 border-blue-500 pl-4 mb-6">
+                <h3 class="text-lg font-semibold mb-2">{{ suite.description }}</h3>
+                <div class="text-sm text-gray-600 mb-2">
+                    <div>Created: {{ suite.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                    <div>Behavior: {{ suite.behavior or 'N/A' }}</div>
+                </div>
+                
+                {% set case_list = suite.test_cases.all() if suite.test_cases.lazy == 'dynamic' else suite.test_cases %}
+                {% if case_list and case_list|length > 0 %}
+                    <ul class="space-y-2">
+                        {% for tc in case_list %}
+                        <li class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                            <span>{{ tc.description }}</span>
+                            {% set execution = run.executions|selectattr('test_case_id', 'equalto', tc.id)|first %}
+                            {% if execution %}
+                                <span class="px-2 py-1 rounded-full text-sm
+                                    {% if execution.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                    {% elif execution.status == 'passed' %}bg-green-100 text-green-800
+                                    {% elif execution.status == 'failed' %}bg-red-100 text-red-800
+                                    {% elif execution.status == 'skipped' %}bg-gray-100 text-gray-800
+                                    {% endif %}">
+                                    {{ execution.status }}
+                                </span>
+                            {% else %}
+                                <span class="text-gray-500 text-sm">Not executed</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-gray-500 italic">No test cases in this suite.</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-gray-500 italic">No test suites associated with this run.</p>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}
