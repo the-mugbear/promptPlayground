@@ -2,8 +2,6 @@
 {% block title %}View & Test Endpoint #{{ endpoint.id }}{% endblock %}
 
 {% block head %}
-  <!--  -->
-
 {% endblock %}
 
 {% block content %}
@@ -93,7 +91,7 @@ Authorization: Bearer <token>"
       <label>What was sent:</label>
       <div class="results-box">
         {% if test_payload %}
-          {{ test_payload }}
+          <pre>{{ test_payload }}</pre>
         {% else %}
           <em>No test performed yet.</em>
         {% endif %}
@@ -104,7 +102,7 @@ Authorization: Bearer <token>"
       <label>What was received:</label>
       <div class="results-box">
         {% if test_response %}
-          {{ test_response }}
+          <pre>{{ test_response }}</pre>
         {% else %}
           <em>No response yet.</em>
         {% endif %}

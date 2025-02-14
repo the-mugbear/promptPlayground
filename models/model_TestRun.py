@@ -19,8 +19,13 @@ class TestRun(db.Model):
     current_sequence = db.Column(db.Integer, default=0)
 
     # Add endpoint relationship
-    endpoint_id = db.Column(db.Integer, db.ForeignKey('endpoints.id'), nullable=False)
-    endpoint = db.relationship('Endpoint', back_populates='test_runs')
+    # there exists a potential issue when a user deletes an endpoint an existing test run record will now show null
+    endpoint_id = db.Column(
+        db.Integer,
+        db.ForeignKey("endpoints.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    endpoint = db.relationship("Endpoint", back_populates="test_runs", passive_deletes=True)
     
     # Other relationships
     test_suites = db.relationship('TestSuite', secondary=test_run_suites, back_populates='test_runs')

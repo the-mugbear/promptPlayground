@@ -160,10 +160,32 @@
     border: 1px solid var(--accent-color);
     border-radius: 4px;
     padding: 0.5rem;
-    white-space: pre-wrap; /* preserve newlines */
+    
+    /* Keep existing properties: */
+    /* white-space: pre-wrap; preserve newlines */
     min-height: 4em;
+    
+    /* Add these to force line breaks on long words */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    /* If you want to forcibly break big tokens with no spaces: */
+    word-break: break-all;
+    
+    /* Optionally constrain the height or width */
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .results-box pre {
+    /* Let lines wrap at otherwise unbreakable points */
+    white-space: pre-wrap;   /* merges the effect of <pre> with wrap */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-all;   /* or break-word, but break-all is more aggressive */
+    max-width: 100%;
   }
   
+
   /* Basic form styling */
   .form-group {
     margin-bottom: 1rem;

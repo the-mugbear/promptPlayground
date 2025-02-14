@@ -49,19 +49,31 @@
           {% endif %}
         </td>
         <td>
-          <!-- Expand/collapse headers or link to a detail page -->
-          <button 
-            type="button" 
-            class="view-headers-btn"
-            data-endpoint-id="{{ ep.id }}"
-          >
-            View Headers
-          </button>
-          <button
-            type="button"
-            class="view-headers-btn">
-            <a href="{{ url_for('endpoints_bp.view_endpoint_details', endpoint_id=ep.id) }}">Details Page</a>
-           </button>
+            <!-- Expand/collapse headers or link to a detail page -->
+            <button 
+              type="button" 
+              class="view-headers-btn"
+              data-endpoint-id="{{ ep.id }}"
+            >
+              View Headers
+            </button>
+
+            <button
+              type="button"
+              class="view-headers-btn">
+              <a href="{{ url_for('endpoints_bp.view_endpoint_details', endpoint_id=ep.id) }}">Details Page</a>
+            </button>
+
+            <!-- Form to delete an endpoint -->
+            <form action="{{ url_for('endpoints_bp.delete_endpoint', endpoint_id=ep.id) }}" method="POST" style="display:inline;">
+              <button 
+                type="submit" 
+                class="delete-endpoint-btn"
+                onclick="return confirm('Are you sure you want to delete this endpoint?');"
+              >
+                Delete
+              </button>
+            </form>
         </td>
       </tr>
 

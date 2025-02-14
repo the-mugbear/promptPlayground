@@ -160,7 +160,17 @@ def test_endpoint(endpoint_id):
             resp = requests.post(url, data=actual_payload, headers=final_headers, timeout=120)
 
         resp.raise_for_status()
-        response_text = resp.text
+
+        # Pretty print response for presentation to front
+        try:
+            # Attempt to parse as JSON
+            parsed_resp = json.loads(resp.text)
+            # Re-dump with pretty indentation
+            response_text = json.dumps(parsed_resp, indent=2)
+        except json.JSONDecodeError:
+            # If it's not valid JSON, fallback to the raw text
+            response_text = resp.text
+
     except requests.exceptions.RequestException as e:
         response_text = f"Error: {str(e)}"
 
@@ -214,3 +224,19 @@ def get_endpoint_suggestions():
         "paths": path_list,
         "payloads": payload_list
     })
+
+@endpoints_bp.route('/<int:endpoint_id>/delete', methods=['POST'])
+def delete_endpoint(endpoint_id):
+    """
+    POST /endpoints/<id>/delete -> Deletes the specified endpoint
+    """
+    endpoint = Endpoint.query.get_or_404(endpoint_id)
+
+    # If you have dependencies or references to test runs, consider checking them here
+    # e.g. if you want to block deletion if it's used in some runs
+
+    db.session.delete(endpoint)
+    db.session.commit()
+    flash(f'Endpoint {endpoint_id} deleted successfully.', 'success')
+
+    return redirect(url_for('endpoints_bp.list_endpoints'))

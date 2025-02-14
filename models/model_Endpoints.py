@@ -21,7 +21,7 @@ class Endpoint(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     hostname = db.Column(db.String, nullable=False)
     endpoint = db.Column(db.String, nullable=False)
-    http_payload = db.Column(db.Text, nullable=True)   # HTTP payload sent with the request
+    http_payload = db.Column(db.Text, nullable=True)   # HTTP payload sent with the request, should handle and store as JSON
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)  # <--- ADDED TIMESTAMP
     
     # Relationships
@@ -77,37 +77,3 @@ class APIHeader(db.Model):
     def __repr__(self):
         """String representation of the API header."""
         return f'<APIHeader {self.key}: {self.value}>'
-    
-# ---------------------------------
-# API Template Model
-# ---------------------------------
-class EndpointTemplate(db.Model):
-    """
-    Represents a reusable template for API requests.
-
-    Attributes:
-        name (str): The name of the template.
-        template (JSON): The JSON structure of the API template.
-    """
-    __tablename__ = 'endpoint_templates'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False)  # Template name
-    template = db.Column(JSON, nullable=False)    # JSON structure for the API template
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-
-    def to_dict(self):
-        """Convert the API template instance into a dictionary."""
-        return {
-            "id": self.id,
-            "name": self.name,
-            "template": self.template,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None
-        }
-
-    def __repr__(self):
-        """String representation of the API template."""
-        return f'<EndpointTemplate {self.name}>'
