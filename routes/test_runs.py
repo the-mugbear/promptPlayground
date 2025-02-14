@@ -7,6 +7,8 @@ from models.model_TestSuite import TestSuite
 from models.model_TestRun import TestRun
 from models.model_TestExecution import TestExecution
 
+import json, requests
+
 test_runs_bp = Blueprint('test_runs_bp', __name__, url_prefix='/test_runs')
 
 @test_runs_bp.route('/', methods=['GET'])
@@ -173,3 +175,85 @@ def handle_create_test_run():
     # db.session.commit()
     # flash("Test run created successfully!", "success")
     # return redirect(url_for('test_runs_bp.list_test_runs'))  # or somewhere else
+
+@test_runs_bp.route('/<int:run_id>/execute', methods=['POST'])
+def execute_test_run(run_id):
+    """
+    POST /test_runs/<run_id>/execute -> Start or resume executing the test run.
+    """
+    run = TestRun.query.get_or_404(run_id)
+
+    # Check if we can run
+    if run.status not in ['pending', 'paused', 'failed']:
+        flash(f"Cannot execute run in status '{run.status}'.", "warning")
+        return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
+
+    # Mark as running
+    run.status = 'running'
+    db.session.commit()
+
+    # We'll read the run.endpoint.http_payload, which might look like:
+    # {
+    #   "model": "deepseek-chat",
+    #   "messages": [
+    #       {"role": "system", "content": "You are a helpful assistant."},
+    #       {"role": "user", "content": "PLACEHOLDER"}
+    #   ],
+    #   "stream": false
+    # }
+    try:
+        base_payload = json.loads(run.endpoint.http_payload)  # Parse the template
+    except json.JSONDecodeError:
+        flash("Endpoint's http_payload is not valid JSON. Aborting.", "error")
+        return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
+
+    # Construct the endpoint URL
+    endpoint_obj = run.endpoint
+    url = f"{endpoint_obj.hostname.rstrip('/')}/{endpoint_obj.endpoint.lstrip('/')}"
+
+    for execution in run.executions:
+        # Only run if pending
+        if execution.status != 'pending':
+            continue
+
+        # Copy the template so we don't mutate it for the next test case
+        # We want a fresh copy each iteration
+        test_payload = json.loads(run.endpoint.http_payload)
+
+        # Find the user message in test_payload["messages"] and replace content
+        messages = test_payload.get("messages", [])
+        # e.g. locate the dict with {"role": "user"}
+        for msg in messages:
+            if msg.get("role") == "user":
+                # Replace with the test case's prompt
+                msg["content"] = execution.test_case.prompt
+                break
+
+        # Optionally store the final JSON for debugging
+        # Then do the POST
+        try:
+            execution.started_at = execution.started_at or datetime.utcnow()
+
+            resp = requests.post(url, json=test_payload, timeout=10)
+            resp.raise_for_status()
+
+            execution.status = 'passed'
+            execution.response_data = resp.text
+            execution.finished_at = datetime.utcnow()
+
+        except Exception as e:
+            execution.status = 'failed'
+            execution.response_data = str(e)
+            execution.finished_at = datetime.utcnow()
+
+        db.session.commit()
+
+    # After executing all test cases
+    # if all are pass/fail/skipped => mark run as completed
+    if all(ex.status in ['passed', 'failed','skipped'] for ex in run.executions):
+        run.status = 'completed'
+        run.finished_at = datetime.utcnow()
+        db.session.commit()
+
+    flash("Test run executed with the custom http_payload template.", "success")
+    return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))

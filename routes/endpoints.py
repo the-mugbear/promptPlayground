@@ -2,6 +2,7 @@ from flask import Blueprint, request, render_template, redirect, url_for, flash,
 from extensions import db
 from models.model_Endpoints import Endpoint, APIHeader
 from services.endpoint_services import parse_headers_from_form, parse_headers_from_list_of_dict, headers_from_apiheader_list, parse_raw_headers
+from werkzeug.exceptions import BadRequest
 import requests
 import json
 
@@ -26,38 +27,101 @@ def create_endpoint_form():
 def handle_create_endpoint():
     """
     POST /endpoints/create -> Saves the new endpoint info and its headers in the DB
+    
+    Expected form data:
+        - hostname: str
+        - endpoint: str
+        - http_payload: str (JSON format)
+        - raw_headers: str (newline-separated key:value pairs)
+        
+    Returns:
+        Redirect to endpoints list on success
+        
+    Raises:
+        BadRequest: If payload is not valid JSON or missing required fields
     """
-    hostname = request.form.get('hostname')
-    endpoint_path = request.form.get('endpoint')
-    http_payload = request.form.get('http_payload')
+    try:
+        hostname = request.form.get('hostname')
+        endpoint_path = request.form.get('endpoint')
+        raw_payload = request.form.get('http_payload', '')
 
-    # Create the Endpoint
-    new_endpoint = Endpoint(
-        hostname=hostname,
-        endpoint=endpoint_path,
-        http_payload=http_payload
-    )
-    db.session.add(new_endpoint)
-    db.session.flush()  # flush so we get new_endpoint.id before adding headers
+        # Validate and structure the HTTP payload
+        if raw_payload:
+            try:
+                # First parse the input to ensure it's valid JSON
+                payload_dict = json.loads(raw_payload)
+                
+                # Ensure required fields exist
+                required_fields = ['model', 'messages', 'stream']
+                missing_fields = [field for field in required_fields if field not in payload_dict]
+                if missing_fields:
+                    raise BadRequest(f"Missing required fields in payload: {', '.join(missing_fields)}")
+                
+                # Validate messages structure
+                if not isinstance(payload_dict['messages'], list):
+                    raise BadRequest("'messages' must be a list")
+                
+                for msg in payload_dict['messages']:
+                    if not isinstance(msg, dict) or 'role' not in msg or 'content' not in msg:
+                        raise BadRequest("Each message must have 'role' and 'content' fields")
+                
+                # Store as formatted JSON string
+                formatted_payload = json.dumps({
+                    "model": payload_dict['model'],
+                    "messages": payload_dict['messages'],
+                    "stream": payload_dict['stream']
+                }, indent=2)
+                
+            except json.JSONDecodeError as e:
+                raise BadRequest(f"Invalid JSON payload: {str(e)}")
+        else:
+            # If no payload provided, use the default template
+            formatted_payload = json.dumps({
+                "model": "deepseek-chat",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": "PLACEHOLDER"}
+                ],
+                "stream": False
+            }, indent=2)
 
-    # Parse headers if user provided them as lines or key-value pairs
-    # E.g., "Content-Type: application/json\nAuthorization: Bearer <token>"
-    raw_headers = request.form.get('raw_headers', '')
-    lines = [line.strip() for line in raw_headers.split('\n') if line.strip()]
-    for line in lines:
-        if ':' in line:
-            key, value = line.split(':', 1)
-            key = key.strip()
-            value = value.strip()
-            header = APIHeader(endpoint_id=new_endpoint.id, key=key, value=value)
-            db.session.add(header)
+        # Create the Endpoint
+        new_endpoint = Endpoint(
+            hostname=hostname,
+            endpoint=endpoint_path,
+            http_payload=formatted_payload  # Store the formatted JSON string
+        )
+        db.session.add(new_endpoint)
+        db.session.flush()
 
-    db.session.commit()
+        # Parse headers
+        raw_headers = request.form.get('raw_headers', '')
+        lines = [line.strip() for line in raw_headers.split('\n') if line.strip()]
+        for line in lines:
+            if ':' in line:
+                key, value = line.split(':', 1)
+                key = key.strip()
+                value = value.strip()
+                header = APIHeader(endpoint_id=new_endpoint.id, key=key, value=value)
+                db.session.add(header)
 
-    flash('Endpoint created successfully!', 'success')
-    return redirect(url_for('endpoints_bp.list_endpoints'))
+        db.session.commit()
+        flash('Endpoint created successfully!', 'success')
+        return redirect(url_for('endpoints_bp.list_endpoints'))
+
+    except BadRequest as e:
+        db.session.rollback()
+        flash(str(e), 'error')
+        return redirect(url_for('endpoints_bp.create_endpoint'))
+    
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error creating endpoint: {str(e)}', 'error')
+        return redirect(url_for('endpoints_bp.create_endpoint'))
 
 
+# Originally even if the user submitted a proper JSON formatted payload we were saving the raw string from the form
+# this is intended to ensure it's proper JSON before saving to DB
 @endpoints_bp.route('/<int:endpoint_id>/test', methods=['POST'])
 def test_endpoint(endpoint_id):
     endpoint = Endpoint.query.get_or_404(endpoint_id)

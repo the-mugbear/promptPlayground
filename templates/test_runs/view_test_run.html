@@ -1,8 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Test Run #{{ run.id }}{% endblock %}
 
+{% block head %}
+  <!-- New list test suite styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="container mx-auto p-4">
+
+    <!-- TODO: Removed for now as a run that contains failed test cases will be marked as status complete -->
+    <!-- {% if run.status not in ['pending', 'paused'] %}disabled{% endif %} -->
+    <!-- This form calls the new /test_runs/<run_id>/execute route -->
+    <form action="{{ url_for('test_runs_bp.execute_test_run', run_id=run.id) }}" method="POST" style="margin-bottom: 1rem;">
+        <button type="submit"
+        class="px-4 py-2 bg-blue-500 text-white rounded"
+        >
+        Execute Test Run
+        </button>
+    </form>
+  
     <!-- Test Run Header -->
     <div class="bg-white shadow rounded-lg p-6 mb-6">
         <h1 class="text-2xl font-bold mb-4">Test Run #{{ run.id }}</h1>
@@ -42,7 +59,7 @@
             </div>
             <div>
                 <strong class="text-gray-700">Endpoint:</strong>
-                <span>{{ run.endpoint.name if run.endpoint else 'N/A' }}</span>
+                <span>{{ run.endpoint.hostname if run.endpoint else 'N/A' }}</span>
             </div>
         </div>
     </div>
