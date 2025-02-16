@@ -54,7 +54,7 @@ def create_test_suite():
     if new_test_cases_data:
         lines = [line.strip() for line in new_test_cases_data.split('\n') if line.strip()]
         for line in lines:
-            test_case = TestCase(description=line)
+            test_case = TestCase(prompt=line)
             db.session.add(test_case)
             # we could commit later, but let's flush first:
             db.session.flush()
