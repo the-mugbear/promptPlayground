@@ -2,42 +2,124 @@
 {% block title %}Test Run #{{ run.id }}{% endblock %}
 
 {% block head %}
-  <!-- New list test suite styles -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+  <style>
+    .grid-cols-auto {
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+    .prompt-response-grid {
+        display: grid;
+        grid-template-columns: minmax(200px, 25%) minmax(300px, 1fr);
+        gap: 1rem;
+        color: var(--text-color);
+        background-color: #111; /* if it’s an entire section that needs it */
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        
+        /* Keep your neon style */
+        background-color: transparent; /* or partial color if you want distinct states */
+        color: var(--text-color);
+        border: 2px solid var(--accent-color);
+        
+        font-size: 0.875rem;
+        font-weight: 500;
+        /* Or apply a dynamic style for pending/passed/failed with if-conditions in your template */
+    }
+
+    .content-card {
+        /* Use your dark background color from your theme */
+        background-color: #111; /* or var(--bg-color) if you prefer fully black */
+        color: var(--text-color);
+        
+        /* Add your neon border style */
+        border: 2px dashed var(--accent-color);
+        border-radius: 8px;
+        
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        
+        /* Optionally add a subtle box shadow if you want a slight “pop” */
+        /* box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color); */
+    }
+    .code-block {
+        /* In your theme, code or pre elements are typically black or #111 */
+        background-color: #000; /* or #111, whichever you prefer */
+        color: var(--secondary-color); /* neon green or cyan */
+        border: 1px solid var(--accent-color);
+        border-radius: 4px;
+        
+        /* Keep spacing / scrolling if it’s large */
+        padding: 1rem;
+        margin: 0.5rem 0;
+        max-height: 300px;
+        overflow-y: auto;
+
+        /* For line wrapping of long tokens */
+        white-space: pre-wrap;
+        word-wrap: break-word;  /* older name */
+        overflow-wrap: break-word; /* newer name */
+        word-break: break-all; /* forcibly break extremely long tokens if needed */
+        font-family: var(--main-font); /* or monospace if you prefer a different code font */
+    }
+    .collapsible-section {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 1rem 0;
+    }
+    .collapsible-header {
+      cursor: pointer;
+      padding: 0.5rem;
+      background-color: #111;
+      border-radius: 0.375rem;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
 <div class="container mx-auto p-4">
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <form action="{{ url_for('test_runs_bp.execute_test_run', run_id=run.id) }}" method="POST">
+            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                Execute Test Run
+            </button>
+        </form>
+        <form action="{{ url_for('test_runs_bp.reset_test_run', run_id=run.id) }}" method="POST">
+            <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                    onclick="return confirm('Are you sure you want to reset this test run?')">
+                Reset Test Run
+            </button>
+        </form>
+    </div>
 
-    <!-- TODO: Removed for now as a run that contains failed test cases will be marked as status complete -->
-    <!-- {% if run.status not in ['pending', 'paused'] %}disabled{% endif %} -->
-    <!-- This form calls the new /test_runs/<run_id>/execute route -->
-    <form action="{{ url_for('test_runs_bp.execute_test_run', run_id=run.id) }}" method="POST" style="margin-bottom: 1rem;">
-        <button type="submit"
-        class="px-4 py-2 bg-blue-500 text-white rounded"
-        >
-        Execute Test Run
-        </button>
-    </form>
-  
-    <!-- Test Run Header -->
-    <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <h1 class="text-2xl font-bold mb-4">Test Run #{{ run.id }}</h1>
-        <div class="grid grid-cols-2 gap-4">
+    <!-- Test Run Summary Card -->
+    <div class="content-card">
+        <div class="card-header">
+            <h1 class="text-2xl font-bold">Test Run #{{ run.id }}</h1>
+            <span class="status-badge {% if run.status == 'pending' %}bg-yellow-100 text-yellow-800
+                      {% elif run.status == 'running' %}bg-blue-100 text-blue-800
+                      {% elif run.status == 'completed' %}bg-green-100 text-green-800
+                      {% elif run.status == 'paused' %}bg-gray-100 text-gray-800{% endif %}">
+                {{ run.status or 'pending' }}
+            </span>
+        </div>
+        <div class="grid grid-cols-auto gap-4 mt-4">
             <div>
                 <strong class="text-gray-700">Name:</strong> 
                 <span>{{ run.name or 'N/A' }}</span>
-            </div>
-            <div>
-                <strong class="text-gray-700">Status:</strong>
-                <span class="px-2 py-1 rounded-full text-sm
-                    {% if run.status == 'pending' %}bg-yellow-100 text-yellow-800
-                    {% elif run.status == 'running' %}bg-blue-100 text-blue-800
-                    {% elif run.status == 'completed' %}bg-green-100 text-green-800
-                    {% elif run.status == 'paused' %}bg-gray-100 text-gray-800
-                    {% endif %}">
-                    {{ run.status or 'pending' }}
-                </span>
             </div>
             <div>
                 <strong class="text-gray-700">Created:</strong>
@@ -45,17 +127,7 @@
             </div>
             <div>
                 <strong class="text-gray-700">Finished:</strong>
-                <span>
-                    {% if run.finished_at %}
-                        {{ run.finished_at.strftime('%Y-%m-%d %H:%M:%S') }}
-                    {% else %}
-                        <em class="text-gray-500">Not finished</em>
-                    {% endif %}
-                </span>
-            </div>
-            <div>
-                <strong class="text-gray-700">Current Sequence:</strong>
-                <span>{{ run.current_sequence }}</span>
+                <span>{{ run.finished_at.strftime('%Y-%m-%d %H:%M:%S') if run.finished_at else 'Not finished' }}</span>
             </div>
             <div>
                 <strong class="text-gray-700">Endpoint:</strong>
@@ -64,37 +136,42 @@
         </div>
     </div>
 
-    <!-- Test Executions Summary -->
-    <div class="bg-white shadow rounded-lg p-6 mb-6">
+    <!-- Test Executions -->
+    <div class="content-card">
         <h2 class="text-xl font-bold mb-4">Test Executions</h2>
         <div class="overflow-x-auto">
-            <table class="min-w-full table-auto">
-                <thead>
-                    <tr class="bg-gray-50">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
                         <th class="px-4 py-2 text-left">Sequence</th>
                         <th class="px-4 py-2 text-left">Test Case</th>
                         <th class="px-4 py-2 text-left">Status</th>
-                        <th class="px-4 py-2 text-left">Started</th>
-                        <th class="px-4 py-2 text-left">Finished</th>
+                        <th class="px-4 py-2 text-left">Time</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for execution in run.executions %}
-                    <tr class="border-t">
+                    <tr class="border-t hover:bg-gray-50">
                         <td class="px-4 py-2">{{ execution.sequence }}</td>
                         <td class="px-4 py-2">{{ execution.test_case.description if execution.test_case else 'N/A' }}</td>
                         <td class="px-4 py-2">
-                            <span class="px-2 py-1 rounded-full text-sm
-                                {% if execution.status == 'pending' %}bg-yellow-100 text-yellow-800
-                                {% elif execution.status == 'passed' %}bg-green-100 text-green-800
-                                {% elif execution.status == 'failed' %}bg-red-100 text-red-800
-                                {% elif execution.status == 'skipped' %}bg-gray-100 text-gray-800
-                                {% endif %}">
+                            <span class="status-badge {% if execution.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                      {% elif execution.status == 'passed' %}bg-green-100 text-green-800
+                                      {% elif execution.status == 'failed' %}bg-red-100 text-red-800
+                                      {% elif execution.status == 'skipped' %}bg-gray-100 text-gray-800{% endif %}">
                                 {{ execution.status }}
                             </span>
                         </td>
-                        <td class="px-4 py-2">{{ execution.started_at.strftime('%H:%M:%S') if execution.started_at else '-' }}</td>
-                        <td class="px-4 py-2">{{ execution.finished_at.strftime('%H:%M:%S') if execution.finished_at else '-' }}</td>
+                        <td class="px-4 py-2">
+                            {% if execution.started_at %}
+                                {{ execution.started_at.strftime('%H:%M:%S') }}
+                                {% if execution.finished_at %}
+                                    - {{ execution.finished_at.strftime('%H:%M:%S') }}
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -102,48 +179,51 @@
         </div>
     </div>
 
-    <!-- Associated Test Suites -->
-    <div class="bg-white shadow rounded-lg p-6">
-        <h2 class="text-xl font-bold mb-4">Associated Test Suites</h2>
-        {% if run.test_suites and run.test_suites|length > 0 %}
-            {% for suite in run.test_suites %}
-            <div class="border-l-4 border-blue-500 pl-4 mb-6">
-                <h3 class="text-lg font-semibold mb-2">{{ suite.description }}</h3>
-                <div class="text-sm text-gray-600 mb-2">
-                    <div>Created: {{ suite.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
-                    <div>Behavior: {{ suite.behavior or 'N/A' }}</div>
+    <!-- Prompts & Responses -->
+    <div class="content-card">
+        <h2 class="text-xl font-bold mb-4">Prompts & Responses</h2>
+        {% for execution in run.executions %}
+        <div class="collapsible-section">
+            <div class="collapsible-header mb-2" onclick="toggleSection('execution-{{ execution.id }}')">
+                <div class="flex justify-between items-center">
+                    <span class="font-medium">{{ execution.test_case.description if execution.test_case else 'N/A' }}</span>
+                    <span class="status-badge {% if execution.status == 'pending' %}bg-yellow-100 text-yellow-800
+                              {% elif execution.status == 'passed' %}bg-green-100 text-green-800
+                              {% elif execution.status == 'failed' %}bg-red-100 text-red-800
+                              {% elif execution.status == 'skipped' %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ execution.status }}
+                    </span>
                 </div>
-                
-                {% set case_list = suite.test_cases.all() if suite.test_cases.lazy == 'dynamic' else suite.test_cases %}
-                {% if case_list and case_list|length > 0 %}
-                    <ul class="space-y-2">
-                        {% for tc in case_list %}
-                        <li class="flex items-center justify-between bg-gray-50 p-2 rounded">
-                            <span>{{ tc.description }}</span>
-                            {% set execution = run.executions|selectattr('test_case_id', 'equalto', tc.id)|first %}
-                            {% if execution %}
-                                <span class="px-2 py-1 rounded-full text-sm
-                                    {% if execution.status == 'pending' %}bg-yellow-100 text-yellow-800
-                                    {% elif execution.status == 'passed' %}bg-green-100 text-green-800
-                                    {% elif execution.status == 'failed' %}bg-red-100 text-red-800
-                                    {% elif execution.status == 'skipped' %}bg-gray-100 text-gray-800
-                                    {% endif %}">
-                                    {{ execution.status }}
-                                </span>
-                            {% else %}
-                                <span class="text-gray-500 text-sm">Not executed</span>
-                            {% endif %}
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="text-gray-500 italic">No test cases in this suite.</p>
-                {% endif %}
             </div>
-            {% endfor %}
-        {% else %}
-            <p class="text-gray-500 italic">No test suites associated with this run.</p>
-        {% endif %}
+            <div id="execution-{{ execution.id }}" class="hidden">
+                <div class="prompt-response-grid">
+                    <div>
+                        <h4 class="font-medium mb-2">Prompt</h4>
+                        {% if execution.test_case and execution.test_case.prompt %}
+                            <div class="code-block">{{ execution.test_case.prompt }}</div>
+                        {% else %}
+                            <em class="text-gray-500">No prompt</em>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <h4 class="font-medium mb-2">Response</h4>
+                        {% if execution.response_data %}
+                            <div class="code-block">{{ execution.response_data }}</div>
+                        {% else %}
+                            <em class="text-gray-500">No response</em>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 </div>
+
+<script>
+function toggleSection(id) {
+    const section = document.getElementById(id);
+    section.classList.toggle('hidden');
+}
+</script>
 {% endblock %}

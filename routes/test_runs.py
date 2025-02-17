@@ -180,6 +180,8 @@ def handle_create_test_run():
 def execute_test_run(run_id):
     """
     POST /test_runs/<run_id>/execute -> Start or resume executing the test run.
+    Replaces the {{INJECT_PROMPT}} variable in the endpoint's http_payload
+    with each test case's prompt, then posts to the endpoint.
     """
     run = TestRun.query.get_or_404(run_id)
 
@@ -201,59 +203,77 @@ def execute_test_run(run_id):
     #   ],
     #   "stream": false
     # }
-    try:
-        base_payload = json.loads(run.endpoint.http_payload)  # Parse the template
-    except json.JSONDecodeError:
-        flash("Endpoint's http_payload is not valid JSON. Aborting.", "error")
-        return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
-
-    # Construct the endpoint URL
+     # We won't parse the JSON up front. We'll parse for each test case after substituting.
     endpoint_obj = run.endpoint
     url = f"{endpoint_obj.hostname.rstrip('/')}/{endpoint_obj.endpoint.lstrip('/')}"
 
+    original_payload_str = run.endpoint.http_payload or ""
+
     for execution in run.executions:
-        # Only run if pending
         if execution.status != 'pending':
             continue
 
-        # Copy the template so we don't mutate it for the next test case
-        # We want a fresh copy each iteration
-        test_payload = json.loads(run.endpoint.http_payload)
+        # 1) Replace the placeholder in the original payload string
+        replaced_str = original_payload_str.replace("{{INJECT_PROMPT}}", execution.test_case.prompt)
 
-        # Find the user message in test_payload["messages"] and replace content
-        messages = test_payload.get("messages", [])
-        # e.g. locate the dict with {"role": "user"}
-        for msg in messages:
-            if msg.get("role") == "user":
-                # Replace with the test case's prompt
-                msg["content"] = execution.test_case.prompt
-                break
-
-        # Optionally store the final JSON for debugging
-        # Then do the POST
+        # 2) Parse it as JSON
         try:
-            execution.started_at = execution.started_at or datetime.utcnow()
+            test_payload = json.loads(replaced_str)
+        except json.JSONDecodeError as e:
+            execution.status = 'failed'
+            execution.response_data = f"Invalid JSON after substitution: {e}"
+            execution.started_at = execution.started_at or datetime.now()
+            execution.finished_at = datetime.now()
+            db.session.commit()
+            continue  # move on to next test case
 
-            resp = requests.post(url, json=test_payload, timeout=10)
+        # 3) Send the POST request
+        try:
+            execution.started_at = execution.started_at or datetime.now()
+            resp = requests.post(url, json=test_payload, timeout=120)
             resp.raise_for_status()
 
             execution.status = 'passed'
             execution.response_data = resp.text
-            execution.finished_at = datetime.utcnow()
-
+            execution.finished_at = datetime.now()
         except Exception as e:
             execution.status = 'failed'
             execution.response_data = str(e)
-            execution.finished_at = datetime.utcnow()
+            execution.finished_at = datetime.now()
 
         db.session.commit()
 
-    # After executing all test cases
-    # if all are pass/fail/skipped => mark run as completed
-    if all(ex.status in ['passed', 'failed','skipped'] for ex in run.executions):
+    # After all test cases:
+    if all(ex.status in ['passed', 'failed', 'skipped'] for ex in run.executions):
         run.status = 'completed'
-        run.finished_at = datetime.utcnow()
+        run.finished_at = datetime.now()
         db.session.commit()
 
-    flash("Test run executed with the custom http_payload template.", "success")
+    flash("Test run executed with the custom {{INJECT_PROMPT}} variable replaced in http_payload.", "success")
     return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
+
+@test_runs_bp.route('/<int:run_id>/reset', methods=['POST'])
+def reset_test_run(run_id):
+    """
+    POST /test_runs/<run_id>/reset -> Resets the run status to 'pending' and
+    all test executions to 'pending' with cleared start/end times.
+    """
+    run = TestRun.query.get_or_404(run_id)
+
+    # Reset the run's status and timestamps
+    run.status = 'pending'
+    run.finished_at = None
+    run.current_sequence = 0  # if you use this for tracking progress
+
+    # Reset each test execution
+    for execution in run.executions:
+        execution.status = 'pending'
+        execution.started_at = None
+        execution.finished_at = None
+        execution.response_data = None  # optional if you want to clear the old response
+
+    db.session.commit()
+
+    flash(f"Test run #{run.id} has been reset to 'pending'.", "success")
+    return redirect(url_for('test_runs_bp.view_test_run', run_id=run.id))
+
