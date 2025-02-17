@@ -6,6 +6,7 @@ from models.model_Endpoints import Endpoint
 from models.model_TestSuite import TestSuite
 from models.model_TestRun import TestRun
 from models.model_TestExecution import TestExecution
+from services.transformers.registry import apply_transformation, TRANSFORM_PARAM_CONFIG
 
 import json, requests
 
@@ -120,37 +121,56 @@ def create_test_run_form():
 @test_runs_bp.route('/create', methods=['POST'])
 def handle_create_test_run():
     try:
-        # Get form data
+        # 1) Basic form data
         run_name = request.form.get('run_name')
         endpoint_id = request.form.get('endpoint_id')
         selected_suite_ids = request.form.getlist('suite_ids')
+        selected_transform_ids = request.form.getlist('transformations')  # e.g. ["base64_encode", "prepend_text"]
 
+        # 2) Validate required fields
         if not run_name or not endpoint_id or not selected_suite_ids:
-            return jsonify({
-                'error': 'Missing required fields: run_name, endpoint_id, and suite_ids'
-            }), 400
+            flash("Missing required fields: run_name, endpoint_id, or suite_ids", 'error')
+            return redirect(url_for('test_runs_bp.create_test_run_form'))
 
-        # Create a new TestRun record
+        # 3) Build transformations_data from the registry
+        transformations_data = []
+        for t_id in selected_transform_ids:
+            cfg = TRANSFORM_PARAM_CONFIG.get(t_id)
+            # If user picked a transformation that doesn't exist, skip or raise error
+            if not cfg:
+                flash(f"Unknown transformation '{t_id}'", 'warning')
+                continue
+
+            # Build final_params
+            final_params = {}
+            for form_key, param_key in cfg["param_map"].items():
+                user_val = request.form.get(form_key, "")
+                final_params[param_key] = user_val
+
+            transformations_data.append({
+                "id": t_id,
+                "params": final_params
+            })
+
+        # 4) Create the TestRun
         new_run = TestRun(
             name=run_name,
             endpoint_id=endpoint_id,
-            status='pending'
+            status='pending',
+            transformations=transformations_data
         )
         db.session.add(new_run)
         
-        # Associate test suites with the run
-        sequence = 0  # Initialize sequence counter
+        # 5) Create TestExecutions
+        sequence = 0
         for suite_id in selected_suite_ids:
             suite = TestSuite.query.get(suite_id)
             if not suite:
-                return jsonify({
-                    'error': f'Test suite with ID {suite_id} not found'
-                }), 404
-                
-            # Add suite to test run
+                flash(f"Test suite with ID {suite_id} not found", "error")
+                return redirect(url_for('test_runs_bp.create_test_run_form'))
+
             new_run.test_suites.append(suite)
             
-            # Create TestExecution entries for each test case in the suite
             for test_case in suite.test_cases:
                 execution = TestExecution(
                     test_run=new_run,
@@ -164,17 +184,13 @@ def handle_create_test_run():
         db.session.commit()
         
         flash("Test run created successfully!", "success")
-        return redirect(url_for('test_runs_bp.list_test_runs'))  # or somewhere else
+        return redirect(url_for('test_runs_bp.list_test_runs'))
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({
-            'error': f'Failed to create test run: {str(e)}'
-        }), 500
+        flash(f"Failed to create test run: {str(e)}", 'error')
+        return redirect(url_for('test_runs_bp.create_test_run_form'))
 
-    # db.session.commit()
-    # flash("Test run created successfully!", "success")
-    # return redirect(url_for('test_runs_bp.list_test_runs'))  # or somewhere else
 
 @test_runs_bp.route('/<int:run_id>/execute', methods=['POST'])
 def execute_test_run(run_id):
@@ -213,10 +229,21 @@ def execute_test_run(run_id):
         if execution.status != 'pending':
             continue
 
-        # 1) Replace the placeholder in the original payload string
-        replaced_str = original_payload_str.replace("{{INJECT_PROMPT}}", execution.test_case.prompt)
+        # 1) Start with the original test case prompt:
+        prompt = execution.test_case.prompt
 
-        # 2) Parse it as JSON
+        # 2) For each transformation in run.transformations, apply it:
+        for tinfo in (run.transformations or []):
+            t_id = tinfo["id"]
+            params = tinfo.get("params", {})
+
+            # e.g. use a dictionary or function approach:
+            prompt = apply_transformation(t_id, prompt, params)
+
+        # 3) Now we do the string replacement in the http_payload template
+        replaced_str = original_payload_str.replace("{{INJECT_PROMPT}}", prompt)
+
+        # 4) Try json.loads(...) and POST as you do now
         try:
             test_payload = json.loads(replaced_str)
         except json.JSONDecodeError as e:

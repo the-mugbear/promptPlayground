@@ -16,6 +16,7 @@ class TestRun(db.Model):
     # This is the overall status of a test run and not an individual test case
     # Could be "pending", "running", "paused", "completed", etc.
     status = db.Column(db.String(50), default="pending")
+    transformations = db.Column(db.JSON, nullable=True)
     current_sequence = db.Column(db.Integer, default=0)
 
     # Add endpoint relationship
