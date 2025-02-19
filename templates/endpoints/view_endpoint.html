@@ -35,14 +35,13 @@
 
     <div class="endpoint-field">
       <label>Payload:</label><br>
-      <span>
-        {% if endpoint.http_payload %}
-          {{ endpoint.http_payload }}
-        {% else %}
-          <em>No payload</em>
-        {% endif %}
-      </span>
+      {% if endpoint.http_payload %}
+        <pre>{{ endpoint.http_payload }}</pre>
+      {% else %}
+        <em>No payload</em>
+      {% endif %}
     </div>
+    
 
     <!-- Headers -->
     <div class="endpoint-field">
@@ -65,7 +64,7 @@
       method="POST"
     >
       <label for="testPayload">Override Payload (optional):</label>
-      <textarea id="testPayload" name="test_payload" rows="8"
+      <textarea id="testPayload" name="test_payload" rows="14"
        placeholder="Enter a custom payload to test..."
       >{% if override_payload %}{{ override_payload }}{% endif %}</textarea>
 
@@ -74,7 +73,7 @@
     <textarea
       id="raw_headers"
       name="raw_headers"
-      rows="4"
+      rows="8"
       placeholder="Content-Type: application/json
 Authorization: Bearer <token>"
     ></textarea>

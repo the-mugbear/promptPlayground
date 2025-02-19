@@ -23,6 +23,7 @@ def create_endpoint_form():
     """
     return render_template('endpoints/create_endpoint.html')
 
+
 @endpoints_bp.route('/create', methods=['POST'])
 def handle_create_endpoint():
     """
@@ -31,70 +32,51 @@ def handle_create_endpoint():
     Expected form data:
         - hostname: str
         - endpoint: str
-        - http_payload: str (JSON format)
+        - http_payload: str (must contain {{INJECT_PROMPT}} if present)
         - raw_headers: str (newline-separated key:value pairs)
         
     Returns:
         Redirect to endpoints list on success
         
     Raises:
-        BadRequest: If payload is not valid JSON or missing required fields
+        BadRequest: If required fields are missing or if {{INJECT_PROMPT}} is not found
     """
     try:
-        hostname = request.form.get('hostname')
-        endpoint_path = request.form.get('endpoint')
-        raw_payload = request.form.get('http_payload', '')
+        hostname = request.form.get('hostname', '').strip()
+        endpoint_path = request.form.get('endpoint', '').strip()
+        raw_payload = request.form.get('http_payload', '').strip()
 
-        # Validate and structure the HTTP payload
+        # 1) Validate minimal required fields
+        if not hostname or not endpoint_path:
+            raise BadRequest("Missing required fields: 'hostname' or 'endpoint'.")
+
+        # 2) If the user provided a payload, ensure it contains {{INJECT_PROMPT}}
         if raw_payload:
-            try:
-                # First parse the input to ensure it's valid JSON
-                payload_dict = json.loads(raw_payload)
-                
-                # Ensure required fields exist
-                required_fields = ['model', 'messages', 'stream']
-                missing_fields = [field for field in required_fields if field not in payload_dict]
-                if missing_fields:
-                    raise BadRequest(f"Missing required fields in payload: {', '.join(missing_fields)}")
-                
-                # Validate messages structure
-                if not isinstance(payload_dict['messages'], list):
-                    raise BadRequest("'messages' must be a list")
-                
-                for msg in payload_dict['messages']:
-                    if not isinstance(msg, dict) or 'role' not in msg or 'content' not in msg:
-                        raise BadRequest("Each message must have 'role' and 'content' fields")
-                
-                # Store as formatted JSON string
-                formatted_payload = json.dumps({
-                    "model": payload_dict['model'],
-                    "messages": payload_dict['messages'],
-                    "stream": payload_dict['stream']
-                }, indent=2)
-                
-            except json.JSONDecodeError as e:
-                raise BadRequest(f"Invalid JSON payload: {str(e)}")
+            if '{{INJECT_PROMPT}}' not in raw_payload:
+                raise BadRequest("The HTTP payload must contain '{{INJECT_PROMPT}}'.")
+            # Store exactly as user typed
+            formatted_payload = raw_payload
         else:
-            # If no payload provided, use the default template
-            formatted_payload = json.dumps({
-                "model": "deepseek-chat",
+            # If no payload, either store a minimal template or raise an error
+            # Option A: create a minimal default
+            formatted_payload = """{
                 "messages": [
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": "PLACEHOLDER"}
-                ],
-                "stream": False
-            }, indent=2)
+                    {"role": "user", "content": "{{INJECT_PROMPT}}"}
+                ]
+            }"""
+                        # Option B: raise an error if you want to enforce user always provides
+            # raise BadRequest("No payload provided, must contain {{INJECT_PROMPT}}.")
 
-        # Create the Endpoint
+        # 3) Create the Endpoint
         new_endpoint = Endpoint(
             hostname=hostname,
             endpoint=endpoint_path,
-            http_payload=formatted_payload  # Store the formatted JSON string
+            http_payload=formatted_payload
         )
         db.session.add(new_endpoint)
         db.session.flush()
 
-        # Parse headers
+        # 4) Parse headers from user
         raw_headers = request.form.get('raw_headers', '')
         lines = [line.strip() for line in raw_headers.split('\n') if line.strip()]
         for line in lines:

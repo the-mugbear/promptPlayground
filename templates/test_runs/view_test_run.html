@@ -118,7 +118,7 @@
         </div>
         <div class="grid grid-cols-auto gap-4 mt-4">
             <div>
-                <strong class="text-gray-700">Name:</strong> 
+                <strong class="text-gray-700">Name:</strong>
                 <span>{{ run.name or 'N/A' }}</span>
             </div>
             <div>
@@ -133,7 +133,28 @@
                 <strong class="text-gray-700">Endpoint:</strong>
                 <span>{{ run.endpoint.hostname if run.endpoint else 'N/A' }}</span>
             </div>
-        </div>
+        
+            <!-- New block for transformations -->
+            <div>
+              <strong class="text-gray-700">Transformations:</strong>
+              {% if run.transformations and run.transformations|length > 0 %}
+                <ul style="margin-top: 0.5rem; list-style: disc; padding-left: 1.5rem;">
+                  {% for tinfo in run.transformations %}
+                    <li>
+                      <strong>{{ tinfo.id }}</strong>
+                      {% if tinfo.params and tinfo.params|length > 0 %}
+                        :
+                        <!-- Show the params as JSON or just list them out. -->
+                        {{ tinfo.params|tojson }}
+                      {% endif %}
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <span>None</span>
+              {% endif %}
+            </div>
+        </div>        
     </div>
 
     <!-- Test Executions -->
@@ -153,7 +174,7 @@
                     {% for execution in run.executions %}
                     <tr class="border-t hover:bg-gray-50">
                         <td class="px-4 py-2">{{ execution.sequence }}</td>
-                        <td class="px-4 py-2">{{ execution.test_case.description if execution.test_case else 'N/A' }}</td>
+                        <td class="px-4 py-2">{{ execution.test_case.prompt if execution.test_case else 'N/A' }}</td>
                         <td class="px-4 py-2">
                             <span class="status-badge {% if execution.status == 'pending' %}bg-yellow-100 text-yellow-800
                                       {% elif execution.status == 'passed' %}bg-green-100 text-green-800
