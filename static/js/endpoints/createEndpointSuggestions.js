@@ -1,3 +1,6 @@
+// This script used to fetch and provide suggestions when the user selects a form field
+// values are fetched from the database and only exist in the database after an entry is registered in the database
+
 let lastFocusedField = null;
 let SUGGESTIONS = null;  // We'll store fetched data once
 
@@ -57,5 +60,8 @@ function populateSuggestionList(items) {
 function copySuggestionToFocusedField(value) {
   if (lastFocusedField) {
     lastFocusedField.value = value;
+
+    // Fire an 'input' event so the duplication script sees it
+    lastFocusedField.dispatchEvent(new Event('input', { bubbles: true }));
   }
 }

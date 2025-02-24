@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, render_template, redirect, url_fo
 from extensions import db
 from models.model_TestCase import TestCase
 from models.model_TestSuite import TestSuite
+from services.transformers.registry import apply_transformations_to_lines, TRANSFORM_PARAM_CONFIG
 from datetime import datetime
 
 test_suites_bp = Blueprint("test_suites_bp", __name__, url_prefix="/test_suites")
@@ -73,3 +74,33 @@ def create_test_suite():
     flash('New test suite created successfully!', 'success')
     # Redirect to the list page (or somewhere else)
     return redirect(url_for('test_suites_bp.list_test_suites'))
+
+
+# Used to make AJAX calls for demo purposes on create_suite.html
+@test_suites_bp.route('/preview_transform', methods=['POST'])
+def preview_transform():
+    """
+    Expects JSON like:
+    {
+      "lines": ["Test case #1", "Test case #2"],
+      "transformations": ["base64_encode", "prepend_text"],
+      "params": {
+        "prepend_text_value": "...",
+        "postpend_text_value": "..."
+      }
+    }
+    Returns JSON with {"transformed_lines": [...]}.
+    """
+    data = request.get_json() or {}
+    lines = data.get('lines', [])
+    selected_transforms = data.get('transformations', [])
+    params = data.get('params', {})
+
+    # Call the new function
+    transformed_lines = apply_transformations_to_lines(
+        t_ids=selected_transforms,
+        lines=lines,
+        all_params=params
+    )
+
+    return jsonify({"transformed_lines": transformed_lines})

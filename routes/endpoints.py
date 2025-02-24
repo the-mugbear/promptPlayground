@@ -1,7 +1,8 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
 from extensions import db
 from models.model_Endpoints import Endpoint, APIHeader
-from services.endpoint_services import parse_headers_from_form, parse_headers_from_list_of_dict, headers_from_apiheader_list, parse_raw_headers
+from services.endpoints.endpoint_services import parse_headers_from_form, parse_headers_from_list_of_dict, headers_from_apiheader_list, parse_raw_headers
+from services.endpoints.api_templates import PAYLOAD_TEMPLATES
 from werkzeug.exceptions import BadRequest
 import requests
 import json
@@ -21,7 +22,7 @@ def create_endpoint_form():
     """
     GET /endpoints/create -> Renders a form to create a new endpoint & headers
     """
-    return render_template('endpoints/create_endpoint.html')
+    return render_template('endpoints/create_endpoint.html', payload_templates=PAYLOAD_TEMPLATES)
 
 
 @endpoints_bp.route('/create', methods=['POST'])
@@ -222,3 +223,59 @@ def delete_endpoint(endpoint_id):
     flash(f'Endpoint {endpoint_id} deleted successfully.', 'success')
 
     return redirect(url_for('endpoints_bp.list_endpoints'))
+
+
+
+
+@endpoints_bp.route('/test_temporary', methods=['POST'])
+def test_temporary_endpoint():
+    """
+    POST /endpoints/test_temporary -> Does a one-off test with the user-provided fields,
+    without storing or fetching anything from DB.
+    """
+    hostname = request.form.get("hostname", "").strip()
+    endpoint_path = request.form.get("endpoint", "").strip()
+    actual_payload = request.form.get("http_payload", "").strip()
+
+    # 2) Replace {{INJECT_PROMPT}} if present
+    if "{{INJECT_PROMPT}}" in actual_payload:
+        actual_payload = actual_payload.replace("{{INJECT_PROMPT}}", 'Tell me a joke')
+
+    raw_headers = request.form.get("raw_headers", "").strip()
+
+    # Construct final_headers from raw_headers
+    final_headers = parse_raw_headers(raw_headers)
+    # If user didn't specify 'Content-Type', let's default
+    final_headers.setdefault("Content-Type", "application/json")
+
+    test_payload = actual_payload  # We'll pass it back to the template
+    response_text = ""
+    try:
+        import requests
+        url = f"{hostname.rstrip('/')}/{endpoint_path.lstrip('/')}"
+
+        # Try parse as JSON
+        try:
+            parsed_json = json.loads(actual_payload)
+            resp = requests.post(url, json=parsed_json, headers=final_headers, timeout=120)
+        except json.JSONDecodeError:
+            # fallback to raw text
+            resp = requests.post(url, data=actual_payload, headers=final_headers, timeout=120)
+
+        resp.raise_for_status()
+
+        # Attempt to parse response as JSON
+        try:
+            parsed_resp = json.loads(resp.text)
+            response_text = json.dumps(parsed_resp, indent=2)
+        except json.JSONDecodeError:
+            response_text = resp.text
+    except requests.exceptions.RequestException as e:
+        response_text = f"Error: {str(e)}"
+
+    # Re-render the 'create_endpoint.html' template, but pass in test results
+    return render_template(
+        'endpoints/create_endpoint.html',
+        test_payload=test_payload,
+        test_response=response_text
+    )

@@ -1,76 +1,114 @@
 {% extends "base.html" %}
-
 {% block head %}
-  <!-- New list test suite styles -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
 {% endblock %}
 
-  {% block content %}
-  <div class="two-column-container">
-    <!-- Left Card (form) -->
-    <div class="left-card">
-      <h2>Create Endpoint</h2>
-      <form 
-        action="{{ url_for('endpoints_bp.handle_create_endpoint') }}" 
-        method="POST" 
-        id="create-endpoint-form"
-      >
-        <div class="form-group">
-          <label for="hostname">Hostname</label>
-          <input 
-            type="text" 
-            id="hostname" 
-            name="hostname" 
-            required 
-            placeholder="e.g., https://api.example.com"
-          >
-        </div>
+{% block content %}
+<div class="two-column-container">
+  <!-- Left Card (Create or Test form) -->
+  <div class="left-card">
+    <h2>Create Endpoint</h2>
+
+    <!-- Form #1: create-endpoint-form -->
+    <form 
+      action="{{ url_for('endpoints_bp.handle_create_endpoint') }}" 
+      method="POST" 
+      id="create-endpoint-form"
+      style="margin-bottom: 1rem;"
+    >
+      <div class="form-group">
+        <label for="hostname">Hostname</label>
+        <input 
+          type="text" 
+          id="hostname" 
+          name="hostname" 
+          required 
+          placeholder="e.g., https://api.example.com"
+          value="{{ request.form.hostname|default('') }}"
+        >
+      </div>
   
-        <div class="form-group">
-          <label for="endpoint">Endpoint Path</label>
-          <input 
-            type="text" 
-            id="endpoint" 
-            name="endpoint" 
-            required
-            placeholder="e.g., /v1/submit"
-          >
-        </div>
+      <div class="form-group">
+        <label for="endpoint">Endpoint Path</label>
+        <input 
+          type="text" 
+          id="endpoint" 
+          name="endpoint" 
+          required
+          placeholder="e.g., /v1/submit"
+          value="{{ request.form.endpoint|default('') }}"
+        >
+      </div>
+    
+      <div class="form-group">
+        <label for="http_payload">HTTP Payload</label>
+        <textarea 
+          id="http_payload" 
+          name="http_payload" 
+          rows="16"
+          placeholder='Paste or edit JSON here...'
+        >{{ request.form.http_payload|default('') }}</textarea>
+      </div>
   
-        <div class="form-group">
-          <label for="http_payload">HTTP Payload (optional)</label>
-          <textarea 
-            id="http_payload" 
-            name="http_payload" 
-            rows="16"
-            placeholder='{"sample": "data"}'
-          ></textarea>
-        </div>
-  
-        <div class="form-group">
-          <label for="raw_headers">Headers (Key: Value per line)</label>
-          <textarea 
-            id="raw_headers" 
-            name="raw_headers" 
-            rows="9"
-            placeholder="Content-Type: application/json&#10;Authorization: Bearer <token>"
-          ></textarea>
-        </div>
-  
+      <div class="form-group">
+        <label for="raw_headers">Headers (Key: Value per line)</label>
+        <textarea 
+          id="raw_headers" 
+          name="raw_headers" 
+          rows="9"
+          placeholder="Content-Type: application/json&#10;Authorization: Bearer <token>"
+        >{{ request.form.raw_headers|default('') }}</textarea>
+      </div>
+
+
+      <div style="display: flex; gap: 1rem;">
+        <!-- Button to CREATE in the DB -->
         <button type="submit">Create Endpoint</button>
+    </form>
+
+      <!-- Form #2: test-endpoint-form (does not store the endpoint) -->
+      <form 
+        action="{{ url_for('endpoints_bp.test_temporary_endpoint') }}" 
+        method="POST"
+        id="test-endpoint-form"
+      >
+        <!-- We'll pass the same fields so the route can do a test POST -->
+        <input type="hidden" name="hostname" value="{{ request.form.hostname|default('') }}">
+        <input type="hidden" name="endpoint" value="{{ request.form.endpoint|default('') }}">
+        <input type="hidden" name="http_payload" value="{{ request.form.http_payload|default('') }}">
+        <input type="hidden" name="raw_headers" value="{{ request.form.raw_headers|default('') }}">
+
+        <button type="submit">Test Endpoint</button>
       </form>
-    </div>
-  
-    <!-- Right Card (suggestions) -->
-    <div class="right-card">
-      <h2>Suggestions</h2>
-      <p>Select or focus a field on the left to see relevant suggestions. Click a suggestion to copy it.</p>
-      <ul id="suggestion-list"></ul>
-    </div>
+      </div>
   </div>
-  {% endblock %}
   
-  {% block scripts %}
-  <!-- Page-specific JS that handles focus events and suggestion clicks -->
-  <script src="{{ url_for('static', filename='js/createEndpointSuggestions.js') }}"></script>
-  {% endblock %}
+  <!-- Right Card (suggestions) -->
+  <div class="right-card">
+    <h2>Suggestions</h2>
+    <p>Select or focus a field on the left to see relevant suggestions. Click a suggestion to copy it.</p>
+    <ul id="suggestion-list"></ul>
+  </div>
+</div>
+
+<!-- Third Card: Show test results if present -->
+{% if test_payload or test_response %}
+<div class="content-card" style="margin-top: 2rem;">
+  <h2>Test Results</h2>
+  <div style="margin-bottom: 1rem;">
+    <strong>What was sent:</strong>
+    <pre class="results-box">{{ test_payload }}</pre>
+  </div>
+  <div>
+    <strong>What was received:</strong>
+    <pre class="results-box">{{ test_response }}</pre>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/endpoints/testEndpointFieldDuplicator.js') }}"></script>
+<script src="{{ url_for('static', filename='js/endpoints/createEndpointSuggestions.js') }}"></script>
+{% endblock %}

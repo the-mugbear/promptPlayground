@@ -54,3 +54,39 @@ def apply_transformation(t_id, prompt, params):
     if not transform_obj:
         return prompt
     return transform_obj.apply(prompt, params=params)
+
+# The functions below are support functions for the create_suite.html page to help apply transformations in bulk
+# while respecting the sequence of selections
+def apply_multiple_transformations(t_ids, prompt, all_params):
+    """
+    Apply a list of transformation IDs in sequence to a single prompt string.
+
+    :param t_ids: List of transformation IDs (strings) in the order they should be applied
+    :param prompt: The original test case string
+    :param all_params: Dictionary of user inputs, e.g. {
+        'prepend_text_value': 'Foo_',
+        'postpend_text_value': '_Bar',
+        ...
+      }
+    :return: The transformed string after all transformations are applied.
+    """
+    transformed = prompt
+    for t_id in t_ids:
+        transformed = apply_transformation(t_id, transformed, all_params)
+    return transformed
+
+
+def apply_transformations_to_lines(t_ids, lines, all_params):
+    """
+    Apply a list of transformation IDs to multiple prompt lines (test cases).
+
+    :param t_ids: List of transformation IDs (strings)
+    :param lines: List of test case strings
+    :param all_params: Dictionary of user inputs
+    :return: New list of transformed strings
+    """
+    results = []
+    for line in lines:
+        new_line = apply_multiple_transformations(t_ids, line, all_params)
+        results.append(new_line)
+    return results
