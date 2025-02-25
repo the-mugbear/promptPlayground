@@ -6,106 +6,120 @@
 {% endblock %}
 
 {% block content %}
-<div class="content-card">
-  <h2>Create Test Suite</h2>
+<div class="two-column-container">
+  
+  <!-- Left: main POST form for suite details + transformations -->
+  <div class="left-card">
+    <h2 class="panel-heading">Create Test Suite</h2>
 
-  <form 
-    action="{{ url_for('test_suites_bp.create_test_suite') }}" 
-    method="POST" 
-    id="create-suite-form"
-  >
-    <!-- Suite Description and Behavior -->
-    <div class="form-group">
-      <label for="description">Description</label>
-      <input 
-        type="text" 
-        id="description" 
-        name="description" 
-        required
-        placeholder="A brief description of the suite"
-      >
-    </div>
-
-    <div class="form-group">
-      <label for="behavior">Behavior</label>
-      <input 
-        type="text" 
-        id="behavior" 
-        name="behavior"
-        placeholder="Behavior or scenario this suite tests"
-      >
-    </div>
-
-    <!-- New Test Cases -->
-    <div class="form-group">
-      <label for="new_test_cases">New Test Cases (one per line)</label>
-      <textarea 
-        id="new_test_cases" 
-        name="new_test_cases" 
-        rows="8"
-        placeholder="e.g. Test case #1&#10;Test case #2"
-      ></textarea>
-    </div>
-
-    <!-- Transformations Section -->
-    <div class="form-group transformations-container">
-      <label>Select Transformations:</label>
-      <div class="transform-option">
-        <label>
-          <input type="checkbox" name="transformations" value="base64_encode">
-          Base64 Encode
-        </label>
-      </div>
-      <div class="transform-option">
-        <label>
-          <input type="checkbox" name="transformations" value="unicode_encode">
-          Unicode Tag Encode
-        </label>
-      </div>
-      <div class="transform-option">
-        <label>
-          <input type="checkbox" name="transformations" value="morse_code">
-          Morse Code
-        </label>
-      </div>
-      <div class="transform-option">
-        <label style="margin-right: 0.5rem;">
-          <input type="checkbox" name="transformations" value="prepend_text">
-          Prepend Text
-        </label>
+    <form 
+      action="{{ url_for('test_suites_bp.create_test_suite') }}" 
+      method="POST" 
+      id="create-suite-form"
+    >
+      <!-- Suite Description and Behavior -->
+      <div class="form-group">
+        <label for="description">Description</label>
         <input 
           type="text" 
-          name="text_to_prepend" 
-          placeholder="Enter text to prepend"
-          style="width: 50%;"
+          id="description" 
+          name="description" 
+          required
+          placeholder="A brief description of the suite"
         >
       </div>
-      <div class="transform-option">
-        <label style="margin-right: 0.5rem;">
-          <input type="checkbox" name="transformations" value="postpend_text">
-          Postpend Text
-        </label>
+
+      <div class="form-group">
+        <label for="behavior">Behavior</label>
         <input 
           type="text" 
-          name="text_to_postpend" 
-          placeholder="Enter text to postpend"
-          style="width: 50%;"
+          id="behavior" 
+          name="behavior"
+          placeholder="Behavior or scenario this suite tests"
         >
       </div>
-    </div>
 
-    <!-- Preview Button -->
-    <button type="button" id="preview-button" style="margin-bottom: 1rem;">Preview Transformations</button>
+      <!-- New Test Cases -->
+      <div class="form-group">
+        <label for="new_test_cases">New Test Cases (one per line)</label>
+        <textarea 
+          id="new_test_cases" 
+          name="new_test_cases" 
+          rows="8"
+          placeholder="e.g. Test case #1&#10;Test case #2"
+        ></textarea>
+      </div>
 
-    <!-- Preview Area -->
-    <div class="form-group preview-container">
-      <label>Preview of Transformed Test Cases:</label>
-      <textarea id="preview-area" rows="8" readonly></textarea>
-    </div>
+      <!-- Transformations Section -->
+      <div class="form-group transformations-container">
+        <label>Select Transformations:</label>
+        
+        <div class="transform-option">
+          <label>
+            <input type="checkbox" name="transformations" value="base64_encode">
+            Base64 Encode
+          </label>
+        </div>
+        <div class="transform-option">
+          <label>
+            <input type="checkbox" name="transformations" value="unicode_encode">
+            Unicode Tag Encode
+          </label>
+        </div>
+        <div class="transform-option">
+          <label>
+            <input type="checkbox" name="transformations" value="morse_code">
+            Morse Code
+          </label>
+        </div>
+        <div class="transform-option">
+          <label style="margin-right: 0.5rem;">
+            <input type="checkbox" name="transformations" value="prepend_text">
+            Prepend Text
+          </label>
+          <input 
+            type="text" 
+            name="text_to_prepend" 
+            placeholder="Enter text to prepend"
+            style="width: 50%;"
+          >
+        </div>
+        <div class="transform-option">
+          <label style="margin-right: 0.5rem;">
+            <input type="checkbox" name="transformations" value="postpend_text">
+            Postpend Text
+          </label>
+          <input 
+            type="text" 
+            name="text_to_postpend" 
+            placeholder="Enter text to postpend"
+            style="width: 50%;"
+          >
+        </div>
+      </div>
 
-    <!-- Submit -->
-    <button type="submit">Create Suite</button>
-  </form>
+      <!-- Preview Button -->
+      <button type="button" id="preview-button" style="margin-bottom: 1rem;">Preview Transformations</button>
+
+      <!-- Preview Area -->
+      <div class="form-group preview-container">
+        <label>Preview of Transformed Test Cases:</label>
+        <textarea id="preview-area" rows="8" readonly></textarea>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit">Create Suite</button>
+    </form>
+  </div>
+
+  <!-- Right: empty or future expansions (e.g., searching existing test cases) -->
+  <div class="right-card">
+    <h2 class="panel-heading">Potential Future Pane</h2>
+    <p>
+
+    </p>
+  </div>
+
 </div>
 {% endblock %}
 

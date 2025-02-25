@@ -257,7 +257,7 @@ def test_temporary_endpoint():
         # Try parse as JSON
         try:
             parsed_json = json.loads(actual_payload)
-            resp = requests.post(url, json=parsed_json, headers=final_headers, timeout=120)
+            resp = requests.post(url, json=parsed_json, headers=final_headers, timeout=120, verify=False)
         except json.JSONDecodeError:
             # fallback to raw text
             resp = requests.post(url, data=actual_payload, headers=final_headers, timeout=120)
@@ -279,3 +279,9 @@ def test_temporary_endpoint():
         test_payload=test_payload,
         test_response=response_text
     )
+
+# AJAX call from Create Test Run page to support page functionality
+@endpoints_bp.route('/<int:endpoint_id>/json', methods=['GET'])
+def get_endpoint_json(endpoint_id):
+    endpoint = Endpoint.query.get_or_404(endpoint_id)
+    return jsonify(endpoint.to_dict())

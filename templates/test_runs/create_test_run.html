@@ -21,12 +21,21 @@
     margin-bottom: 1rem;
     align-items: center;
   }
+
+  /* Example styling for the container that holds header key-value rows */
+  .headers-container .header-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .headers-container .header-row input[type="text"] {
+    flex: 1;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="two-column-container">
-
   
   <!-- Left: main POST form for run details + hidden suite IDs -->
   <div class="left-panel">
@@ -50,7 +59,28 @@
         </select>
       </div>
 
-      <!-- TODO: revist this-->
+      <!-- Show the endpoint’s HTTP payload -->
+      <div class="form-group">
+        <label for="endpointPayload">HTTP Payload Override (optional)</label>
+        <textarea 
+          id="endpointPayload" 
+          name="endpointPayload" 
+          rows="16"
+          placeholder="Useful for modifying attributes like chat ID/channel but do not remove the INJECT_PROMPT token as this will cause test execution failure!"
+        ></textarea>
+        <button type="button" onclick="findReplacePayload()">Find & Replace in Payload</button>
+      </div>
+
+      <!-- Show the endpoint’s headers for editing -->
+      <div class="form-group">
+        <label>Headers</label>
+        <div class="headers-container" id="headersContainer">
+          <!-- Dynamically filled with key/value inputs -->
+        </div>
+        <button type="button" onclick="findReplaceHeaders()">Find & Replace in Headers</button>
+      </div>
+
+      <!-- Optional transformations -->
       <label>Select Transformations:</label>
       <div>
         <label>
@@ -80,7 +110,6 @@
           </label>
           <input type="text" name="postpend_text_value" placeholder="TEST CASE + Postpended text">
         </div>
-        
       </div>
 
       <!-- Selected test suites display -->
@@ -151,6 +180,5 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- Page-specific JS -->
-<script src="{{ url_for('static', filename='js/createTestRun.js') }}"></script>
+<script src="{{ url_for('static', filename='js/testRuns/createTestRun.js') }}"></script>
 {% endblock %}

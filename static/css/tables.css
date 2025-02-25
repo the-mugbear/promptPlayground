@@ -26,4 +26,8 @@ table {
   tbody tr:hover {
     background-color: #111; 
   }
+
+  .headers-row {
+    display: none;
+  }
   
