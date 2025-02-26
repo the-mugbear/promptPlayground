@@ -59,6 +59,7 @@
           rows="9"
           placeholder="Content-Type: application/json&#10;Authorization: Bearer <token>"
         >{{ request.form.raw_headers|default('') }}</textarea>
+        <button type="button" onclick="parseHeaders()">Parse Headers</button>
       </div>
 
 
@@ -87,7 +88,9 @@
   <!-- Right Card (suggestions) -->
   <div class="right-card">
     <h2>Suggestions</h2>
-    <p>Select or focus a field on the left to see relevant suggestions. Click a suggestion to copy it.</p>
+    <div id="suggestionText">
+      <p>Select or focus a field on the left to see relevant suggestions. Click a suggestion to copy it.</p>
+    </div>
     <ul id="suggestion-list"></ul>
   </div>
 </div>
@@ -113,4 +116,5 @@
 <script src="{{ url_for('static', filename='js/endpoints/testEndpointFieldDuplicator.js') }}"></script>
 <script src="{{ url_for('static', filename='js/endpoints/createEndpointSuggestions.js') }}"></script>
 <script src="{{ url_for('static', filename='js/endpoints/jsonPrettyPrint.js') }}"></script>
+<script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>
 {% endblock %}

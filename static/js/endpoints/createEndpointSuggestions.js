@@ -9,19 +9,29 @@ document.addEventListener("DOMContentLoaded", function() {
   const hostnameField = document.getElementById("hostname");
   const endpointField = document.getElementById("endpoint");
   const payloadField = document.getElementById("http_payload");
+  const rawPayloads = document.getElementById("raw_headers");
+  const previewDiv = document.getElementById("suggestionText");
 
   // attach focus listeners
   hostnameField.addEventListener("focus", () => {
     lastFocusedField = hostnameField;             // ← STORE the reference
+    previewDiv.textContent = '';
     fetchAndShowSuggestions("hostnames");
   });
   endpointField.addEventListener("focus", () => {
     lastFocusedField = endpointField;             // ← STORE the reference
+    previewDiv.textContent = '';
     fetchAndShowSuggestions("paths");
   });
   payloadField.addEventListener("focus", () => {
     lastFocusedField = payloadField;              // ← STORE the reference
+    previewDiv.textContent = 'Previous entries suggested below. Format JSON attempts to pretty print JSON text if formatted correctly';
     fetchAndShowSuggestions("payloads");
+  });
+  rawPayloads.addEventListener("focus", function() {
+    // console.log("Focused raw_payloads");
+    lastFocusedField = rawPayloads;  
+    previewDiv.textContent = 'Modify and remove key/value pairs below before creating endpoint';
   });
 });
 
