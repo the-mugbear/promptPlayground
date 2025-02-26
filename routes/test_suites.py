@@ -17,7 +17,9 @@ test_suites_bp = Blueprint("test_suites_bp", __name__, url_prefix="/test_suites"
 # GET /test_suites/create
 # POST /test_suites/create
 
-
+# ********************************
+# ROUTES
+# ********************************
 @test_suites_bp.route('/list', methods=['GET'])
 def list_test_suites():
     """
@@ -36,6 +38,10 @@ def create_test_suite_form():
     existing_test_cases = TestCase.query.all()
     return render_template('test_suites/create_suite.html', existing_test_cases=existing_test_cases)
 
+
+# ********************************
+# SERVICES
+# ********************************
 @test_suites_bp.route('/create', methods=['POST'])
 def create_test_suite():
     """
@@ -73,6 +79,35 @@ def create_test_suite():
 
     flash('New test suite created successfully!', 'success')
     # Redirect to the list page (or somewhere else)
+    return redirect(url_for('test_suites_bp.list_test_suites'))
+
+
+# If the suite has already been used in a test run we block deletion, we could cascade and backfill entries but not today
+@test_suites_bp.route("/<int:suite_id>/delete", methods=["POST"])
+def delete_test_suite(suite_id):
+    """
+    POST /test_suites/<suite_id>/delete -> Deletes a test suite if allowed.
+    """
+    suite = TestSuite.query.get_or_404(suite_id)
+
+    # Option A) If you want to block deletion if it’s used in a run:
+    if suite.test_runs:
+        flash("Cannot delete this suite because it's used by one or more test runs.", "error")
+        return redirect(url_for('...somewhere...', ...))
+
+    # Option B) Or you just remove references from runs, or rely on cascade:
+    #   e.g. suite.test_runs.clear() # if you want to disassociate it from runs
+    #   db.session.commit()
+
+    try:
+        db.session.delete(suite)
+        db.session.commit()
+        flash(f"Test Suite #{suite_id} deleted.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error deleting Test Suite #{suite_id}: {str(e)}", "error")
+
+    # Redirect back to your list of suites
     return redirect(url_for('test_suites_bp.list_test_suites'))
 
 

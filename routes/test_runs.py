@@ -257,7 +257,7 @@ def execute_test_run(run_id):
         # 3) Send the POST request
         try:
             execution.started_at = execution.started_at or datetime.now()
-            resp = requests.post(url, json=test_payload, timeout=120)
+            resp = requests.post(url, json=test_payload, timeout=120, verify=False)
             resp.raise_for_status()
 
             execution.status = 'passed'
