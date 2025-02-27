@@ -9,6 +9,9 @@ import json
 
 endpoints_bp = Blueprint('endpoints_bp', __name__, url_prefix='/endpoints')
 
+# ********************************
+# ROUTES
+# ********************************
 @endpoints_bp.route('/', methods=['GET'])
 def list_endpoints():
     """
@@ -24,7 +27,18 @@ def create_endpoint_form():
     """
     return render_template('endpoints/create_endpoint.html', payload_templates=PAYLOAD_TEMPLATES)
 
+@endpoints_bp.route('/<int:endpoint_id>', methods=['GET'])
+def view_endpoint_details(endpoint_id):
+    """
+    GET /endpoints/<id> -> Shows the details of a single endpoint, including headers
+    """
+    ep = Endpoint.query.get_or_404(endpoint_id)
+    return render_template('endpoints/view_endpoint.html', endpoint=ep)
 
+
+# ********************************
+# SERVICES
+# ********************************
 @endpoints_bp.route('/create', methods=['POST'])
 def handle_create_endpoint():
     """
@@ -90,7 +104,9 @@ def handle_create_endpoint():
 
         db.session.commit()
         flash('Endpoint created successfully!', 'success')
-        return redirect(url_for('endpoints_bp.list_endpoints'))
+        # Redirect to the newly created endpoint's details page
+        return redirect(url_for('endpoints_bp.view_endpoint_details', endpoint_id=new_endpoint.id))
+
 
     except BadRequest as e:
         db.session.rollback()
@@ -164,16 +180,6 @@ def test_endpoint(endpoint_id):
         test_payload=actual_payload,
         test_response=response_text
     )
-
-
-@endpoints_bp.route('/<int:endpoint_id>', methods=['GET'])
-def view_endpoint_details(endpoint_id):
-    """
-    GET /endpoints/<id> -> Shows the details of a single endpoint, including headers
-    """
-    ep = Endpoint.query.get_or_404(endpoint_id)
-    return render_template('endpoints/view_endpoint.html', endpoint=ep)
-
 
 @endpoints_bp.route('/get_suggestions', methods=['GET'])
 def get_endpoint_suggestions():
