@@ -1,9 +1,16 @@
 {% extends "base.html" %}
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
 {% endblock %}
 
 {% block content %}
+
+<!-- VISUAL LOADING INDICATOR -->
+<div id="loadingIndicator" class="loading-indicator blink" style="display: none;">
+  LOADING...
+</div>
+
 <div class="two-column-container">
   <!-- Left Card (Create or Test form) -->
   <div class="left-card">
@@ -97,18 +104,29 @@
 
 <!-- Third Card: Show test results if present -->
 {% if test_payload or test_response %}
-<div class="content-card" style="margin-top: 2rem;">
+<div class="results-container">
   <h2>Test Results</h2>
-  <div style="margin-bottom: 1rem;">
-    <strong>What was sent:</strong>
-    <pre class="results-box">{{ test_payload }}</pre>
-  </div>
   <div>
-    <strong>What was received:</strong>
-    <pre class="results-box">{{ test_response }}</pre>
+    <strong>HTTP Status Code:</strong>
+    <span>{{ test_status_code }}</span>
+  </div>
+  <div class="results-box">
+    <div>
+      <strong>What was sent:</strong>
+      <pre class="results-box">{{ test_payload }}</pre>
+      <div>
+        <strong>Headers Sent:</strong>
+        <pre class="results-box">{{ test_headers_sent|tojson(indent=2) }}</pre>
+      </div>
+    </div>
+    <div>
+      <strong>What was received:</strong>
+      <pre class="results-box">{{ test_response }}</pre>
+    </div>
   </div>
 </div>
 {% endif %}
+
 
 {% endblock %}
 
@@ -117,4 +135,5 @@
 <script src="{{ url_for('static', filename='js/endpoints/createEndpointSuggestions.js') }}"></script>
 <script src="{{ url_for('static', filename='js/endpoints/jsonPrettyPrint.js') }}"></script>
 <script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>
+<script src="{{ url_for('static', filename='js/endpoints/loading_animation.js') }}"></script>
 {% endblock %}

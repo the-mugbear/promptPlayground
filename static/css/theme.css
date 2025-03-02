@@ -1,18 +1,11 @@
-/* ==================================================
-   Merged CSS from theme.css and your layout/styles
-   ================================================== */
-
 /* -----------------------
    THEME / VARIABLES
    ----------------------- */
    :root {
-    /* Colors */
-    --bg-color: #000000;         /* black */
-    --text-color: #00FF41;       /* neon green */
-    --accent-color: #FF00AA;     /* pink or magenta */
-    --secondary-color: #00FFFF;  /* cyan */
-  
-    /* Font */
+    --bg-color: #000000;
+    --text-color: #00FF41;
+    --accent-color: #FF00AA;
+    --secondary-color: #00FFFF;
     --main-font: 'Press Start 2P', monospace;
     --base-font-size: 16px;
   }
@@ -46,13 +39,11 @@
     color: var(--secondary-color);
   }
   
-  /* Headings (retro vibe) */
   h1, h2, h3, h4, h5, h6 {
     color: var(--accent-color);
     margin: 1rem 0 0.5rem;
   }
   
-  /* Buttons (neon borders, etc.) */
   button {
     font-family: var(--main-font);
     color: var(--text-color);
@@ -64,10 +55,9 @@
   }
   button:hover {
     background: var(--accent-color);
-    color: #000; /* black text when neon background */
+    color: #000;
   }
   
-  /* Example container class for page sections */
   .container {
     width: 90%;
     max-width: 1200px;
@@ -99,7 +89,7 @@
   /* -----------------------
      LAYOUT / COMPONENTS
      ----------------------- */
-  /* Two-column layout */
+  .one-column-container,
   .two-column-container {
     display: flex;
     gap: 2rem;
@@ -107,24 +97,21 @@
     margin: 2rem auto;
   }
   
-  /* Left and right cards */
   .left-card,
   .right-card {
     flex: 1;
-    background-color: #111; /* match the 80s hacker vibe */
+    background-color: #111;
     border: 2px dashed var(--accent-color);
     border-radius: 8px;
     padding: 1rem;
   }
   
-  /* Headings inside each card */
   .left-card h2,
   .right-card h2 {
     margin-top: 0;
     color: var(--accent-color);
   }
   
-  /* Endpoint data styling */
   .endpoint-field {
     margin-bottom: 1rem;
   }
@@ -132,19 +119,16 @@
     font-weight: bold;
   }
   
-  /* Headers list */
   .headers-list {
     list-style: disc;
     margin-left: 1.5rem;
     margin-top: 0.5rem;
   }
   
-  /* Form for testing */
   .test-form {
     margin-top: 1.5rem;
   }
   
-  /* Right card content for test results */
   .test-section {
     margin-top: 1rem;
   }
@@ -153,40 +137,59 @@
     margin: 0.5rem 0 0.25rem;
     font-weight: bold;
   }
+
+  /* Results container */
+  .results-container {
+    max-width: 1200px;
+    margin: 0 auto 2rem;
+    background-color: #111;
+    border: 2px dashed var(--accent-color);
+    border-radius: 8px;
+    padding: 1rem;
+  }
   
-  /* Results box (for sent/received data) */
+  /* Improve the results box to match column styling */
   .results-box {
     background-color: #000;
     border: 1px solid var(--accent-color);
     border-radius: 4px;
     padding: 0.5rem;
-    
-    /* Keep existing properties: */
-    /* white-space: pre-wrap; preserve newlines */
     min-height: 4em;
     
-    /* Add these to force line breaks on long words */
+    /* Improve word wrapping for long strings */
     word-wrap: break-word;
-    overflow-wrap: break-word;
-    /* If you want to forcibly break big tokens with no spaces: */
-    word-break: break-all;
+    overflow-wrap: anywhere; /* Forces breaks even within words */
     
-    /* Optionally constrain the height or width */
-    max-height: 300px;
     overflow-y: auto;
-  }
-
-  .results-box pre {
-    /* Let lines wrap at otherwise unbreakable points */
-    white-space: pre-wrap;   /* merges the effect of <pre> with wrap */
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    word-break: break-all;   /* or break-word, but break-all is more aggressive */
-    max-width: 100%;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
   }
   
+  .results-box pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: break-word; /* Less aggressive than break-all */
+    max-width: 100%;
+    display: block;
+  }
 
-  /* Basic form styling */
+  /* Add some spacing between elements in results */
+  .results-box > * + * {
+    margin-top: 0.5rem;
+  }
+  
+  /* Consolidate textarea rules */
+  .form-group input,
+  .form-group textarea,
+  textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    background-color: #000;
+    color: var(--text-color);
+  }
+  
   .form-group {
     margin-bottom: 1rem;
   }
@@ -194,25 +197,6 @@
     display: block;
     margin-bottom: 0.3rem;
     font-weight: bold;
-  }
-  .form-group input,
-  .form-group textarea {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid var(--accent-color);
-    border-radius: 4px;
-    background-color: #000;
-    color: var(--text-color);
-  }
-  
-  /* Textarea (shared with .form-group but reiterated for clarity) */
-  textarea {
-    width: 100%;
-    padding: 0.5rem;
-    background-color: #000;
-    color: var(--text-color);
-    border: 1px solid var(--accent-color);
-    border-radius: 4px;
   }
   
   /* Suggestion list */
@@ -223,38 +207,35 @@
   }
   #suggestion-list li {
     margin-bottom: 0.5rem;
-    cursor: pointer; /* if you want them clickable to auto-fill */
+    cursor: pointer;
   }
   
   /* -----------------------
      ANIMATIONS / EFFECTS
      ----------------------- */
-  /* hacker chic blink */
   .blink {
     animation: blink 1s infinite alternate;
   }
   @keyframes blink {
     from { opacity: 1; }
-    to   { opacity: 0; }
+    to { opacity: 0; }
   }
   
-  /* glitch effect */
   .glitch {
     position: relative;
     color: var(--accent-color);
     animation: glitch 2s infinite;
   }
   @keyframes glitch {
-    0%   { clip: rect(24px, 550px, 90px, 0);  transform: skew(0.3deg); }
-    5%   { clip: rect(85px, 550px, 140px, 0); transform: skew(0.8deg); }
-    /* etc... create random glitch frames or more keyframe steps */
+    0% { clip: rect(24px, 550px, 90px, 0); transform: skew(0.3deg); }
+    5% { clip: rect(85px, 550px, 140px, 0); transform: skew(0.8deg); }
   }
   
-  /* Subtle neon pulse on hover */
   .neon-hover:hover {
     box-shadow: 0 0 5px var(--accent-color), 0 0 15px var(--accent-color);
   }
   .neon-box {
     box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color);
   }
+
   
