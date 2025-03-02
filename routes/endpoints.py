@@ -167,7 +167,7 @@ def delete_endpoint(endpoint_id):
 
     return redirect(url_for('endpoints_bp.list_endpoints'))
 
-
+# Used on the register/create endpoint page to test an endpoint before it's committed/saved
 @endpoints_bp.route('/test_temporary', methods=['POST'])
 def test_temporary_endpoint():
     """
@@ -222,6 +222,70 @@ def test_temporary_endpoint():
         test_status_code=resp.status_code,         # e.g., 200
         test_headers_sent=final_headers             # the headers dictionary used in the POST
     )
+
+
+# TODO: Remove this function as it ONLY serves as test endpoint on the details page for an endpoint. Should be one test function
+@endpoints_bp.route('/<int:endpoint_id>/test', methods=['POST'])
+def test_endpoint(endpoint_id):
+    endpoint = Endpoint.query.get_or_404(endpoint_id)
+
+    # 1) Payload override vs. stored payload
+    override_payload = request.form.get('test_payload', '').strip()
+    actual_payload = override_payload or (endpoint.http_payload or "")
+
+    # 2) Headers from DB
+    existing_headers_dict = headers_from_apiheader_list(endpoint.headers)
+
+    # 3) Possibly parse user's raw header overrides
+    raw_headers = request.form.get('raw_headers', '').strip()
+    user_headers_dict = parse_raw_headers(raw_headers)
+
+    # Merge them. If the user typed a key that already exists, they override it
+    final_headers = {**existing_headers_dict, **user_headers_dict}
+    response_text = ""
+
+    try:
+        # lstrip and rstrip used to remove leading chars from left and right sides respectively
+        url = f"{endpoint.hostname.rstrip('/')}/{endpoint.endpoint.lstrip('/')}"
+        # If actual_payload is valid JSON, we do requests.post(..., json=...)
+
+        # We'll do a quick JSON parse attempt:
+        try:
+            parsed_json = json.loads(actual_payload)
+            # If parse succeeded, let's ensure we have "Content-Type" set if user didn't
+            final_headers.setdefault("Content-Type", "application/json")
+            resp = requests.post(url, json=parsed_json, headers=final_headers, timeout=120)
+
+        except json.JSONDecodeError:
+            # fallback to raw text
+            # if user didn't specify Content-Type, let's default to something
+            final_headers.setdefault("Content-Type", "application/json")
+            resp = requests.post(url, data=actual_payload, headers=final_headers, timeout=120)
+
+        resp.raise_for_status()
+
+        # Pretty print response for presentation to front
+        try:
+            # Attempt to parse as JSON
+            parsed_resp = json.loads(resp.text)
+            # Re-dump with pretty indentation
+            response_text = json.dumps(parsed_resp, indent=2)
+
+        except json.JSONDecodeError:
+            # If it's not valid JSON, fallback to the raw text
+            response_text = resp.text
+
+    except requests.exceptions.RequestException as e:
+        response_text = f"Error: {str(e)}"
+
+    return render_template(
+        'endpoints/view_endpoint.html',
+        endpoint=endpoint,
+        override_payload=override_payload,
+        test_payload=actual_payload,
+        test_response=response_text
+    )
+
 
 # AJAX call from Create Test Run page to support page functionality
 @endpoints_bp.route('/<int:endpoint_id>/json', methods=['GET'])

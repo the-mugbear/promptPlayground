@@ -2,9 +2,16 @@
 {% block title %}View & Test Endpoint #{{ endpoint.id }}{% endblock %}
 
 {% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
 {% endblock %}
 
 {% block content %}
+
+<!-- VISUAL LOADING INDICATOR -->
+<div id="loadingIndicator" class="loading-indicator blink" style="display: none;">
+  LOADING...
+</div>
+
 <div class="two-column-container">
 
   <!-- Left Card: Endpoint Configuration + Headers + Button to Test -->
@@ -62,6 +69,7 @@
       class="test-form" 
       action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}" 
       method="POST"
+      id="test-endpoint-form"
     >
       <label for="testPayload">Override Payload (optional):</label>
       <textarea id="testPayload" name="test_payload" rows="14"
@@ -110,4 +118,13 @@ Authorization: Bearer <token>"
   </div>
 
 </div>
+{% endblock %}
+
+<!-- Did this inline because I was lazy and broke my own paradigm of creating an external file -->
+{% block scripts %}
+<script>
+  document.getElementById('test-endpoint-form').addEventListener('submit', function(){
+    document.getElementById('loadingIndicator').style.display = 'block';
+  });
+</script>
 {% endblock %}
