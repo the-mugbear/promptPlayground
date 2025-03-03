@@ -5,6 +5,9 @@ from datetime import datetime
 
 test_cases_bp = Blueprint('test_cases_bp', __name__, url_prefix='/test_cases')
 
+# ********************************
+# ROUTES
+# ********************************
 @test_cases_bp.route('/', methods=['GET'])
 def list_test_cases():
     """
@@ -36,6 +39,9 @@ def get_test_case(case_id):
     test_case = TestCase.query.get_or_404(case_id)
     return render_template('test_cases/view_test_case.html', test_case=test_case)
 
+# ********************************
+# SERVICES
+# ********************************
 @test_cases_bp.route('/<int:case_id>', methods=['PUT'])
 def update_test_case(case_id):
     """

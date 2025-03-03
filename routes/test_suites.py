@@ -7,16 +7,6 @@ from datetime import datetime
 
 test_suites_bp = Blueprint("test_suites_bp", __name__, url_prefix="/test_suites")
 
-#
-# ROUTES
-# List test suites ('/')
-# Get test suite ('<int:suiteID>') GET
-# Update test suite ('<int:suiteID>') PUT
-# Create test suite ('/create_test_suite') 
-# GET /test_suites/list
-# GET /test_suites/create
-# POST /test_suites/create
-
 # ********************************
 # ROUTES
 # ********************************

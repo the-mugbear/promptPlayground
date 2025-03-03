@@ -7,6 +7,7 @@ from routes.test_cases import test_cases_bp
 from routes.endpoints import endpoints_bp
 from routes.test_runs import test_runs_bp
 from routes.core import core_bp
+from routes.help import help_bp
 
 migrate = Migrate()  # Instantiate the Migrate object outside create_app
 
@@ -25,6 +26,7 @@ def create_app():
 
     # Register your blueprint(s)
     app.register_blueprint(core_bp)
+    app.register_blueprint(help_bp)
     app.register_blueprint(test_suites_bp)
     app.register_blueprint(test_cases_bp)
     app.register_blueprint(endpoints_bp)

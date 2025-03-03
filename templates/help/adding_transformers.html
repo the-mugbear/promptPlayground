@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}How to Perform [Action Name]{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="help-container">
+  <div class="help-header">
+    <h1>How to add a new Transformer</h1>
+    <p>Follow these simple steps to complete the process to add and register your custom transformer.</p>
+  </div>
+
+  <ol>
+    <li class="step-card">
+      <div>
+        <span class="step-number">1</span>
+        <span class="step-title">Step 1: Create a New Class</span>
+      </div>
+      <div class="step-description">
+        <p>Navigate to services -> transformers and use 'template.py' as a template. Copy the file and rename it to your desired transformer name.
+          This will be used to bootstrap development of your custom/new transformer and help it conform to project standards.
+        </p>
+      </div>
+    </li>
+    <li class="step-card">
+      <div>
+        <span class="step-number">2</span>
+        <span class="step-title">Step 2: Populate the Template</span>
+      </div>
+      <div class="step-description">
+        <p>Describe the next step in the process. Make sure each instruction is clear and actionable.</p>
+      </div>
+    </li>
+    <!-- Add more steps as needed -->
+    <li class="step-card">
+      <div>
+        <span class="step-number">3</span>
+        <span class="step-title">Step 3: [Title of Step]</span>
+      </div>
+      <div class="step-description">
+        <p>Final step description goes here. Summarize any important details and what to expect next.</p>
+      </div>
+    </li>
+  </ol>
+</div>
+{% endblock %}

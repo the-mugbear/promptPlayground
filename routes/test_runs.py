@@ -12,6 +12,9 @@ import json, requests
 
 test_runs_bp = Blueprint('test_runs_bp', __name__, url_prefix='/test_runs')
 
+# ********************************
+# ROUTES
+# ********************************
 @test_runs_bp.route('/', methods=['GET'])
 def list_test_runs():
     """
@@ -118,6 +121,9 @@ def create_test_run_form():
     )
 
 
+# ********************************
+# SERVICES
+# ********************************
 @test_runs_bp.route('/create', methods=['POST'])
 def handle_create_test_run():
     try:

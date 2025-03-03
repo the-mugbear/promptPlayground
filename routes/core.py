@@ -9,7 +9,3 @@ core_bp = Blueprint('core_bp', __name__)
 @core_bp.route('/')
 def index():
     return render_template('index.html')
-
-@core_bp.route('/help')
-def help():
-    return render_template('help/index.html')

@@ -1,15 +1,39 @@
 {% extends "base.html" %}
-{% block title %}Help Pages{% endblock %}
+{% block title %}Help Topics{% endblock %}
 
 {% block head %}
-  <!-- New list test suite styles -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+  <!-- Optional: add or override styles specific to the help index page -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
 {% endblock %}
 
 {% block content %}
-
-{% endblock %}
-
-{% block scripts %}
-
+<div class="help-index-container">
+  <div class="help-header">
+    <h1>Help Topics</h1>
+    <p>Select a topic below to learn how to perform that action.</p>
+  </div>
+  <div class="help-topics">
+    <div class="help-topic">
+      <h2><a href="{{ url_for('help_bp.create_test_run') }}">How to Create a Test Run</a></h2>
+      <p>Learn the steps to configure and execute a test run.</p>
+    </div>
+    <div class="help-topic">
+      <h2><a href="{{ url_for('help_bp.manage_endpoints') }}">Managing Endpoints</a></h2>
+      <p>Instructions on creating, testing, and deleting endpoints.</p>
+    </div>
+    <div class="help-topic">
+      <h2><a href="{{ url_for('help_bp.using_transformations') }}">Using Transformations</a></h2>
+      <p>Guide to applying transformations like ROT13, Base64, and Morse code.</p>
+    </div>
+    <div class="help-topic">
+      <h2><a href="{{ url_for('help_bp.adding_transformers') }}">Adding Transformations</a></h2>
+      <p>Guide to adding new transformations and registering them for use in test suite creation.</p>
+    </div>
+    <div class="help-topic">
+      <h2><a href="{{ url_for('help_bp.results') }}">Interpreting Test Results</a></h2>
+      <p>Understand the execution status, response codes, and more.</p>
+    </div>
+    <!-- Add more topics as needed -->
+  </div>
+</div>
 {% endblock %}
