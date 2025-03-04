@@ -7,6 +7,7 @@ class TestCase(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     prompt = db.Column(db.String(255), nullable=False)
+    transformations = db.Column(db.JSON, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     # Relationships

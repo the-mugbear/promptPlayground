@@ -43,6 +43,19 @@
             View Test Cases
           </button>
 
+
+          <!-- Button to toggle the row below that displays test cases -->
+          <button 
+            type="button" 
+            class="view-test-cases-btn" 
+            data-suite-id="{{ suite.id }}"
+          >
+          <!-- New button linking to the details page for this test suite -->
+          <a href="{{ url_for('test_suites_bp.test_suite_details', suite_id=suite.id) }}" class="btn btn-info">
+            Details
+          </a>
+        </button>
+
           <!-- Delete form -->
           <form action="{{ url_for('test_suites_bp.delete_test_suite', suite_id=suite.id) }}" method="POST" style="display:inline;">
             <button 
@@ -75,7 +88,6 @@
   </tbody>
 </table>
 
-  <!-- Script for the list test suite logic -->
-  <script src="{{ url_for('static', filename='js/listTestSuites.js') }}"></script>
-
+<!-- Script for the list test suite logic -->
+<script src="{{ url_for('static', filename='js/listTestSuites.js') }}"></script>
 {% endblock %}

@@ -131,43 +131,21 @@ def handle_create_test_run():
         run_name = request.form.get('run_name')
         endpoint_id = request.form.get('endpoint_id')
         selected_suite_ids = request.form.getlist('suite_ids')
-        selected_transform_ids = request.form.getlist('transformations')  # e.g. ["base64_encode", "prepend_text"]
 
         # 2) Validate required fields
         if not run_name or not endpoint_id or not selected_suite_ids:
             flash("Missing required fields: run_name, endpoint_id, or suite_ids", 'error')
             return redirect(url_for('test_runs_bp.create_test_run_form'))
 
-        # 3) Build transformations_data from the registry
-        transformations_data = []
-        for t_id in selected_transform_ids:
-            cfg = TRANSFORM_PARAM_CONFIG.get(t_id)
-            # If user picked a transformation that doesn't exist, skip or raise error
-            if not cfg:
-                flash(f"Unknown transformation '{t_id}'", 'warning')
-                continue
-
-            # Build final_params
-            final_params = {}
-            for form_key, param_key in cfg["param_map"].items():
-                user_val = request.form.get(form_key, "")
-                final_params[param_key] = user_val
-
-            transformations_data.append({
-                "id": t_id,
-                "params": final_params
-            })
-
-        # 4) Create the TestRun
+        # 3) Create the TestRun
         new_run = TestRun(
             name=run_name,
             endpoint_id=endpoint_id,
-            status='pending',
-            transformations=transformations_data
+            status='pending'
         )
         db.session.add(new_run)
         
-        # 5) Create TestExecutions
+        # 4) Create TestExecutions
         sequence = 0
         for suite_id in selected_suite_ids:
             suite = TestSuite.query.get(suite_id)
@@ -203,7 +181,8 @@ def execute_test_run(run_id):
     """
     POST /test_runs/<run_id>/execute -> Start or resume executing the test run.
     Replaces the {{INJECT_PROMPT}} variable in the endpoint's http_payload
-    with each test case's prompt, then posts to the endpoint.
+    with each test case's prompt (after applying all transformations from the associated TestCase),
+    then posts to the endpoint.
     """
     run = TestRun.query.get_or_404(run_id)
 
@@ -216,19 +195,8 @@ def execute_test_run(run_id):
     run.status = 'running'
     db.session.commit()
 
-    # We'll read the run.endpoint.http_payload, which might look like:
-    # {
-    #   "model": "deepseek-chat",
-    #   "messages": [
-    #       {"role": "system", "content": "You are a helpful assistant."},
-    #       {"role": "user", "content": "PLACEHOLDER"}
-    #   ],
-    #   "stream": false
-    # }
-     # We won't parse the JSON up front. We'll parse for each test case after substituting.
     endpoint_obj = run.endpoint
     url = f"{endpoint_obj.hostname.rstrip('/')}/{endpoint_obj.endpoint.lstrip('/')}"
-
     original_payload_str = run.endpoint.http_payload or ""
 
     for execution in run.executions:
@@ -238,18 +206,20 @@ def execute_test_run(run_id):
         # 1) Start with the original test case prompt:
         prompt = execution.test_case.prompt
 
-        # 2) For each transformation in run.transformations, apply it:
-        for tinfo in (run.transformations or []):
-            t_id = tinfo["id"]
-            params = tinfo.get("params", {})
+        # 2) Apply each transformation stored in the test case.
+        # Assume each transformation is a dict with keys "type" and optionally "value"
+        for tinfo in (execution.test_case.transformations or []):
+            t_type = tinfo.get("type")
+            # Prepare parameters if a value is provided
+            params = {}
+            if "value" in tinfo:
+                params["value"] = tinfo["value"]
+            prompt = apply_transformation(t_type, prompt, params)
 
-            # e.g. use a dictionary or function approach:
-            prompt = apply_transformation(t_id, prompt, params)
-
-        # 3) Now we do the string replacement in the http_payload template
+        # 3) Now do the string replacement in the http_payload template:
         replaced_str = original_payload_str.replace("{{INJECT_PROMPT}}", prompt)
 
-        # 4) Try json.loads(...) and POST as you do now
+        # 4) Parse the JSON payload and POST it to the endpoint
         try:
             test_payload = json.loads(replaced_str)
         except json.JSONDecodeError as e:
@@ -258,9 +228,8 @@ def execute_test_run(run_id):
             execution.started_at = execution.started_at or datetime.now()
             execution.finished_at = datetime.now()
             db.session.commit()
-            continue  # move on to next test case
+            continue  # move on to the next test case
 
-        # 3) Send the POST request
         try:
             execution.started_at = execution.started_at or datetime.now()
             resp = requests.post(url, json=test_payload, timeout=120, verify=False)
@@ -276,7 +245,7 @@ def execute_test_run(run_id):
 
         db.session.commit()
 
-    # After all test cases:
+    # After processing all test cases, update the run status if completed.
     if all(ex.status in ['passed', 'failed', 'skipped'] for ex in run.executions):
         run.status = 'completed'
         run.finished_at = datetime.now()
@@ -284,6 +253,7 @@ def execute_test_run(run_id):
 
     flash("Test run executed with the custom {{INJECT_PROMPT}} variable replaced in http_payload.", "success")
     return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
+
 
 @test_runs_bp.route('/<int:run_id>/reset', methods=['POST'])
 def reset_test_run(run_id):

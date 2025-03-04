@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Test Suite Details{% endblock %}
+
+{% block head %}
+  <!-- New list test suite styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="test-suite-details">
+  <h1>Test Suite: {{ test_suite.description }}</h1>
+  <p><strong>Behavior:</strong> {{ test_suite.behavior or "N/A" }}</p>
+  <p>
+    <strong>Created At:</strong>
+    {% if test_suite.created_at %}
+      {{ test_suite.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+    {% else %}
+      N/A
+    {% endif %}
+  </p>
+</div>
+
+<div class="test-cases">
+  <h2>Associated Test Cases</h2>
+  {% if test_suite.test_cases and test_suite.test_cases|length > 0 %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Prompt</th>
+          <th>Created At</th>
+          <th>Transformations</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for case in test_suite.test_cases %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ case.prompt }}</td>
+            <td>
+              {% if case.created_at %}
+                {{ case.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+              {% else %}
+                N/A
+              {% endif %}
+            </td>
+            <td>
+              {% if case.transformations %}
+                <ul>
+                  {% for trans in case.transformations %}
+                    <li>
+                      {% if trans is mapping %}
+                        {{ trans['type'] }}
+                        {% if trans['value'] %}
+                          - Parameter: {{ trans['value'] }}
+                        {% endif %}
+                      {% else %}
+                        {{ trans }}
+                      {% endif %}
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                No Transformations
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No test cases are associated with this test suite.</p>
+  {% endif %}
+</div>
+{% endblock %}

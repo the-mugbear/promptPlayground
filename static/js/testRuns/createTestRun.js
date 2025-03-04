@@ -97,3 +97,46 @@ addSelectedBtn.addEventListener('click', () => {
     });
 });
 }
+
+// Used to solve pagination issue to prevent page reload on page change
+document.addEventListener("DOMContentLoaded", function() {
+    // Use event delegation to intercept clicks on pagination links within the pagination container.
+    const paginationContainer = document.querySelector(".pagination-links");
+    if (paginationContainer) {
+      paginationContainer.addEventListener("click", function(e) {
+        if (e.target.tagName.toLowerCase() === "a") {
+          e.preventDefault();
+          const url = e.target.getAttribute("href");
+  
+          // Send an AJAX GET request to the pagination URL.
+          fetch(url, {
+            headers: {
+              "X-Requested-With": "XMLHttpRequest"
+            }
+          })
+          .then(response => response.text())
+          .then(html => {
+            // Create a temporary DOM element to hold the returned HTML.
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+  
+            // Extract the updated suites list and pagination links.
+            const newSuitesList = doc.querySelector(".suites-list");
+            const newPaginationLinks = doc.querySelector(".pagination-links");
+  
+            // Update the current page's suites list and pagination links.
+            const currentSuitesList = document.querySelector(".suites-list");
+            const currentPaginationLinks = document.querySelector(".pagination-links");
+            if (currentSuitesList && newSuitesList) {
+              currentSuitesList.innerHTML = newSuitesList.innerHTML;
+            }
+            if (currentPaginationLinks && newPaginationLinks) {
+              currentPaginationLinks.innerHTML = newPaginationLinks.innerHTML;
+            }
+          })
+          .catch(err => console.error("AJAX pagination error:", err));
+        }
+      });
+    }
+  });
+  

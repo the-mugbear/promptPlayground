@@ -23,6 +23,7 @@
     <tr>
       <th>#</th>
       <th>Prompt</th>
+      <th>Transformations</th>
       <th>Created At</th>
       <th>Actions</th>
     </tr>
@@ -33,6 +34,17 @@
         <td>{{ loop.index }}</td>
         <td>{{ case.prompt }}</td>
         <td>
+          {% if case.transformations %}
+            <ul>
+              {% for transform in case.transformations %}
+                <li>{{ transform }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <em>No transformations</em>
+          {% endif %}
+        </td>
+        <td>
           {% if case.created_at %}
             {{ case.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
           {% else %}
@@ -40,7 +52,6 @@
           {% endif %}
         </td>
         <td>
-          <!-- If you want Edit/Delete links, or toggles for more details -->
           <button 
             type="button" 
             class="view-case-details-btn" 
@@ -51,9 +62,9 @@
         </td>
       </tr>
 
-      <!-- Hidden row for additional details (like steps) if you want a toggle approach -->
+      <!-- Hidden row for additional details (like suites) if you want a toggle approach -->
       <tr class="case-details-row" style="display: none;">
-        <td colspan="4">
+        <td colspan="5">
           <div class="case-details-container">
             <strong>Test Case ID {{ case.id }}</strong><br>
             <em>Suites:</em>

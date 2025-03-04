@@ -7,7 +7,6 @@
 
 {% block content %}
 <div class="two-column-container">
-  
   <!-- Left: main POST form for suite details + transformations -->
   <div class="left-card">
     <h2 class="panel-heading">Create Test Suite</h2>
@@ -104,17 +103,10 @@
             style="width: 50%;"
           >
         </div>
-
       </div>
 
-      <!-- Preview Button -->
-      <button type="button" id="preview-button" style="margin-bottom: 1rem;">Preview Transformations</button>
-
-      <!-- Preview Area -->
-      <div class="form-group preview-container">
-        <label>Preview of Transformed Test Cases:</label>
-        <textarea id="preview-area" rows="8" readonly></textarea>
-      </div>
+      <!-- Hidden input to store the ordered list -->
+      <input type="hidden" name="ordered_transformations" id="ordered_transformations">
 
       <!-- Submit -->
       <button type="submit">Create Suite</button>
@@ -124,11 +116,22 @@
   <!-- Right: empty or future expansions (e.g., searching existing test cases) -->
   <div class="right-card">
     <h2 class="panel-heading">Potential Future Pane</h2>
-    <p>
+    
+    <!-- Preview Area -->
+    <div class="form-group preview-container">
+      <label>Preview of Transformed Test Cases:</label>
+      <textarea id="preview-area" rows="8" readonly></textarea>
+    </div>
 
-    </p>
+    <!-- Transformation Order Queue Display -->
+    <div class="form-group">
+      <label>Transformation Order Queue:</label>
+      <ul id="transformation-queue">
+        <!-- Queue items will be dynamically added here -->
+      </ul>
+    </div>
+
   </div>
-
 </div>
 {% endblock %}
 

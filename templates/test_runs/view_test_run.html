@@ -134,27 +134,6 @@
                 <strong class="text-gray-700">Endpoint:</strong>
                 <span>{{ run.endpoint.hostname if run.endpoint else 'N/A' }}</span>
             </div>
-        
-            <!-- New block for transformations -->
-            <div>
-              <strong class="text-gray-700">Transformations:</strong>
-              {% if run.transformations and run.transformations|length > 0 %}
-                <ul style="margin-top: 0.5rem; list-style: disc; padding-left: 1.5rem;">
-                  {% for tinfo in run.transformations %}
-                    <li>
-                      <strong>{{ tinfo.id }}</strong>
-                      {% if tinfo.params and tinfo.params|length > 0 %}
-                        :
-                        <!-- Show the params as JSON or just list them out. -->
-                        {{ tinfo.params|tojson }}
-                      {% endif %}
-                    </li>
-                  {% endfor %}
-                </ul>
-              {% else %}
-                <span>None</span>
-              {% endif %}
-            </div>
         </div>        
     </div>
 

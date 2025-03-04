@@ -1,3 +1,4 @@
+import json
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
 from extensions import db
 from models.model_TestCase import TestCase
@@ -26,7 +27,14 @@ def create_test_suite_form():
     """
     # If you want to display existing test cases to add to the new suite, fetch them:
     existing_test_cases = TestCase.query.all()
-    return render_template('test_suites/create_suite.html', existing_test_cases=existing_test_cases)
+    existing_test_suites = TestSuite.query.all()
+    return render_template('test_suites/create_suite.html', existing_test_cases=existing_test_cases, existing_suites=existing_test_suites)
+
+@test_suites_bp.route('/<int:suite_id>/details', methods=["GET"])
+def test_suite_details(suite_id):
+    # Retrieve the test suite by its ID, or return a 404 error if not found.
+    test_suite = TestSuite.query.get_or_404(suite_id)
+    return render_template('test_suites/test_suite_details.html', test_suite=test_suite)
 
 
 # ********************************
@@ -35,40 +43,65 @@ def create_test_suite_form():
 @test_suites_bp.route('/create', methods=['POST'])
 def create_test_suite():
     """
-    POST /test_suites/create -> Handle the form submission to create a new test suite
+    POST /test_suites/create -> Handle the form submission to create a new test suite.
     """
     description = request.form.get('description')
     behavior = request.form.get('behavior')
-    # attack = request.form.get('attack')
 
-    # 1. Create the suite
-    new_suite = TestSuite(description=description, behavior=behavior)
+    # Retrieve the ordered transformations JSON string and parse it.
+    ordered_transformations_json = request.form.get('ordered_transformations')
+    if ordered_transformations_json:
+        ordered_transformations = json.loads(ordered_transformations_json)
+    else:
+        ordered_transformations = []
+    
+    # Extract the transformation parameters.
+    prepend_text = request.form.get('text_to_prepend')
+    postpend_text = request.form.get('text_to_postpend')
+
+    # Build the final transformations list with metadata.
+    final_transformations = []
+    for t in ordered_transformations:
+        if t == "prepend_text":
+            final_transformations.append({"type": t, "value": prepend_text})
+        elif t == "postpend_text":
+            final_transformations.append({"type": t, "value": postpend_text})
+        else:
+            final_transformations.append({"type": t})
+
+    # Create the suite WITHOUT a transformations field,
+    # because transformations now belong to TestCase.
+    new_suite = TestSuite(
+        description=description, 
+        behavior=behavior
+    )
     db.session.add(new_suite)
     db.session.commit()
 
-    # 2. Check for new test cases data
+    # 1. Process new test cases:
     new_test_cases_data = request.form.get('new_test_cases')
     if new_test_cases_data:
         lines = [line.strip() for line in new_test_cases_data.split('\n') if line.strip()]
         for line in lines:
-            test_case = TestCase(prompt=line)
+            # Create each new test case with the selected transformations (including metadata)
+            test_case = TestCase(prompt=line, transformations=final_transformations)
             db.session.add(test_case)
-            # we could commit later, but let's flush first:
-            db.session.flush()
+            db.session.flush()  # Get test_case.id assigned
             new_suite.test_cases.append(test_case)
         db.session.commit()
 
-    # 3. Associate existing test cases
+    # 2. Associate existing test cases:
     selected_test_case_ids = request.form.getlist('selected_test_cases')
     for tc_id in selected_test_case_ids:
         existing_tc = TestCase.query.get(tc_id)
         if existing_tc:
+            # Optionally update the existing test case if it lacks transformations.
+            if not existing_tc.transformations:
+                existing_tc.transformations = final_transformations
             new_suite.test_cases.append(existing_tc)
-
     db.session.commit()
 
     flash('New test suite created successfully!', 'success')
-    # Redirect to the list page (or somewhere else)
     return redirect(url_for('test_suites_bp.list_test_suites'))
 
 
