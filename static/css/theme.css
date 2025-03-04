@@ -28,6 +28,7 @@
     font-family: var(--main-font);
     font-size: var(--base-font-size);
     line-height: 1.4;
+    padding-top: 70px;  /* ADDED TO FIX NAVBAR OVERHANG */
   }
   
   a {
@@ -89,6 +90,7 @@
   /* -----------------------
      LAYOUT / COMPONENTS
      ----------------------- */
+    
   .one-column-container,
   .two-column-container {
     display: flex;

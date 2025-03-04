@@ -12,7 +12,7 @@
 </head>
 <body>
   <header>
-    <nav class="navbar">
+    <nav class="navbar navbar-fixed">
       <div class="nav-brand glitch">
         <a href="{{ url_for('core_bp.index') }}">Fuzzy Prompts</a>
       </div>
@@ -20,9 +20,8 @@
         <span class="hamburger"></span>
       </button>
       <ul class="nav-links">
-
         <!-- Dropdown for Test Runs -->
-        <li class="dropdown">
+        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_runs_bp') %}active{% endif %}">
           <a href="#">Run</a>
           <ul class="dropdown-menu">
             <li><a href="{{ url_for('test_runs_bp.create_test_run_form') }}">Design a new Test</a></li>
@@ -31,7 +30,7 @@
         </li>
 
         <!-- Dropdown for Endpoints -->
-        <li class="dropdown">
+        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('endpoints_bp') %}active{% endif %}">
           <a href="#">Endpoints</a>
           <ul class="dropdown-menu">
             <li><a href="{{ url_for('endpoints_bp.create_endpoint_form') }}">Register Endpoint</a></li>
@@ -40,7 +39,7 @@
         </li>
         
         <!-- Dropdown for Test Suites -->
-        <li class="dropdown">
+        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_suites_bp') %}active{% endif %}">
           <a href="#">Test Suites</a>
           <ul class="dropdown-menu">
             <li><a href="{{ url_for('test_suites_bp.create_test_suite_form') }}">Create Suite</a></li>
@@ -49,7 +48,7 @@
         </li>
 
         <!-- Dropdown for Test Cases -->
-        <li class="dropdown">
+        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_cases_bp') %}active{% endif %}">
           <a href="#">Test Cases</a>
           <ul class="dropdown-menu">
             <li><a href="{{ url_for('test_cases_bp.create_test_case_form') }}">Create Case</a></li>
@@ -57,11 +56,10 @@
           </ul>
         </li>
 
-        <!-- Dropdown for Test Cases -->
-        <li class="dropdown">
+        <!-- Help (single link, no dropdown) -->
+        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('help_bp') %}active{% endif %}">
           <a href="{{ url_for('help_bp.index') }}">Help</a>
         </li>
-
       </ul>
     </nav>
   </header>

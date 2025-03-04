@@ -2,24 +2,39 @@
  * NAVBAR STYLES
  ***************************************/
 
- .navbar {
+/* -----------------------
+   NAVBAR BASE
+   ----------------------- */
+   .navbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     background-color: var(--bg-color);
-    /* Optional neon outline for the nav bar */
-    border-bottom: 2px dashed var(--accent-color);
+    border-bottom: 2px dashed var(--accent-color);  /* Neon dashed bottom border */
     padding: 1rem;
   }
   
+  /* Fixed navbar modifier */
+  .navbar-fixed {
+    position: fixed;       /* You can also try position: sticky; top: 0; */
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;         /* Ensure it stays on top */
+  }
+  
+  /* -----------------------
+     BRANDING
+     ----------------------- */
   .nav-brand a {
-    /* Use accent color for brand text, or a logo */
-    color: var(--accent-color);
+    color: var(--accent-color); /* Accent for logo/text */
     text-decoration: none;
     font-size: 1.25rem;
   }
   
-  /* The navigation links container */
+  /* -----------------------
+     NAVIGATION LINKS
+     ----------------------- */
   .nav-links {
     list-style: none;
     display: flex;
@@ -34,47 +49,47 @@
     border: 2px solid transparent;
     transition: border-color 0.2s;
   }
-  
   .nav-links a:hover {
     border-color: var(--accent-color);
     color: var(--accent-color);
   }
   
-  /* The hamburger button (hidden on desktop) */
-  .nav-toggle {
-    background: none;
-    border: none;
-    cursor: pointer;
-    display: none; /* We'll show it below via media query */
-    padding: 0;
-  }
-
-  /* Dropdown container */
-.nav-links li.dropdown {
-    position: relative; /* needed for the absolute-positioned menu */
+  /* Active link styling */
+  .navbar li.active {
+    color: var(--secondary-color); /* Secondary color for active link */
+    border-bottom: 2px solid var(--accent-color);
+    font-weight: bold;
   }
   
-  /* The dropdown menu is hidden by default */
+  /* -----------------------
+     DROPDOWN MENUS
+     ----------------------- */
+  /* Position dropdown items relative to their parent */
+  .nav-links li.dropdown {
+    position: relative;
+  }
+  
+  /* Dropdown menu base style */
   .nav-links li.dropdown .dropdown-menu {
-    display: none;
+    display: none;         /* Hidden by default */
     position: absolute;
+    top: 100%;             /* Below the parent link */
+    left: 0;               /* Align left (or use right: 0 for right alignment) */
     background-color: var(--bg-color);
-    list-style-type: none;
+    list-style: none;
     padding: 0.5rem 0;
     margin: 0;
     border: 2px dashed var(--accent-color);
     border-radius: 4px;
-    /* Ensure it appears on top of other content */
-    z-index: 999; 
-    width: 180px; /* or auto, or whatever fits your design */
+    z-index: 999;          /* Ensure it appears above other elements */
+    width: 180px;
   }
   
-  /* The menu items inside the dropdown */
+  /* Dropdown menu items */
   .nav-links li.dropdown .dropdown-menu li {
     padding: 0;
     margin: 0;
   }
-  
   .nav-links li.dropdown .dropdown-menu li a {
     display: block;
     padding: 0.5rem 1rem;
@@ -82,49 +97,29 @@
     border: 2px solid transparent;
     text-decoration: none;
   }
-  
   .nav-links li.dropdown .dropdown-menu li a:hover {
-    background-color: #111; 
+    background-color: #111;
     color: var(--accent-color);
     border-color: var(--accent-color);
   }
   
-  /* Show the dropdown menu on hover */
+  /* Show dropdown on hover */
   .nav-links li.dropdown:hover .dropdown-menu {
     display: block;
   }
   
-  /* If you want to align the dropdown to the left or right */
-  .nav-links li.dropdown .dropdown-menu {
-    top: 100%;     /* position below the main link */
-    left: 0;       /* align left; or right:0 if you want right-aligned */
+  /* -----------------------
+     HAMBURGER MENU (RESPONSIVE)
+     ----------------------- */
+  .nav-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: none; /* Hidden on desktop; shown via media query */
+    padding: 0;
   }
   
-  /* 
-    Responsive: If you have a media query to display .nav-links as a
-    column on small screens, the dropdown won't need :hover. 
-    You might rely on the hamburger toggle instead. 
-  */
-  
-  @media (max-width: 768px) {
-    /* 
-      If you want the dropdown to be clickable or auto-expanded
-      inside the collapsed nav, you can keep the hover approach
-      or add a click-based approach with JS. 
-    */
-    .nav-links li.dropdown .dropdown-menu {
-      position: static;   /* or keep absolute if you prefer */
-      border: none;
-      display: none;      /* we will rely on the .show-nav if it's toggled? */
-      width: 100%;
-      padding-left: 1rem;
-    }
-    .nav-links li.dropdown:hover .dropdown-menu {
-      display: block; /* or keep it as is. 
-                         Alternatively, you can require a click in JS. */
-    }
-  }
-  
+  /* Hamburger icon styling */
   .hamburger {
     width: 25px;
     height: 2px;
@@ -132,7 +127,6 @@
     position: relative;
     display: block;
   }
-  
   .hamburger::before,
   .hamburger::after {
     content: "";
@@ -143,16 +137,13 @@
     background-color: var(--accent-color);
     transition: transform 0.3s ease;
   }
-  
   .hamburger::before {
     top: -8px;
   }
-  
   .hamburger::after {
     top: 8px;
   }
-  
-  /* When active, transform into 'X' */
+  /* Transform hamburger into an "X" when active */
   .hamburger.active {
     background-color: transparent;
   }
@@ -163,26 +154,40 @@
     transform: rotate(-45deg) translateY(-7px);
   }
   
-  /* Responsive: show hamburger on smaller screens, hide nav links by default */
+  /* -----------------------
+     RESPONSIVE NAVIGATION
+     ----------------------- */
   @media (max-width: 768px) {
+    /* Hide nav-links initially on small screens and display them as a column */
     .nav-links {
       position: absolute;
-      top: 60px; /* Below the navbar */
+      top: 60px; /* Below the fixed navbar */
       right: 1rem;
       background-color: var(--bg-color);
       flex-direction: column;
       gap: 0.5rem;
       padding: 1rem;
-      display: none; /* hidden by default */
+      display: none; /* Toggle via JS */
       border: 2px dashed var(--accent-color);
       border-radius: 4px;
       z-index: 999;
     }
+    /* Display nav-links when toggled */
     .nav-links.show-nav {
-      display: flex; /* show when toggled via JS */
+      display: flex;
     }
-  
+    /* Show hamburger icon */
     .nav-toggle {
+      display: block;
+    }
+    /* Optionally adjust dropdown menus in responsive mode */
+    .nav-links li.dropdown .dropdown-menu {
+      position: static;
+      border: none;
+      width: 100%;
+      padding-left: 1rem;
+    }
+    .nav-links li.dropdown:hover .dropdown-menu {
       display: block;
     }
   }
