@@ -1,56 +1,61 @@
-// static/js/createSuiteTransformations.js
-
 document.addEventListener("DOMContentLoaded", function() {
   const newTestCasesEl = document.getElementById("new_test_cases");
   const previewArea = document.getElementById("preview-area");
 
-  // Gather references to the transformation checkboxes
+  // Transformation checkboxes and related elements
   const transformationCheckboxes = document.querySelectorAll(
     'input[type="checkbox"][name="transformations"]'
   );
-
-  // Hidden input to store the ordered transformations
   const orderedTransformationsInput = document.getElementById("ordered_transformations");
-  // Element for displaying the transformation order queue
   const transformationQueueEl = document.getElementById("transformation-queue");
 
-  // Prepend/Postpend text fields
+  // Parameter fields for transformations
   const prependTextEl = document.querySelector('input[name="text_to_prepend"]');
   const postpendTextEl = document.querySelector('input[name="text_to_postpend"]');
 
-  // Array to store the order of transformations as they are selected
+  // Array to store the order of transformations
   let transformationQueue = [];
+
+  // Debounce helper: delays function execution until after 'wait' milliseconds have elapsed
+  function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
+  // Wrap updatePreview with a debounce delay of 300ms
+  const debouncedUpdatePreview = debounce(updatePreview, 300);
 
   // Add event listeners to each transformation checkbox
   transformationCheckboxes.forEach(cb => {
     cb.addEventListener("change", function() {
       const value = cb.value;
       if (cb.checked) {
-        // Add transformation at the end if not already in the queue
         if (!transformationQueue.includes(value)) {
           transformationQueue.push(value);
         }
       } else {
-        // Remove transformation from the queue when unchecked
         transformationQueue = transformationQueue.filter(val => val !== value);
       }
       updateTransformationQueueDisplay();
-      updatePreview();
+      debouncedUpdatePreview();
     });
   });
 
-  // Listen for changes in the new test cases textarea and the parameter fields
-  newTestCasesEl.addEventListener("input", updatePreview);
-  prependTextEl.addEventListener("input", updatePreview);
-  postpendTextEl.addEventListener("input", updatePreview);
+  // Listen for changes in the new test cases textarea and parameter fields
+  newTestCasesEl.addEventListener("input", debouncedUpdatePreview);
+  prependTextEl.addEventListener("input", debouncedUpdatePreview);
+  postpendTextEl.addEventListener("input", debouncedUpdatePreview);
 
-  // Optionally, if you want to keep a manual preview button:
+  // Optional: manual preview button (if present)
   const previewBtn = document.getElementById("preview-button");
   if (previewBtn) {
-    previewBtn.addEventListener("click", updatePreview);
+    previewBtn.addEventListener("click", debouncedUpdatePreview);
   }
 
-  // Updates the visible transformation queue and hidden input value.
+  // Update the visible transformation queue and hidden input
   function updateTransformationQueueDisplay() {
     transformationQueueEl.innerHTML = "";
     transformationQueue.forEach((transform, index) => {
@@ -61,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function() {
     orderedTransformationsInput.value = JSON.stringify(transformationQueue);
   }
 
-  // Collects data from the form and sends a preview request.
+  // Collect data and send preview request
   function updatePreview() {
     const lines = newTestCasesEl.value
       .split("\n")
@@ -75,7 +80,6 @@ document.addEventListener("DOMContentLoaded", function() {
       text_to_postpend: postpendTextEl.value
     };
 
-    // If no test case lines are provided, clear the preview.
     if (lines.length === 0) {
       previewArea.value = "";
       return;

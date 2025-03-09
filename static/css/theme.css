@@ -86,6 +86,14 @@
     background-color: var(--accent-color);
     color: #000;
   }
+
+  .image-container {
+    text-align: center; /* Centers the image horizontally */
+  }
+  .image-container img {
+      display: block; /* Makes the image a block element */
+      margin: 0 auto; /* Centers the image horizontally */
+  }
   
   /* -----------------------
      LAYOUT / COMPONENTS
@@ -211,6 +219,31 @@
     margin-bottom: 0.5rem;
     cursor: pointer;
   }
+
+  .code-block-container {
+    position: relative;
+    margin: 1rem 0;
+  }
+  
+  .copy-button {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background-color: var(--accent-color);
+    color: #000;
+    border: none;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    transition: background-color 0.2s;
+  }
+  
+  .copy-button:hover {
+    background-color: var(--secondary-color);
+  }
+
+  
   
   /* -----------------------
      ANIMATIONS / EFFECTS

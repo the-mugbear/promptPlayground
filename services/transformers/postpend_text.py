@@ -9,4 +9,4 @@ class PostpendText(Transformation):
     def apply(self, prompt: str, params: dict = None) -> str:
         if not params:
             return prompt
-        return f"{prompt}{params.get('value','')}"
+        return f"{prompt}{params.get('text_to_postpend','')}"

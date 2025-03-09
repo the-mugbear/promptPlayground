@@ -5,6 +5,7 @@ from .postpend_text import PostpendText
 from .unicode_encode import UnicodeTagEncode
 from .morsecode_encode import MorseCode
 from .reverse import ReverseEncode
+from .rot13 import Rot13
 
 # When adding a transformation, create a class and place it in it's own file for modularity. Reference an existing class for format help.set
 # Modify the TRANSFORMATIONS dict by adding it below.
@@ -16,7 +17,8 @@ TRANSFORMATIONS = {
     "unicode_encode": UnicodeTagEncode(),
     "base64_encode": Base64Encode(),
     "morse_code": MorseCode(),
-    "reverse_string": ReverseEncode()
+    "reverse_string": ReverseEncode(),
+    "rot13": Rot13()
 }
 
 TRANSFORM_PARAM_CONFIG = {
@@ -46,6 +48,11 @@ TRANSFORM_PARAM_CONFIG = {
         "default_params": {}
     },
     "reverse_string": {
+        "param_keys": [],  # no user input needed
+        "param_map": {},
+        "default_params": {}
+    },
+    "rot13": {
         "param_keys": [],  # no user input needed
         "param_map": {},
         "default_params": {}

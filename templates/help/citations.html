@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Research & Citations{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+  <style>
+    /* Container for all research items */
+    .research-container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 1rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    /* Card style for each research item */
+    .research-card {
+      background-color: #111;
+      border: 2px dashed var(--accent-color);
+      border-radius: 8px;
+      padding: 1rem;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    .research-card:hover {
+      background-color: var(--accent-color);
+      color: #000;
+    }
+    /* Research title styling */
+    .research-card h2 {
+      margin-top: 0;
+      font-size: 1.25rem;
+      color: var(--accent-color);
+    }
+    /* Research description styling */
+    .research-card p {
+      font-size: 1rem;
+      color: var(--text-color);
+    }
+    /* Link styling inherits card color */
+    .research-card a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .research-card a:hover {
+      text-decoration: underline;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1>Research & Citations</h1>
+  <p>Below is a collection of research sources and citations used in this project. Click a title for more details.</p>
+  
+  <div class="research-container">
+    {% for item in research_items %}
+      <div class="research-card">
+        <h2>
+          <a href="{{ item.url }}" target="_blank">{{ item.title }}</a>
+        </h2>
+        <p>{{ item.description }}</p>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

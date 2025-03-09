@@ -33,3 +33,8 @@ def adding_transformers():
 @help_bp.route('/results')
 def results():
     return render_template('help/results.html')
+
+# Citations / Resource Links
+@help_bp.route('/citations')
+def citations():
+    return render_template('help/citations.html')

@@ -58,14 +58,34 @@ function populateSuggestionList(items) {
   listEl.innerHTML = "";
   items.forEach(item => {
     const li = document.createElement("li");
-    li.textContent = item;
-    // On click, copy this item to whichever field was last focused
+
+    // Attempt to pretty-print the JSON if possible
+    let displayText = item;
+    try {
+      const parsed = JSON.parse(item);
+      // Use pretty-print without extra whitespace if too long
+      displayText = JSON.stringify(parsed, null, 2);
+    } catch (e) {
+      // Not JSON, so leave it as is
+    }
+    
+    // Set a maximum length for the display text
+    const maxLength = 100;
+    if (displayText.length > maxLength) {
+      li.textContent = displayText.substring(0, maxLength) + '...';
+      li.title = displayText; // Show full content on hover as a tooltip
+    } else {
+      li.textContent = displayText;
+    }
+
+    // When clicked, copy the full suggestion (not the truncated version) to the focused field
     li.addEventListener("click", () => {
       copySuggestionToFocusedField(item);
     });
     listEl.appendChild(li);
   });
 }
+
 
 function copySuggestionToFocusedField(value) {
   if (lastFocusedField) {

@@ -1,10 +1,9 @@
-# https://en.wikipedia.org/wiki/ROT13
-# ROT13 is a simple letter substitution cipher that replaces a letter with the 13th letter after it in the Latin alphabet. 
+# A description of what the transformer does would be great and goes right here
 from .base import Transformation
 
 class INSERT_TRANSFORMER_NAME(Transformation):
     id = "INSERT_TRANSFORMER_ID"
-    name = "ROTINSERT_TRANSFORMER_NAME"
+    name = "INSERT_TRANSFORMER_NAME"
     description = "PROVIDE A DESCRIPTION OF WHAT THE TRANSFORMER DOES. (How does it change the prompt?)"
 
     # https://docs.python.org/3/library/codecs.html#codec-base-classes
