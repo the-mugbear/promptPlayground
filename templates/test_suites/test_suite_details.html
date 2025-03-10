@@ -11,6 +11,7 @@
 <div class="test-suite-details">
   <h1>Test Suite: {{ test_suite.description }}</h1>
   <p><strong>Behavior:</strong> {{ test_suite.behavior or "N/A" }}</p>
+  <p><strong>Objective:</strong> {{ test_suite.objective or "N/A" }}</p>
   <p>
     <strong>Created At:</strong>
     {% if test_suite.created_at %}
@@ -29,7 +30,6 @@
         <tr>
           <th>#</th>
           <th>Prompt</th>
-          <th>Created At</th>
           <th>Transformations</th>
         </tr>
       </thead>
@@ -38,13 +38,6 @@
           <tr>
             <td>{{ loop.index }}</td>
             <td>{{ case.prompt }}</td>
-            <td>
-              {% if case.created_at %}
-                {{ case.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
-              {% else %}
-                N/A
-              {% endif %}
-            </td>
             <td>
               {% if case.transformations %}
                 <ul>

@@ -5,6 +5,7 @@ from datetime import datetime
 from models.model_Endpoints import Endpoint
 from models.model_TestSuite import TestSuite
 from models.model_TestRun import TestRun
+from models.model_TestRunAttempt import TestRunAttempt
 from models.model_TestExecution import TestExecution
 from services.transformers.registry import apply_transformation, TRANSFORM_PARAM_CONFIG
 
@@ -30,34 +31,27 @@ def list_test_runs():
 @test_runs_bp.route('/<int:run_id>', methods=['GET'])
 def view_test_run(run_id):
     """
-    GET /test_runs/<run_id> -> Show details for a single test run,
-    including associated suites, test cases, and execution statuses.
-    
-    Args:
-        run_id (int): The ID of the test run to view
-        
-    Returns:
-        rendered template with test run details
-        
-    Raises:
-        404: If test run is not found
+    Show details for a single test run with its attempts.
     """
-    # Fetch test run with all related data in one query to avoid N+1 problems
     run = (TestRun.query
            .options(
                joinedload(TestRun.endpoint),
                joinedload(TestRun.test_suites).joinedload(TestSuite.test_cases),
-               joinedload(TestRun.executions).joinedload(TestExecution.test_case)
+               joinedload(TestRun.attempts).joinedload(TestRunAttempt.executions).joinedload(TestExecution.test_case)
            )
            .get_or_404(run_id))
 
-    # Calculate some summary statistics
+    # Use the latest attempt for statistics; if none exists, fallback to an empty list.
+    latest_attempt = max(run.attempts, key=lambda a: a.attempt_number) if run.attempts else None
+    executions = latest_attempt.executions if latest_attempt else []
+
+    # Calculate summary statistics on the latest attempt
     execution_stats = {
-        'total': len(run.executions),
-        'pending': sum(1 for e in run.executions if e.status == 'pending'),
-        'passed': sum(1 for e in run.executions if e.status == 'passed'),
-        'failed': sum(1 for e in run.executions if e.status == 'failed'),
-        'skipped': sum(1 for e in run.executions if e.status == 'skipped')
+        'total': len(executions),
+        'pending': sum(1 for e in executions if e.status == 'pending'),
+        'passed': sum(1 for e in executions if e.status == 'passed'),
+        'failed': sum(1 for e in executions if e.status == 'failed'),
+        'skipped': sum(1 for e in executions if e.status == 'skipped')
     }
     
     # Calculate progress percentage
@@ -69,18 +63,21 @@ def view_test_run(run_id):
     else:
         execution_stats['progress'] = 0
 
-    # Calculate duration if the run is finished
-    if run.finished_at and run.created_at:
-        duration = run.finished_at - run.created_at
-        duration_str = str(duration).split('.')[0]  # Remove microseconds
+    # Calculate duration based on the attempt's timestamps (not the run's, which we removed)
+    if latest_attempt and latest_attempt.finished_at and latest_attempt.started_at:
+        duration = latest_attempt.finished_at - latest_attempt.started_at
+        duration_str = str(duration).split('.')[0]
     else:
         duration_str = None
 
-    # Create a lookup of executions by test case ID for faster access in template
+    # Build a lookup for quick access by test case ID (from the latest attempt)
     execution_map = {
         execution.test_case_id: execution 
-        for execution in run.executions if execution.test_case_id
+        for execution in executions if execution.test_case_id
     }
+
+    # Patch to be lazy and not update frontend
+    run.execution_groups = run.attempts
 
     return render_template(
         'test_runs/view_test_run.html',
@@ -88,8 +85,9 @@ def view_test_run(run_id):
         stats=execution_stats,
         duration=duration_str,
         execution_map=execution_map,
-        current_time=datetime.now()  # For calculating elapsed time in template
+        current_time=datetime.now()  # for elapsed time calculations in the template
     )
+
 
 @test_runs_bp.route('/create', methods=['GET'])
 def create_test_run_form():
@@ -127,17 +125,15 @@ def create_test_run_form():
 @test_runs_bp.route('/create', methods=['POST'])
 def handle_create_test_run():
     try:
-        # 1) Basic form data
         run_name = request.form.get('run_name')
         endpoint_id = request.form.get('endpoint_id')
         selected_suite_ids = request.form.getlist('suite_ids')
 
-        # 2) Validate required fields
         if not run_name or not endpoint_id or not selected_suite_ids:
             flash("Missing required fields: run_name, endpoint_id, or suite_ids", 'error')
             return redirect(url_for('test_runs_bp.create_test_run_form'))
 
-        # 3) Create the TestRun
+        # Create the TestRun record
         new_run = TestRun(
             name=run_name,
             endpoint_id=endpoint_id,
@@ -145,19 +141,29 @@ def handle_create_test_run():
         )
         db.session.add(new_run)
         
-        # 4) Create TestExecutions
-        sequence = 0
+        # Associate selected test suites
         for suite_id in selected_suite_ids:
             suite = TestSuite.query.get(suite_id)
             if not suite:
                 flash(f"Test suite with ID {suite_id} not found", "error")
                 return redirect(url_for('test_runs_bp.create_test_run_form'))
-
             new_run.test_suites.append(suite)
-            
+
+        # Create an initial TestRunAttempt (attempt_number 1)
+        new_attempt = TestRunAttempt(
+            test_run=new_run,
+            attempt_number=1,
+            current_sequence=0,
+            status='pending'
+        )
+        db.session.add(new_attempt)
+        
+        # Create TestExecution records within the new attempt.
+        sequence = 0
+        for suite in new_run.test_suites:
             for test_case in suite.test_cases:
                 execution = TestExecution(
-                    test_run=new_run,
+                    attempt=new_attempt,
                     test_case=test_case,
                     sequence=sequence,
                     status='pending'
@@ -166,7 +172,6 @@ def handle_create_test_run():
                 sequence += 1
 
         db.session.commit()
-        
         flash("Test run created successfully!", "success")
         return redirect(url_for('test_runs_bp.list_test_runs'))
 
@@ -179,47 +184,76 @@ def handle_create_test_run():
 @test_runs_bp.route('/<int:run_id>/execute', methods=['POST'])
 def execute_test_run(run_id):
     """
-    POST /test_runs/<run_id>/execute -> Start or resume executing the test run.
-    Replaces the {{INJECT_PROMPT}} variable in the endpoint's http_payload
-    with each test case's prompt (after applying all transformations from the associated TestCase),
-    then posts to the endpoint.
+    Execute or resume a test run using the latest attempt.
     """
     run = TestRun.query.get_or_404(run_id)
 
-    # Check if we can run
-    if run.status not in ['pending', 'paused', 'failed']:
-        flash(f"Cannot execute run in status '{run.status}'.", "warning")
-        return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
+    # Determine the latest attempt; if none exists, create one.
+    if run.attempts:
+        latest_attempt = max(run.attempts, key=lambda a: a.attempt_number)
+    else:
+        latest_attempt = TestRunAttempt(test_run=run, attempt_number=1, current_sequence=0, status='pending')
+        db.session.add(latest_attempt)
+        # Create TestExecution records for each test case in associated suites
+        sequence = 0
+        for suite in run.test_suites:
+            for test_case in suite.test_cases:
+                execution = TestExecution(
+                    test_run_attempt=latest_attempt,
+                    test_case=test_case,
+                    sequence=sequence,
+                    status='pending'
+                )
+                db.session.add(execution)
+                sequence += 1
+        db.session.commit()
 
-    # Mark as running
-    run.status = 'running'
+    # Use the latest attempt’s executions
+    pending_executions = [ex for ex in latest_attempt.executions if ex.status == 'pending']
+    
+    # If no pending executions remain, create a new attempt.
+    if not pending_executions:
+        new_attempt_number = latest_attempt.attempt_number + 1
+        new_attempt = TestRunAttempt(test_run=run, attempt_number=new_attempt_number, current_sequence=0, status='pending')
+        db.session.add(new_attempt)
+        sequence = 0
+        for suite in run.test_suites:
+            for test_case in suite.test_cases:
+                execution = TestExecution(
+                    attempt=new_attempt,
+                    test_case=test_case,
+                    sequence=sequence,
+                    status='pending'
+                )
+                db.session.add(execution)
+                sequence += 1
+        db.session.commit()
+        latest_attempt = new_attempt
+        pending_executions = latest_attempt.executions
+
+    # Mark the current attempt as running.
+    latest_attempt.status = 'running'
     db.session.commit()
 
     endpoint_obj = run.endpoint
     url = f"{endpoint_obj.hostname.rstrip('/')}/{endpoint_obj.endpoint.lstrip('/')}"
-    original_payload_str = run.endpoint.http_payload or ""
+    original_payload_str = endpoint_obj.http_payload or ""
 
-    for execution in run.executions:
-        if execution.status != 'pending':
-            continue
-
-        # 1) Start with the original test case prompt:
+    # Process each pending execution in the current attempt.
+    for execution in pending_executions:
+        # Apply transformations to the test case prompt.
         prompt = execution.test_case.prompt
-
-        # 2) Apply each transformation stored in the test case.
-        # Assume each transformation is a dict with keys "type" and optionally "value"
         for tinfo in (execution.test_case.transformations or []):
             t_type = tinfo.get("type")
-            # Prepare parameters if a value is provided
             params = {}
             if "value" in tinfo:
                 params["value"] = tinfo["value"]
             prompt = apply_transformation(t_type, prompt, params)
 
-        # 3) Now do the string replacement in the http_payload template:
+        # Replace the placeholder in the payload.
         replaced_str = original_payload_str.replace("{{INJECT_PROMPT}}", prompt)
 
-        # 4) Parse the JSON payload and POST it to the endpoint
+        # Attempt to parse the payload as JSON.
         try:
             test_payload = json.loads(replaced_str)
         except json.JSONDecodeError as e:
@@ -228,13 +262,12 @@ def execute_test_run(run_id):
             execution.started_at = execution.started_at or datetime.now()
             execution.finished_at = datetime.now()
             db.session.commit()
-            continue  # move on to the next test case
+            continue
 
         try:
             execution.started_at = execution.started_at or datetime.now()
             resp = requests.post(url, json=test_payload, timeout=120, verify=False)
             resp.raise_for_status()
-
             execution.status = 'passed'
             execution.response_data = resp.text
             execution.finished_at = datetime.now()
@@ -245,38 +278,11 @@ def execute_test_run(run_id):
 
         db.session.commit()
 
-    # After processing all test cases, update the run status if completed.
-    if all(ex.status in ['passed', 'failed', 'skipped'] for ex in run.executions):
-        run.status = 'completed'
-        run.finished_at = datetime.now()
+    # If all executions in the current attempt are finished, mark it completed.
+    if all(ex.status in ['passed', 'failed', 'skipped'] for ex in latest_attempt.executions):
+        latest_attempt.status = 'completed'
+        latest_attempt.finished_at = datetime.now()
         db.session.commit()
 
     flash("Test run executed with the custom {{INJECT_PROMPT}} variable replaced in http_payload.", "success")
     return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
-
-
-@test_runs_bp.route('/<int:run_id>/reset', methods=['POST'])
-def reset_test_run(run_id):
-    """
-    POST /test_runs/<run_id>/reset -> Resets the run status to 'pending' and
-    all test executions to 'pending' with cleared start/end times.
-    """
-    run = TestRun.query.get_or_404(run_id)
-
-    # Reset the run's status and timestamps
-    run.status = 'pending'
-    run.finished_at = None
-    run.current_sequence = 0  # if you use this for tracking progress
-
-    # Reset each test execution
-    for execution in run.executions:
-        execution.status = 'pending'
-        execution.started_at = None
-        execution.finished_at = None
-        execution.response_data = None  # optional if you want to clear the old response
-
-    db.session.commit()
-
-    flash(f"Test run #{run.id} has been reset to 'pending'.", "success")
-    return redirect(url_for('test_runs_bp.view_test_run', run_id=run.id))
-

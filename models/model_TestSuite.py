@@ -8,6 +8,8 @@ class TestSuite(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(255), nullable=False)
     behavior = db.Column(db.String(255), nullable=True)
+
+    objective = db.Column(db.Text, nullable=True)
     # originally inspired by JPLHughes' Best of N dataset I believe the transformations will carry this data instead
     # attack = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)

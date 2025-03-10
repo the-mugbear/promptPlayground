@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_migrate import Migrate
 from extensions import db
-from models import model_TestSuite as TestSuite, model_TestCase as TestCase
+from models import TestSuite, TestCase, TestRun, TestRunAttempt, TestExecution, Endpoint, APIHeader
 from routes.test_suites import test_suites_bp
 from routes.test_cases import test_cases_bp
 from routes.endpoints import endpoints_bp

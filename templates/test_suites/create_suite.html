@@ -16,7 +16,7 @@
       method="POST" 
       id="create-suite-form"
     >
-      <!-- Suite Description and Behavior -->
+      <!-- Suite Description -->
       <div class="form-group">
         <label for="description">Description</label>
         <input 
@@ -28,6 +28,7 @@
         >
       </div>
 
+      <!-- Behavior -->
       <div class="form-group">
         <label for="behavior">Behavior</label>
         <input 
@@ -36,6 +37,17 @@
           name="behavior"
           placeholder="Behavior or scenario this suite tests"
         >
+      </div>
+      
+      <!-- Objective -->
+      <div class="form-group">
+        <label for="objective">Objective</label>
+        <textarea 
+          id="objective" 
+          name="objective" 
+          rows="8" 
+          placeholder="Enter the objective for this test suite"
+        ></textarea>
       </div>
 
       <!-- New Test Cases -->
@@ -121,7 +133,7 @@
 
   <!-- Right: empty or future expansions (e.g., searching existing test cases) -->
   <div class="right-card">
-    <h2 class="panel-heading">Potential Future Pane</h2>
+    <h2 class="panel-heading">Preview Pane</h2>
     
     <!-- Preview Area -->
     <div class="form-group preview-container">
