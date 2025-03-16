@@ -30,9 +30,6 @@ def list_test_runs():
 
 @test_runs_bp.route('/<int:run_id>', methods=['GET'])
 def view_test_run(run_id):
-    """
-    Show details for a single test run with its attempts.
-    """
     run = (TestRun.query
            .options(
                joinedload(TestRun.endpoint),
@@ -41,40 +38,36 @@ def view_test_run(run_id):
            )
            .get_or_404(run_id))
 
-    # Use the latest attempt for statistics; if none exists, fallback to an empty list.
-    latest_attempt = max(run.attempts, key=lambda a: a.attempt_number) if run.attempts else None
-    executions = latest_attempt.executions if latest_attempt else []
+    # Build a dictionary keyed by test_case.id, each value is a dict with test_case details and a list of responses from each attempt.
+    test_case_map = {}
+    for attempt in run.attempts:
+        for execution in attempt.executions:
+            if not execution.test_case:
+                continue
+            tc_id = execution.test_case.id
+            if tc_id not in test_case_map:
+                test_case_map[tc_id] = {
+                    'test_case': execution.test_case,
+                    'attempts': []
+                }
+            test_case_map[tc_id]['attempts'].append({
+                'attempt_number': attempt.attempt_number,
+                'status': execution.status,
+                'response': execution.response_data,
+                'started_at': execution.started_at,
+                'finished_at': execution.finished_at
+            })
 
-    # Calculate summary statistics on the latest attempt
-    execution_stats = {
-        'total': len(executions),
-        'pending': sum(1 for e in executions if e.status == 'pending'),
-        'passed': sum(1 for e in executions if e.status == 'passed'),
-        'failed': sum(1 for e in executions if e.status == 'failed'),
-        'skipped': sum(1 for e in executions if e.status == 'skipped')
-    }
-    
-    # Calculate progress percentage
-    if execution_stats['total'] > 0:
-        execution_stats['progress'] = round(
-            ((execution_stats['passed'] + execution_stats['failed'] + execution_stats['skipped']) /
-             execution_stats['total']) * 100
-        )
-    else:
-        execution_stats['progress'] = 0
+    # Optionally, sort the list of responses by attempt_number for each test case
+    for item in test_case_map.values():
+        item['attempts'].sort(key=lambda x: x['attempt_number'])
 
-    # Calculate duration based on the attempt's timestamps (not the run's, which we removed)
-    if latest_attempt and latest_attempt.finished_at and latest_attempt.started_at:
-        duration = latest_attempt.finished_at - latest_attempt.started_at
-        duration_str = str(duration).split('.')[0]
-    else:
-        duration_str = None
-
-    # Build a lookup for quick access by test case ID (from the latest attempt)
-    execution_map = {
-        execution.test_case_id: execution 
-        for execution in executions if execution.test_case_id
-    }
+    return render_template(
+        'test_runs/view_test_run.html',
+        run=run,
+        test_case_map=test_case_map,
+        current_time=datetime.now()
+    )
 
     # Patch to be lazy and not update frontend
     run.execution_groups = run.attempts
