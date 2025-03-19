@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Create Test Case{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="two-column-container">
   <!-- Left Card: Form -->
@@ -10,32 +14,47 @@
       action="{{ url_for('test_cases_bp.create_test_case_form') }}" 
       method="POST" 
       id="create-case-form"
+      data-preview-url="/test_suites/preview_transform"
     >
-
+      <!-- Test Case Prompt -->
       <div class="form-group">
         <label for="new_test_cases">New Test Case</label>
         <textarea 
           id="new_test_cases" 
           name="new_test_cases" 
-          rows="4"
+          rows="12"
           placeholder="e.g. If my brother is 5 years older than I am and I am 21 years old how old is my brother?"
         ></textarea>
       </div>
+
+      <!-- Include the shared transformations partial -->
+      {% include "partials/_transformations.html" %}
 
       <button type="submit">Create</button>
     </form>
   </div>
 
-  <!-- Right Card: Suggestions -->
+  <!-- Right Card: Preview Pane -->
   <div class="right-card">
-    <h2>Suggestions</h2>
-    <p>Placeholder for now.</p>
-    <ul id="suggestion-list"></ul>
+    <h2>Preview Pane</h2>
+    
+    <!-- Preview Area -->
+    <div class="form-group preview-container">
+      <label>Preview of Transformed Test Case:</label>
+      <textarea id="preview-area" rows="12" readonly></textarea>
+    </div>
+
+    <!-- Transformation Order Queue Display -->
+    <div class="form-group">
+      <label>Transformation Order Queue:</label>
+      <ul id="transformation-queue">
+        <!-- Queue items will be dynamically added here -->
+      </ul>
+    </div>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<!-- Optional JS for suggestions, similar to createEndpointSuggestions.js -->
-<!-- <script src="{{ url_for('static', filename='js/createSuiteSuggestions.js') }}"></script> -->
+<script src="{{ url_for('static', filename='js/transformerPreview.js') }}"></script>
 {% endblock %}

@@ -11,10 +11,12 @@
   <div class="left-card">
     <h2 class="panel-heading">Create Test Suite</h2>
 
+    <!-- data-preview-url used by transformations preview pane! -->
     <form 
       action="{{ url_for('test_suites_bp.create_test_suite') }}" 
       method="POST" 
       id="create-suite-form"
+      data-preview-url="/test_suites/preview_transform"
     >
       <!-- Suite Description -->
       <div class="form-group">
@@ -62,66 +64,7 @@
       </div>
 
       <!-- Transformations Section -->
-      <div class="form-group transformations-container">
-        <label>Select Transformations:</label>
-        
-        <div class="transform-option">
-          <label>
-            <input type="checkbox" name="transformations" value="base64_encode">
-            Base64 Encode
-          </label>
-        </div>
-        <div class="transform-option">
-          <label>
-            <input type="checkbox" name="transformations" value="unicode_encode">
-            Unicode Tag Encode
-          </label>
-        </div>
-        <div class="transform-option">
-          <label>
-            <input type="checkbox" name="transformations" value="morse_code">
-            Morse Code
-          </label>
-        </div>
-        <div class="transform-option">
-          <label>
-            <input type="checkbox" name="transformations" value="reverse_string">
-            Reverse Strings
-          </label>
-        </div>
-        <div class="transform-option">
-          <label>
-            <input type="checkbox" name="transformations" value="rot13">
-            ROT13 Sub Cipher
-          </label>
-        </div>
-
-        <div class="transform-option">
-          <label style="margin-right: 0.5rem;">
-            <input type="checkbox" name="transformations" value="prepend_text">
-            Prepend Text
-          </label>
-          <input 
-            type="text" 
-            name="text_to_prepend" 
-            placeholder="Enter text to prepend"
-            style="width: 50%;"
-          >
-        </div>
-
-        <div class="transform-option">
-          <label style="margin-right: 0.5rem;">
-            <input type="checkbox" name="transformations" value="postpend_text">
-            Postpend Text
-          </label>
-          <input 
-            type="text" 
-            name="text_to_postpend" 
-            placeholder="Enter text to postpend"
-            style="width: 50%;"
-          >
-        </div>
-      </div>
+      {% include "partials/_transformations.html" %}
 
       <!-- Hidden input to store the ordered list -->
       <input type="hidden" name="ordered_transformations" id="ordered_transformations">
@@ -149,10 +92,24 @@
       </ul>
     </div>
 
+    
+    <!-- New Section: Orphaned Test Cases -->
+    <div class="form-group">
+      <label>Orphaned Test Cases:</label>
+      <ul id="orphaned-test-cases">
+        {% for test_case in orphaned_test_cases %}
+          <li data-prompt="{{ test_case.prompt | e }}" style="cursor: pointer;">
+            {{ test_case.prompt }}
+          </li>
+        {% endfor %}
+      </ul>
+      <small>Click an orphaned test case to append it to the new test cases field.</small>
+    </div>
+
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/testSuites/createSuiteTransformations.js') }}"></script>
+<script src="{{ url_for('static', filename='js/transformerPreview.js') }}"></script>
 {% endblock %}

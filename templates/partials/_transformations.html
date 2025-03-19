@@ -1,0 +1,61 @@
+<!-- templates/partials/_transformations.html -->
+<div class="form-group transformations-container">
+    <label>Select Transformations:</label>
+    
+    <div class="transform-option">
+      <label>
+        <input type="checkbox" name="transformations" value="base64_encode">
+        Base64 Encode
+      </label>
+    </div>
+    <div class="transform-option">
+      <label>
+        <input type="checkbox" name="transformations" value="unicode_encode">
+        Unicode Tag Encode
+      </label>
+    </div>
+    <div class="transform-option">
+      <label>
+        <input type="checkbox" name="transformations" value="morse_code">
+        Morse Code
+      </label>
+    </div>
+    <div class="transform-option">
+      <label>
+        <input type="checkbox" name="transformations" value="reverse_string">
+        Reverse Strings
+      </label>
+    </div>
+    <div class="transform-option">
+      <label>
+        <input type="checkbox" name="transformations" value="rot13">
+        ROT13 Sub Cipher
+      </label>
+    </div>
+    <div class="transform-option">
+      <label style="margin-right: 0.5rem;">
+        <input type="checkbox" name="transformations" value="prepend_text">
+        Prepend Text
+      </label>
+      <input 
+        type="text" 
+        name="text_to_prepend" 
+        placeholder="Enter text to prepend"
+        style="width: 50%;"
+      >
+    </div>
+    <div class="transform-option">
+      <label style="margin-right: 0.5rem;">
+        <input type="checkbox" name="transformations" value="postpend_text">
+        Postpend Text
+      </label>
+      <input 
+        type="text" 
+        name="text_to_postpend" 
+        placeholder="Enter text to postpend"
+        style="width: 50%;"
+      >
+    </div>
+  </div>
+  <input type="hidden" name="ordered_transformations" id="ordered_transformations">
+  

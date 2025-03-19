@@ -16,7 +16,7 @@
         </form>
     </div>
 
-    <!-- Test Run Summary Card (adjust as needed) -->
+    <!-- Test Run Summary Card -->
     <div class="content-card">
         <div class="card-header">
             <h1 class="text-2xl font-bold">Test Run #{{ run.id }}</h1>
@@ -50,12 +50,36 @@
         {% if test_case_map %}
             {% for tc_id, item in test_case_map.items() %}
                 <div class="test-case-group border rounded p-4 mb-4">
+                    <!-- Test Case Header: Clicking toggles details -->
                     <div class="test-case-header flex justify-between items-center cursor-pointer" onclick="toggleDetails('details-{{ tc_id }}')">
                         <h3 class="font-bold text-lg">
                             {{ item.test_case.prompt }}
                         </h3>
-                        <!-- Optionally show a summary status or icon here -->
+                        <!-- Optionally add summary info here -->
                     </div>
+                    <!-- Transformations for this Test Case -->
+                    <div class="transformations-info mt-2">
+                        <strong>Transformations:</strong>
+                        {% if item.test_case.transformations %}
+                            <ul>
+                                {% for trans in item.test_case.transformations %}
+                                    <li>
+                                        {% if trans is mapping %}
+                                            {{ trans['type'] }}
+                                            {% if trans['value'] %}
+                                                - Parameter: {{ trans['value'] }}
+                                            {% endif %}
+                                        {% else %}
+                                            {{ trans }}
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <em>No transformations</em>
+                        {% endif %}
+                    </div>
+                    <!-- Test Case Details: Responses from each attempt -->
                     <div id="details-{{ tc_id }}" class="test-case-details hidden mt-2">
                         <table class="min-w-full">
                             <thead class="bg-gray-50">
@@ -95,7 +119,7 @@
                                 {% endfor %}
                             </tbody>
                         </table>
-                        <!-- Optionally, add controls here for the user to mark the test case as passed/failed -->
+                        <!-- Optionally, add controls here for manual review/marking -->
                     </div>
                 </div>
             {% endfor %}
@@ -105,15 +129,12 @@
     </div>
 </div>
 
-{% endblock %}
-
-{% block scripts %}
 <script>
     function toggleDetails(id) {
         const el = document.getElementById(id);
         el.classList.toggle('hidden');
     }
-    </script>
+</script>
 <script src="{{ url_for('static', filename='js/testRuns/createTestRun.js') }}"></script>
 <script src="{{ url_for('static', filename='js/testRuns/filterResponse.js') }}"></script>
 {% endblock %}

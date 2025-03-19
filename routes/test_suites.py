@@ -4,6 +4,7 @@ from extensions import db
 from models.model_TestCase import TestCase
 from models.model_TestSuite import TestSuite
 from services.transformers.registry import apply_transformations_to_lines, TRANSFORM_PARAM_CONFIG
+from services.transformers.helpers import process_transformations
 from datetime import datetime
 
 test_suites_bp = Blueprint("test_suites_bp", __name__, url_prefix="/test_suites")
@@ -28,7 +29,14 @@ def create_test_suite_form():
     # If you want to display existing test cases to add to the new suite, fetch them:
     existing_test_cases = TestCase.query.all()
     existing_test_suites = TestSuite.query.all()
-    return render_template('test_suites/create_suite.html', existing_test_cases=existing_test_cases, existing_suites=existing_test_suites)
+    orphaned_test_cases = TestCase.query.filter(~TestCase.test_suites.any()).all()
+
+    return render_template(
+        'test_suites/create_suite.html', 
+        existing_test_cases=existing_test_cases, 
+        existing_suites=existing_test_suites,
+        orphaned_test_cases=orphaned_test_cases
+    )
 
 @test_suites_bp.route('/<int:suite_id>/details', methods=["GET"])
 def test_suite_details(suite_id):
@@ -48,29 +56,10 @@ def create_test_suite():
     description = request.form.get('description')
     behavior = request.form.get('behavior')
 
-    # Retrieve the ordered transformations JSON string and parse it.
-    ordered_transformations_json = request.form.get('ordered_transformations')
-    if ordered_transformations_json:
-        ordered_transformations = json.loads(ordered_transformations_json)
-    else:
-        ordered_transformations = []
+    # Use the helper to process the transformation selections and parameters.
+    final_transformations = process_transformations(request.form)
     
-    # Extract the transformation parameters.
-    prepend_text = request.form.get('text_to_prepend')
-    postpend_text = request.form.get('text_to_postpend')
-
-    # Build the final transformations list with metadata.
-    final_transformations = []
-    for t in ordered_transformations:
-        if t == "prepend_text":
-            final_transformations.append({"type": t, "value": prepend_text})
-        elif t == "postpend_text":
-            final_transformations.append({"type": t, "value": postpend_text})
-        else:
-            final_transformations.append({"type": t})
-
-    # Create the suite WITHOUT a transformations field,
-    # because transformations now belong to TestCase.
+    # Create the test suite (note: transformations now belong to TestCase)
     new_suite = TestSuite(
         description=description, 
         behavior=behavior
@@ -83,10 +72,9 @@ def create_test_suite():
     if new_test_cases_data:
         lines = [line.strip() for line in new_test_cases_data.split('\n') if line.strip()]
         for line in lines:
-            # Create each new test case with the selected transformations (including metadata)
             test_case = TestCase(prompt=line, transformations=final_transformations)
             db.session.add(test_case)
-            db.session.flush()  # Get test_case.id assigned
+            db.session.flush()  # Ensure test_case.id is assigned
             new_suite.test_cases.append(test_case)
         db.session.commit()
 
@@ -95,7 +83,6 @@ def create_test_suite():
     for tc_id in selected_test_case_ids:
         existing_tc = TestCase.query.get(tc_id)
         if existing_tc:
-            # Optionally update the existing test case if it lacks transformations.
             if not existing_tc.transformations:
                 existing_tc.transformations = final_transformations
             new_suite.test_cases.append(existing_tc)

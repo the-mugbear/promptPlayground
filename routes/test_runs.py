@@ -69,18 +69,6 @@ def view_test_run(run_id):
         current_time=datetime.now()
     )
 
-    # Patch to be lazy and not update frontend
-    run.execution_groups = run.attempts
-
-    return render_template(
-        'test_runs/view_test_run.html',
-        run=run,
-        stats=execution_stats,
-        duration=duration_str,
-        execution_map=execution_map,
-        current_time=datetime.now()  # for elapsed time calculations in the template
-    )
-
 
 @test_runs_bp.route('/create', methods=['GET'])
 def create_test_run_form():

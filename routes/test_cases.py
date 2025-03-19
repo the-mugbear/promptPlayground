@@ -2,6 +2,7 @@ from flask import Blueprint, request, render_template, redirect, url_for, flash,
 from extensions import db
 from models.model_TestCase import TestCase
 from datetime import datetime
+from services.transformers.helpers import process_transformations
 
 test_cases_bp = Blueprint('test_cases_bp', __name__, url_prefix='/test_cases')
 
@@ -74,12 +75,13 @@ def create_test_case_form():
 
 @test_cases_bp.route('/create', methods=['POST'])
 def handle_create_test_case_form():
-    """
-    POST /test_cases/create -> Handle form submission to create a test case
-    """
-    description = request.form.get('description')
+    # Get the test case prompt (you might want to rename the form field to "prompt")
+    prompt = request.form.get('prompt') or request.form.get('new_test_cases')
     
-    new_case = TestCase(description=description)
+    # Process transformations using the shared helper
+    final_transformations = process_transformations(request.form)
+    
+    new_case = TestCase(prompt=prompt, transformations=final_transformations)
     db.session.add(new_case)
     db.session.commit()
 
