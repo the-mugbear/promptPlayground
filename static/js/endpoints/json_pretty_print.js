@@ -1,3 +1,4 @@
+// Used to help format HTTP payloads copied from dev tools
 function formatHttpPayload() {
     const textArea = document.getElementById('http_payload');
     const raw = textArea.value.trim();

@@ -38,7 +38,7 @@ def view_test_run(run_id):
            )
            .get_or_404(run_id))
 
-    # Build a dictionary keyed by test_case.id, each value is a dict with test_case details and a list of responses from each attempt.
+    # Build a dictionary keyed by test_case.id with responses from each attempt.
     test_case_map = {}
     for attempt in run.attempts:
         for execution in attempt.executions:
@@ -51,6 +51,7 @@ def view_test_run(run_id):
                     'attempts': []
                 }
             test_case_map[tc_id]['attempts'].append({
+                'execution_id': execution.id,  # for form reference
                 'attempt_number': attempt.attempt_number,
                 'status': execution.status,
                 'response': execution.response_data,
@@ -58,15 +59,48 @@ def view_test_run(run_id):
                 'finished_at': execution.finished_at
             })
 
-    # Optionally, sort the list of responses by attempt_number for each test case
+    # Sort responses by attempt number for each test case.
     for item in test_case_map.values():
         item['attempts'].sort(key=lambda x: x['attempt_number'])
+
+    # Aggregate overall counts for the run.
+    passed_count = failed_count = skipped_count = pending_review_count = 0
+    for attempt in run.attempts:
+        for execution in attempt.executions:
+            if execution.status == 'passed':
+                passed_count += 1
+            elif execution.status == 'failed':
+                failed_count += 1
+            elif execution.status == 'skipped':
+                skipped_count += 1
+            elif execution.status == 'pending_review':
+                pending_review_count += 1
+
+    # Compute per-attempt counts.
+    attempt_counts = {}
+    for attempt in run.attempts:
+        counts = {"passed": 0, "failed": 0, "skipped": 0, "pending_review": 0}
+        for execution in attempt.executions:
+            if execution.status == 'passed':
+                counts["passed"] += 1
+            elif execution.status == 'failed':
+                counts["failed"] += 1
+            elif execution.status == 'skipped':
+                counts["skipped"] += 1
+            elif execution.status == 'pending_review':
+                counts["pending_review"] += 1
+        attempt_counts[attempt.attempt_number] = counts
 
     return render_template(
         'test_runs/view_test_run.html',
         run=run,
         test_case_map=test_case_map,
-        current_time=datetime.now()
+        current_time=datetime.now(),
+        passed_count=passed_count,
+        failed_count=failed_count,
+        skipped_count=skipped_count,
+        pending_review_count=pending_review_count,
+        attempt_counts=attempt_counts
     )
 
 
@@ -249,11 +283,11 @@ def execute_test_run(run_id):
             execution.started_at = execution.started_at or datetime.now()
             resp = requests.post(url, json=test_payload, timeout=120, verify=False)
             resp.raise_for_status()
-            execution.status = 'passed'
+            execution.status = 'pending_review'
             execution.response_data = resp.text
             execution.finished_at = datetime.now()
         except Exception as e:
-            execution.status = 'failed'
+            execution.status = 'FAIL - no response'
             execution.response_data = str(e)
             execution.finished_at = datetime.now()
 
@@ -266,4 +300,34 @@ def execute_test_run(run_id):
         db.session.commit()
 
     flash("Test run executed with the custom {{INJECT_PROMPT}} variable replaced in http_payload.", "success")
+    return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
+
+
+@test_runs_bp.route('/<int:run_id>/update_execution_status', methods=['POST'])
+def update_execution_status(run_id):
+    # Retrieve form data
+    execution_id = request.form.get('execution_id')
+    new_status = request.form.get('status')
+    
+    # Check if required values are provided
+    if not execution_id or not new_status:
+        flash("Missing execution ID or status.", "error")
+        return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
+    
+    try:
+        # Retrieve the execution record by its ID; 404 if not found
+        execution = TestExecution.query.get_or_404(execution_id)
+        
+        # Update the status with the new value
+        execution.status = new_status
+        
+        # Commit the changes to the database
+        db.session.commit()
+        flash("Test execution status updated successfully.", "success")
+    except Exception as e:
+        # Roll back on error and flash an error message
+        db.session.rollback()
+        flash(f"Error updating status: {str(e)}", "error")
+    
+    # Redirect back to the test run view page
     return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))

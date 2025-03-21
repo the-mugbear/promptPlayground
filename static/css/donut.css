@@ -1,0 +1,26 @@
+/* Donut overview container: flexible row with a gap */
+.donut-overview-container {
+    display: flex;
+    flex-wrap: wrap;       /* So columns can wrap on smaller screens */
+    gap: 1rem;             /* Spacing between columns */
+    max-width: 800px;      /* You had inline style, now in CSS */
+    margin: 0 auto;        /* center horizontally */
+    padding: 1rem;         /* optional if you want some spacing around */
+  }
+  
+  /* Each column takes up half width on large screens by default. 
+     We can use a media query for mobile -> stacked. */
+  .overall-donut,
+  .attempt-donuts {
+    flex: 1;               /* let them expand equally */
+    min-width: 300px;      /* optionally force a minimum column width so the donuts don't get squished too tiny */
+  }
+  
+  /* Stacked on smaller screens:
+     If you want them stacked below ~640px, for instance: */
+  @media (max-width: 640px) {
+    .donut-overview-container {
+      flex-direction: column; /* force vertical stacking on mobile */
+    }
+  }
+  

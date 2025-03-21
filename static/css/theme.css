@@ -243,6 +243,44 @@
     background-color: var(--secondary-color);
   }
 
+
+  /* Custom styling for select elements in your neon theme */
+select {
+  background-color: #111; /* Dark background for depth */
+  color: var(--text-color); /* Neon text color */
+  border: 2px solid var(--accent-color);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-family: var(--main-font);
+  font-size: 1rem;
+  /* Remove default styling */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  
+  /* Add a custom dropdown arrow using an inline SVG */
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%23FF00AA' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1rem;
+  
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 5px var(--secondary-color);
+}
+
+/* Optional: Style options (note browser support for option styling is limited) */
+select option {
+  background-color: #111;
+  color: var(--text-color);
+}
+
+
+
   
   
   /* -----------------------

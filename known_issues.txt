@@ -1,0 +1,4 @@
+Orphaned test cases are just shown on the Test Suite creation page.
+
+Endpoint creation
+    Format JSON may introduce characters that cause an error

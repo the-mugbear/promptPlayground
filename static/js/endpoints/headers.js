@@ -70,8 +70,26 @@ function updateValue(index, newValue) {
     headerEntries[index].value = newValue;
 }
 
+// function updateRawHeaders() {
+//     // Example: gather header fields from right card
+//     const headerInputs = document.querySelectorAll('.header-input'); 
+//     let headersText = '';
+//     headerInputs.forEach(input => {
+//       // assuming each input has a data-key attribute for the header name
+//       const key = input.dataset.key;
+//       const value = input.value;
+//       headersText += `${key}: ${value}\n`;
+//     });
+//     document.getElementById('raw_headers').value = headersText.trim();
+//   }
+  
+//   // Attach updateRawHeaders to appropriate events:
+//   document.querySelectorAll('.header-input').forEach(input => {
+//     input.addEventListener('input', updateRawHeaders);
+//   });  
+
 // On form submission, combine the headerEntries array back into multiline text
-document.getElementById('createEndpointForm').addEventListener('submit', (e) => {
+document.getElementById('create-endpoint-form').addEventListener('submit', (e) => {
     // Reconstruct the multiline raw_headers so the server receives the final state
     const lines = headerEntries.map(h => `${h.key}: ${h.value}`);
     document.getElementById('raw_headers').value = lines.join('\n');
