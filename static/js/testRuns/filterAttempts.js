@@ -5,37 +5,26 @@ function toggleDetails(id) {
 
 // Function to apply filters on the test case tables.
 function applyFilters() {
-    const attemptSelect = document.getElementById('attempt-filter');
-    const dispositionSelect = document.getElementById('disposition-filter');
+    // Get all checked attempt checkboxes.
+    const attemptCheckboxes = document.querySelectorAll('input[name="attempt_filter"]:checked');
+    // Map their values to an array.
+    const selectedAttempts = Array.from(attemptCheckboxes).map(cb => cb.value).filter(val => val !== "");
     
-    // Get selected attempt numbers as an array of strings.
-    const selectedAttempts = Array.from(attemptSelect.selectedOptions).map(opt => opt.value);
     // Get selected disposition; empty string means "all".
+    const dispositionSelect = document.getElementById('disposition-filter');
     const selectedDisposition = dispositionSelect.value;
     
-    // For each test case details table, filter its rows.
+    // For each table row in the test case details, filter based on data attributes.
     document.querySelectorAll('tr[data-attempt]').forEach(row => {
         const rowAttempt = row.getAttribute('data-attempt');
         const rowStatus = row.getAttribute('data-status');
         
-        // Determine if the row matches the attempt filter.
-        let attemptMatch = true;
-        if (selectedAttempts.length > 0) {
-            attemptMatch = selectedAttempts.includes(rowAttempt);
-        }
-        
-        // Determine if the row matches the disposition filter.
-        let statusMatch = true;
-        if (selectedDisposition !== "") {
-            statusMatch = rowStatus === selectedDisposition;
-        }
+        // If no specific attempt is selected, then match all.
+        let attemptMatch = selectedAttempts.length === 0 ? true : selectedAttempts.includes(rowAttempt);
+        let statusMatch = selectedDisposition === "" ? true : (rowStatus === selectedDisposition);
         
         // Show the row if both conditions are met; otherwise hide it.
-        if (attemptMatch && statusMatch) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
-        }
+        row.style.display = (attemptMatch && statusMatch) ? "" : "none";
     });
 }
 

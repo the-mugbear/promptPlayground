@@ -18,106 +18,83 @@
     </div>
 
     <!-- Test Run Summary Card -->
-    <div class="content-card mb-6">
-        <div class="card-header flex justify-between items-center">
-            <h1 class="text-2xl font-bold">Test Run #{{ run.id }}</h1>
-            <span class="status-badge {% if run.status == 'pending' %}bg-yellow-100 text-yellow-800
-                      {% elif run.status == 'running' %}bg-blue-100 text-blue-800
-                      {% elif run.status == 'completed' %}bg-green-100 text-green-800
-                      {% elif run.status == 'paused' %}bg-gray-100 text-gray-800{% endif %}">
-                {{ run.status or 'pending' }}
-            </span>
-        </div>
-        <div class="grid grid-cols-auto gap-4 mt-4">
-            <div>
-                <strong class="text-gray-700">Name:</strong>
+    <div class="content-card" style="display: flex; flex-direction: row; align-items: flex-start;">
+        <!-- Left Column: Header and Details -->
+        <div class="card-left" style="flex: 1;">
+            <h1 style="font-size:24px; font-weight:bold; margin: 0 0 10px 0;">Test Run #{{ run.id }}</h1>
+            <div style="margin-bottom:8px;">
+                <strong style="color:#4a4a4a;">Name:</strong>
                 <span>{{ run.name or 'N/A' }}</span>
             </div>
-            <div>
-                <strong class="text-gray-700">Created:</strong>
+            <div style="margin-bottom:8px;">
+                <strong style="color:#4a4a4a;">Created:</strong>
                 <span>{{ run.created_at.strftime('%Y-%m-%d %H:%M:%S') if run.created_at else 'N/A' }}</span>
             </div>
-            <div>
-                <strong class="text-gray-700">Endpoint:</strong>
+            <div style="margin-bottom:8px;">
+                <strong style="color:#4a4a4a;">Endpoint:</strong>
                 <span>{{ run.endpoint.hostname if run.endpoint else 'N/A' }}</span>
             </div>
         </div>
+        <!-- Right Column: Donut Chart -->
+        <div class="card-right" style="width: 200px; text-align: center;">
 
-        <!-- DONUTZZZ -->
-        <!-- Parent container for donut charts -->
-        <div class="donut-overview-container flex flex-col md:flex-row gap-6 mx-auto" style="max-width: 800px;">
-        
-            <!-- Overall Donut Chart Column -->
-            <div class="overall-donut flex-1">
-            <div class="donut-container" style="max-width: 200px; margin: 0 auto; position: relative;">
-                <h3 class="font-bold mb-2 text-center">Overall Test Run Status</h3>
-                <canvas id="cumulativeStatusChart"
-                        data-passed="{{ passed_count }}"
-                        data-failed="{{ failed_count }}"
-                        data-skipped="{{ skipped_count }}"
-                        data-pending="{{ pending_review_count }}"></canvas>
-            </div>
-            </div>
-            
-            <!-- Attempt Donuts Column -->
-            <div class="attempt-donuts flex-1">
-                <h3 class="font-bold mb-2 text-center">Attempt Status Breakdown</h3>
-                <div class="flex flex-wrap justify-center gap-4">
-                    {% for attempt_number, counts in attempt_counts.items() %}
-                    <div class="donut-container" style="max-width: 100px; margin: 0 auto;">
-                        <h4 class="text-center">Attempt {{ attempt_number }}</h4>
-                        <canvas id="attemptDonut-{{ attempt_number }}"
-                                data-passed="{{ counts.passed }}"
-                                data-failed="{{ counts.failed }}"
-                                data-skipped="{{ counts.skipped }}"
-                                data-pending="{{ counts.pending_review }}"></canvas>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            
+            <canvas id="cumulativeStatusChart"
+                    data-passed="{{ passed_count }}"
+                    data-failed="{{ failed_count }}"
+                    data-skipped="{{ skipped_count }}"
+                    data-pending="{{ pending_review_count }}"
+                    style="width:200px; height:200px;"></canvas>
         </div>
-    </div>        
-
-
+    </div>
 
     <!-- Test Cases Overview -->
     <div class="content-card">
-        <h2 class="text-xl font-bold mb-4">Test Cases and Responses Across Attempts</h2>
+        <h2 class="font-bold mb-4">Test Cases and Responses Across Attempts</h2>
 
         <!-- Filter Controls: Moved above the test cases overview -->
-        <div id="filter-container" class="mb-6 border p-4 rounded bg-gray-50">
-            <h3 class="font-bold mb-2">Filters</h3>
-            <div class="flex flex-wrap items-end gap-6">
-            <!-- Attempt filter in its own column -->
-            <div class="flex flex-col">
-                <label for="attempt-filter" class="font-bold mb-1">Attempt:</label>
-                {% set max_attempt = run.attempts|map(attribute='attempt_number')|max %}
-                <select id="attempt-filter" multiple class="border rounded p-1" style="min-width: 120px;" size="4">
-                {% for i in range(1, max_attempt + 1) %}
-                    <option value="{{ i }}">Attempt {{ i }}</option>
-                {% endfor %}
+        <div id="filter-container" class="filter-container">
+            <h3>Filters</h3>
+            <div class="filter-row">
+              <!-- Attempt Filter as Checkboxes -->
+              <div class="attempt-filter">
+                <span class="filter-label">Attempt:</span>
+                <div class="attempt-checkboxes">
+                  <!-- “All” Option -->
+                  <label>
+                    <input type="checkbox" name="attempt_filter" id="attempt_filter_all" value="" checked>
+                    All
+                  </label>
+                  
+                  <!-- Dynamic Attempts -->
+                  {% set max_attempt = run.attempts|map(attribute='attempt_number')|max %}
+                  {% for i in range(1, max_attempt + 1) %}
+                    <label>
+                      <input type="checkbox" name="attempt_filter" id="attempt_filter_{{ i }}" value="{{ i }}">
+                      Attempt {{ i }}
+                    </label>
+                  {% endfor %}
+                </div>
+              </div>
+          
+              <!-- Disposition Filter as Select -->
+              <div class="disposition-filter">
+                <label for="disposition-filter" class="filter-label">Disposition:</label>
+                <select id="disposition-filter">
+                  <option value="">All</option>
+                  <option value="passed">Passed</option>
+                  <option value="failed">Failed</option>
+                  <option value="skipped">Skipped</option>
+                  <option value="pending_review">Pending Review</option>
                 </select>
-            </div>
-            <!-- Disposition filter -->
-            <div class="flex flex-col">
-                <label for="disposition-filter" class="font-bold mb-1">Disposition:</label>
-                <select id="disposition-filter" class="border rounded p-1" style="min-width: 150px;">
-                <option value="">All</option>
-                <option value="passed">Passed</option>
-                <option value="failed">Failed</option>
-                <option value="skipped">Skipped</option>
-                <option value="pending_review">Pending Review</option>
-                </select>
-            </div>
-            <!-- Apply button -->
-            <div class="flex flex-col">
-                <button type="button" id="apply-filters" class="px-4 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600">
-                Apply Filters
-                </button>
-            </div>
+              </div>
+          
+              <!-- Apply Filters Button -->
+              <div class="apply-btn-container">
+                <button type="button" id="apply-filters">Apply Filters</button>
+              </div>
             </div>
         </div>
+          
 
         {% if test_case_map %}
             {% for tc_id, item in test_case_map.items() %}

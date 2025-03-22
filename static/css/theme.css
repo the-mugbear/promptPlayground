@@ -1,34 +1,34 @@
-/* -----------------------
+/* ==================================================
    THEME / VARIABLES
-   ----------------------- */
+   ================================================== */
    :root {
-    --bg-color: #000000;
-    --text-color: #00FF41;
-    --accent-color: #FF00AA;
-    --secondary-color: #00FFFF;
+    --bg-color: #000000;           /* Primary black background */
+    --text-color: #00FF41;         /* Neon green */
+    --accent-color: #FF00AA;       /* Magenta/pink */
+    --secondary-color: #00FFFF;    /* Cyan */
     --main-font: 'Press Start 2P', monospace;
     --base-font-size: 16px;
   }
   
-  /* -----------------------
+  /* ==================================================
      RESET / BASELINE
-     ----------------------- */
+     ================================================== */
   * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
   }
   
-  /* -----------------------
+  /* ==================================================
      GLOBAL STYLES
-     ----------------------- */
+     ================================================== */
   body {
     background-color: var(--bg-color);
     color: var(--text-color);
     font-family: var(--main-font);
     font-size: var(--base-font-size);
     line-height: 1.4;
-    padding-top: 70px;  /* ADDED TO FIX NAVBAR OVERHANG */
+    padding-top: 70px; /* Offsets a fixed navbar if you have one */
   }
   
   a {
@@ -59,21 +59,20 @@
     color: #000;
   }
   
-  .container {
-    width: 90%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1rem 0;
-  }
-  
   hr {
     border: none;
     border-top: 1px dashed var(--accent-color);
     margin: 1rem 0;
   }
   
+  ::selection {
+    background-color: var(--accent-color);
+    color: #000;
+  }
+  
+  /* Code & pre elements share a neon-like style */
   code, pre {
-    background-color: #111;
+    background-color: #111;               /* Slightly lighter black for contrast */
     color: var(--secondary-color);
     font-family: var(--main-font);
     border: 1px solid var(--accent-color);
@@ -82,23 +81,26 @@
     margin: 0.5rem 0;
   }
   
-  ::selection {
-    background-color: var(--accent-color);
-    color: #000;
-  }
-
-  .image-container {
-    text-align: center; /* Centers the image horizontally */
-  }
-  .image-container img {
-      display: block; /* Makes the image a block element */
-      margin: 0 auto; /* Centers the image horizontally */
+  /* ==================================================
+     LAYOUT / CONTAINERS
+     ================================================== */
+  .container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 0;
   }
   
-  /* -----------------------
-     LAYOUT / COMPONENTS
-     ----------------------- */
-    
+  /* Example container for images */
+  .image-container {
+    text-align: center;
+  }
+  .image-container img {
+    display: block;
+    margin: 0 auto;
+  }
+  
+  /* One and two column containers for layout */
   .one-column-container,
   .two-column-container {
     display: flex;
@@ -107,48 +109,23 @@
     margin: 2rem auto;
   }
   
+  /* ==================================================
+     CARDS / COMPONENTS
+     ================================================== */
   .left-card,
   .right-card {
     flex: 1;
-    background-color: #111;
+    background-color: #111; 
     border: 2px dashed var(--accent-color);
     border-radius: 8px;
     padding: 1rem;
   }
-  
-  .left-card h2,
-  .right-card h2 {
+  .left-card h2, .right-card h2 {
     margin-top: 0;
     color: var(--accent-color);
   }
   
-  .endpoint-field {
-    margin-bottom: 1rem;
-  }
-  .endpoint-field label {
-    font-weight: bold;
-  }
-  
-  .headers-list {
-    list-style: disc;
-    margin-left: 1.5rem;
-    margin-top: 0.5rem;
-  }
-  
-  .test-form {
-    margin-top: 1.5rem;
-  }
-  
-  .test-section {
-    margin-top: 1rem;
-  }
-  .test-section label {
-    display: block;
-    margin: 0.5rem 0 0.25rem;
-    font-weight: bold;
-  }
-
-  /* Results container */
+  /* Results container (large container for test data) */
   .results-container {
     max-width: 1200px;
     margin: 0 auto 2rem;
@@ -158,37 +135,89 @@
     padding: 1rem;
   }
   
-  /* Improve the results box to match column styling */
+  /* For smaller results box within that container */
   .results-box {
     background-color: #000;
     border: 1px solid var(--accent-color);
     border-radius: 4px;
     padding: 0.5rem;
     min-height: 4em;
-    
-    /* Improve word wrapping for long strings */
-    word-wrap: break-word;
-    overflow-wrap: anywhere; /* Forces breaks even within words */
-    
     overflow-y: auto;
-    overflow-x: hidden; /* Prevent horizontal scrolling */
+    overflow-x: hidden; /* prevent horizontal scrolling */
+    
+    word-wrap: break-word;
+    overflow-wrap: anywhere; /* handle extremely long strings */
   }
   
-  .results-box pre {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
-    word-break: break-word; /* Less aggressive than break-all */
-    max-width: 100%;
-    display: block;
-  }
-
-  /* Add some spacing between elements in results */
+  /* Add spacing between children inside the results box */
   .results-box > * + * {
     margin-top: 0.5rem;
   }
   
-  /* Consolidate textarea rules */
+  /* The pre in results-box specifically */
+  .results-box pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: break-word; 
+    max-width: 100%;
+    display: block;
+  }
+  
+  /* content-card - a generic card with neon border & dark bg */
+  .content-card {
+    background-color: #111;
+    color: var(--text-color);
+    border: 2px dashed var(--accent-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    /* box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color); 
+       (uncomment for extra neon glow) */
+  }
+  
+  /* code-block - specialized code container with scrolling */
+  .code-block {
+    background-color: #000;
+    color: var(--secondary-color);
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    max-height: 300px;
+    overflow-y: auto;
+    
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-all;
+    font-family: var(--main-font);
+  }
+  
+  /* For collapsible sections */
+  .collapsible-section {
+    border-bottom: 1px solid #e5e7eb; /* subtle divider */
+    padding: 1rem 0;
+  }
+  .collapsible-header {
+    cursor: pointer;
+    padding: 0.5rem;
+    background-color: #111;
+    border-radius: 0.375rem;
+  }
+  
+  /* ==================================================
+     FORMS / INPUTS
+     ================================================== */
+  /* Generic input styling (e.g. .form-group) */
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  .form-group label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: bold;
+  }
   .form-group input,
   .form-group textarea,
   textarea {
@@ -200,12 +229,23 @@
     color: var(--text-color);
   }
   
-  .form-group {
+  /* More specific classes for endpoint fields, test forms, etc. */
+  .endpoint-field {
     margin-bottom: 1rem;
   }
-  .form-group label {
+  .endpoint-field label {
+    font-weight: bold;
+  }
+  
+  .test-form {
+    margin-top: 1.5rem;
+  }
+  .test-section {
+    margin-top: 1rem;
+  }
+  .test-section label {
     display: block;
-    margin-bottom: 0.3rem;
+    margin: 0.5rem 0 0.25rem;
     font-weight: bold;
   }
   
@@ -219,79 +259,120 @@
     margin-bottom: 0.5rem;
     cursor: pointer;
   }
-
-  .code-block-container {
-    position: relative;
-    margin: 1rem 0;
+  
+  /* Search bar style */
+  .search-bar {
+    background-color: var(--bg-color); 
+    color: var(--text-color); 
+    border: 2px dashed var(--accent-color);
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    font-family: var(--main-font);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-bar:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 5px var(--secondary-color);
+  }
+  .search-bar::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+    opacity: 1;
+  }
+  /* Hide built-in clear button on WebKit */
+  input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
   }
   
-  .copy-button {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    background-color: var(--accent-color);
-    color: #000;
-    border: none;
-    padding: 0.3rem 0.6rem;
-    cursor: pointer;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    transition: background-color 0.2s;
+  /* Select elements (dropdowns) with neon theme */
+  select {
+    background-color: #111; 
+    color: var(--text-color);
+    border: 2px solid var(--accent-color);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-family: var(--main-font);
+    font-size: 1rem;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='%23FF00AA' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1rem;
+  }
+  select:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 5px var(--secondary-color);
+  }
+  select option {
+    background-color: #111;
+    color: var(--text-color);
   }
   
-  .copy-button:hover {
-    background-color: var(--secondary-color);
+  /* ==================================================
+     DONUT / CHART STYLING
+     ================================================== */
+  #cumulativeStatusChart {
+    background-color: #000; 
+    border: 2px dashed var(--accent-color);
+    border-radius: 8px;
+    display: block;
+    margin: 0 auto;
   }
-
-
-  /* Custom styling for select elements in your neon theme */
-select {
-  background-color: #111; /* Dark background for depth */
-  color: var(--text-color); /* Neon text color */
-  border: 2px solid var(--accent-color);
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  font-family: var(--main-font);
-  font-size: 1rem;
-  /* Remove default styling */
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
   
-  /* Add a custom dropdown arrow using an inline SVG */
-  background-image: url("data:image/svg+xml;utf8,<svg fill='%23FF00AA' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 0.5rem center;
-  background-size: 1rem;
+  /* ==================================================
+     BADGES / MISC
+     ================================================== */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    background-color: transparent; 
+    color: var(--text-color);
+    border: 2px solid var(--accent-color);
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
   
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-select:focus {
-  outline: none;
-  border-color: var(--secondary-color);
-  box-shadow: 0 0 5px var(--secondary-color);
-}
-
-/* Optional: Style options (note browser support for option styling is limited) */
-select option {
-  background-color: #111;
-  color: var(--text-color);
-}
-
-
-
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
   
+  /* ==================================================
+     GRID UTILS
+     ================================================== */
+  .grid-cols-auto {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+  .prompt-response-grid {
+    display: grid;
+    grid-template-columns: minmax(200px, 25%) minmax(300px, 1fr);
+    gap: 1rem;
+    color: var(--text-color);
+    background-color: #111; 
+  }
   
-  /* -----------------------
+  /* ==================================================
      ANIMATIONS / EFFECTS
-     ----------------------- */
+     ================================================== */
   .blink {
     animation: blink 1s infinite alternate;
   }
   @keyframes blink {
     from { opacity: 1; }
-    to { opacity: 0; }
+    to   { opacity: 0; }
   }
   
   .glitch {
@@ -309,89 +390,5 @@ select option {
   }
   .neon-box {
     box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color);
-  }
-
-
-/* FROM TEST RUN DETAILS */
-  .grid-cols-auto {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  }
-  .prompt-response-grid {
-      display: grid;
-      grid-template-columns: minmax(200px, 25%) minmax(300px, 1fr);
-      gap: 1rem;
-      color: var(--text-color);
-      background-color: #111; /* if it’s an entire section that needs it */
-  }
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .action-buttons {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-  .status-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.25rem 0.75rem;
-      border-radius: 9999px;
-      
-      /* Keep your neon style */
-      background-color: transparent; /* or partial color if you want distinct states */
-      color: var(--text-color);
-      border: 2px solid var(--accent-color);
-      
-      font-size: 0.875rem;
-      font-weight: 500;
-      /* Or apply a dynamic style for pending/passed/failed with if-conditions in your template */
-  }
-
-  .content-card {
-      /* Use your dark background color from your theme */
-      background-color: #111; /* or var(--bg-color) if you prefer fully black */
-      color: var(--text-color);
-      
-      /* Add your neon border style */
-      border: 2px dashed var(--accent-color);
-      border-radius: 8px;
-      
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      
-      /* Optionally add a subtle box shadow if you want a slight “pop” */
-      /* box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color); */
-  }
-  .code-block {
-      /* In your theme, code or pre elements are typically black or #111 */
-      background-color: #000; /* or #111, whichever you prefer */
-      color: var(--secondary-color); /* neon green or cyan */
-      border: 1px solid var(--accent-color);
-      border-radius: 4px;
-      
-      /* Keep spacing / scrolling if it’s large */
-      padding: 1rem;
-      margin: 0.5rem 0;
-      max-height: 300px;
-      overflow-y: auto;
-
-      /* For line wrapping of long tokens */
-      white-space: pre-wrap;
-      word-wrap: break-word;  /* older name */
-      overflow-wrap: break-word; /* newer name */
-      word-break: break-all; /* forcibly break extremely long tokens if needed */
-      font-family: var(--main-font); /* or monospace if you prefer a different code font */
-  }
-  .collapsible-section {
-    border-bottom: 1px solid #e5e7eb;
-    padding: 1rem 0;
-  }
-  .collapsible-header {
-    cursor: pointer;
-    padding: 0.5rem;
-    background-color: #111;
-    border-radius: 0.375rem;
   }
   
