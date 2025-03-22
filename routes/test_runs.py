@@ -254,6 +254,9 @@ def execute_test_run(run_id):
     url = f"{endpoint_obj.hostname.rstrip('/')}/{endpoint_obj.endpoint.lstrip('/')}"
     original_payload_str = endpoint_obj.http_payload or ""
 
+    # Extract headers from the endpoint object and build a dictionary.
+    headers = {header.key: header.value for header in endpoint_obj.headers}
+
     # Process each pending execution in the current attempt.
     for execution in pending_executions:
         # Apply transformations to the test case prompt.
@@ -281,7 +284,7 @@ def execute_test_run(run_id):
 
         try:
             execution.started_at = execution.started_at or datetime.now()
-            resp = requests.post(url, json=test_payload, timeout=120, verify=False)
+            resp = requests.post(url, json=test_payload, headers=headers, timeout=120, verify=False)
             resp.raise_for_status()
             execution.status = 'pending_review'
             execution.response_data = resp.text
