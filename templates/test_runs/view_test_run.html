@@ -23,17 +23,22 @@
         <div class="card-left" style="flex: 1;">
             <h1 style="font-size:24px; font-weight:bold; margin: 0 0 10px 0;">Test Run #{{ run.id }}</h1>
             <div style="margin-bottom:8px;">
-                <strong style="color:#4a4a4a;">Name:</strong>
+                <strong style="color:#4a4a4a;">Test Name:</strong>
                 <span>{{ run.name or 'N/A' }}</span>
             </div>
             <div style="margin-bottom:8px;">
-                <strong style="color:#4a4a4a;">Created:</strong>
-                <span>{{ run.created_at.strftime('%Y-%m-%d %H:%M:%S') if run.created_at else 'N/A' }}</span>
+                <strong style="color:#4a4a4a;">Endpoint Label:</strong>
+                <span>{{ run.endpoint.name if run.endpoint else 'N/A'}}</span>
             </div>
             <div style="margin-bottom:8px;">
                 <strong style="color:#4a4a4a;">Endpoint:</strong>
                 <span>{{ run.endpoint.hostname if run.endpoint else 'N/A' }}</span>
             </div>
+            <div style="margin-bottom:8px;">
+                <strong style="color:#4a4a4a;">Created:</strong>
+                <span>{{ run.created_at.strftime('%Y-%m-%d %H:%M:%S') if run.created_at else 'N/A' }}</span>
+            </div>
+
         </div>
         <!-- Right Column: Donut Chart -->
         <div class="card-right" style="width: 200px; text-align: center;">

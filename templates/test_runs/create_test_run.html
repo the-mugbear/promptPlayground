@@ -51,10 +51,9 @@
       <!-- endpoint -->
       <div class="form-group">
         <label for="endpoint_id">Select Endpoint:</label>
-        <select name="endpoint_id" id="endpoint_id" required>
-          <option value="" disabled selected>-- Choose an Endpoint --</option>
+        <select name="endpoint_id" id="endpoint_id">
           {% for endpoint in endpoints %}
-            <option value="{{ endpoint.id }}">{{ endpoint.hostname }} / {{ endpoint.endpoint }}</option>
+            <option value="{{ endpoint.id }}">{{ endpoint.name }}</option>
           {% endfor %}
         </select>
       </div>

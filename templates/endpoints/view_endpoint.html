@@ -14,83 +14,118 @@
 
 <div class="two-column-container">
 
-  <!-- Left Card: Endpoint Configuration + Headers + Button to Test -->
+  <!-- Left Card: Endpoint Configuration + Edit Functionality + Test Form -->
   <div class="left-card">
     <h2>Endpoint #{{ endpoint.id }}</h2>
-
-    <!-- Basic info fields -->
-    <div class="endpoint-field">
-      <label>Hostname:</label><br>
-      <span>{{ endpoint.hostname }}</span>
-    </div>
-
-    <div class="endpoint-field">
-      <label>Path:</label><br>
-      <span>{{ endpoint.endpoint }}</span>
-    </div>
-
-    <div class="endpoint-field">
-      <label>Timestamp:</label><br>
-      <span>
-        {% if endpoint.timestamp %}
-          {{ endpoint.timestamp }}
-        {% else %}
-          N/A
-        {% endif %}
-      </span>
-    </div>
-
-    <div class="endpoint-field">
-      <label>Payload:</label><br>
-      {% if endpoint.http_payload %}
-        <pre>{{ endpoint.http_payload }}</pre>
-      {% else %}
-        <em>No payload</em>
-      {% endif %}
-    </div>
     
+    <!-- Button to toggle edit mode -->
+    <button id="editButton" type="button">Edit Endpoint</button>
+    
+    <!-- Read-Only Display -->
+    <div id="viewContainer">
+      <!-- Basic info fields -->
+      <div class="endpoint-field">
+        <label>Name:</label>
+        <span>{{ endpoint.name }}</span>
+      </div>
 
-    <!-- Headers -->
-    <div class="endpoint-field">
-      <label>Headers:</label><br>
-      {% if endpoint.headers and endpoint.headers|length > 0 %}
-        <ul class="headers-list">
-          {% for hdr in endpoint.headers %}
-            <li><strong>{{ hdr.key }}:</strong> {{ hdr.value }}</li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p style="margin: 0;"><em>No headers available.</em></p>
-      {% endif %}
+      <div class="endpoint-field">
+        <label>Hostname:</label>
+        <span>{{ endpoint.hostname }}</span>
+      </div>
+
+      <div class="endpoint-field">
+        <label>Path:</label>
+        <span>{{ endpoint.endpoint }}</span>
+      </div>
+
+      <div class="endpoint-field">
+        <label>Timestamp:</label>
+        <span>
+          {% if endpoint.timestamp %}
+            {{ endpoint.timestamp }}
+          {% else %}
+            N/A
+          {% endif %}
+        </span>
+      </div>
+
+      <div class="endpoint-field">
+        <label>Payload:</label>
+        {% if endpoint.http_payload %}
+          <pre>{{ endpoint.http_payload }}</pre>
+        {% else %}
+          <em>No payload</em>
+        {% endif %}
+      </div>
+
+      <!-- Headers -->
+      <div class="endpoint-field">
+        <label>Headers:</label>
+        {% if endpoint.headers and endpoint.headers|length > 0 %}
+          <ul class="headers-list">
+            {% for hdr in endpoint.headers %}
+              <li><strong>{{ hdr.key }}:</strong> {{ hdr.value }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p style="margin: 0;"><em>No headers available.</em></p>
+        {% endif %}
+      </div>
     </div>
 
-    <!-- Test form -->
-    <form 
-      class="test-form" 
-      action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}" 
-      method="POST"
-      id="test-endpoint-form"
-    >
-      <label for="testPayload">Override Payload (optional):</label>
-      <textarea id="testPayload" name="test_payload" rows="14"
-       placeholder="Enter a custom payload to test..."
-      >{% if override_payload %}{{ override_payload }}{% endif %}</textarea>
+    <!-- Edit Form (initially hidden) -->
+    <div id="editContainer" style="display: none; margin-top: 1rem;">
+      <h3>Edit Endpoint</h3>
+      <form action="{{ url_for('endpoints_bp.update_endpoint', endpoint_id=endpoint.id) }}" method="POST" id="edit-endpoint-form">
+        <div class="form-group">
+          <label for="edit_name">Name:</label>
+          <input type="text" id="edit_name" name="name" value="{{ endpoint.name }}">
+        </div>
+        <div class="form-group">
+          <label for="edit_hostname">Hostname:</label>
+          <input type="text" id="edit_hostname" name="hostname" value="{{ endpoint.hostname }}">
+        </div>
+        <div class="form-group">
+          <label for="edit_endpoint">Path:</label>
+          <input type="text" id="edit_endpoint" name="endpoint" value="{{ endpoint.endpoint }}">
+        </div>
+        <div class="form-group">
+          <label for="edit_http_payload">HTTP Payload:</label>
+          <textarea id="edit_http_payload" name="http_payload" rows="14" placeholder="Enter HTTP Payload...">{{ endpoint.http_payload }}</textarea>
+        </div>
+        <div class="form-group">
+          <label for="edit_raw_headers">Headers (Key: Value per line):</label>
+          <textarea id="edit_raw_headers" name="raw_headers" rows="8" placeholder="e.g., Content-Type: application/json&#10;Authorization: Bearer &lt;token&gt;">{% for hdr in endpoint.headers %}{{ hdr.key }}: {{ hdr.value }}{% if not loop.last %}&#10;{% endif %}{% endfor %}</textarea>
+        </div>
+        <button type="submit">Save Changes</button>
+        <button type="button" id="cancelEdit">Cancel</button>
+      </form>
+    </div>
 
-      <!-- Optional headers override -->
-    <label for="raw_headers">Override Headers (Key: Value per line):</label>
-    <textarea
-      id="raw_headers"
-      name="raw_headers"
-      rows="8"
-      placeholder="Content-Type: application/json
-Authorization: Bearer <token>"
-    ></textarea>
+    <!-- Test Form Container (contains override payload and headers) -->
+    <div id="testFormContainer">
+      <form 
+        class="test-form" 
+        action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}" 
+        method="POST"
+        id="test-endpoint-form"
+      >
+        <label for="testPayload">Override Payload (optional):</label>
+        <textarea id="testPayload" name="test_payload" rows="14"
+         placeholder="Enter a custom payload to test...">{% if override_payload %}{{ override_payload }}{% endif %}</textarea>
 
-      <button type="submit" style="margin-top: 1rem;">Test This Endpoint</button>
-    </form>
+        <!-- Optional headers override -->
+        <label for="raw_headers">Override Headers (Key: Value per line):</label>
+        <textarea id="raw_headers" name="raw_headers" rows="8" placeholder="Content-Type: application/json
+Authorization: Bearer <token>"></textarea>
+
+        <button type="submit" style="margin-top: 1rem;">Test This Endpoint</button>
+      </form>
+    </div>
   </div>
 
-  <!-- Right Card: Display "What Was Sent" and "What Was Received" -->
+  <!-- Right Card: Display Test Results -->
   <div class="right-card">
     <h2>Test Results</h2>
 
@@ -120,11 +155,25 @@ Authorization: Bearer <token>"
 </div>
 {% endblock %}
 
-<!-- Did this inline because I was lazy and broke my own paradigm of creating an external file -->
 {% block scripts %}
 <script>
+  // Show loading indicator for the test form
   document.getElementById('test-endpoint-form').addEventListener('submit', function(){
     document.getElementById('loadingIndicator').style.display = 'block';
+  });
+  
+  // Toggle edit mode: show edit form, hide read-only view and test form
+  document.getElementById("editButton").addEventListener("click", function() {
+    document.getElementById("editContainer").style.display = "block";
+    document.getElementById("viewContainer").style.display = "none";
+    document.getElementById("testFormContainer").style.display = "none";
+  });
+  
+  // Cancel edit: hide edit form, show read-only view and test form
+  document.getElementById("cancelEdit").addEventListener("click", function() {
+    document.getElementById("editContainer").style.display = "none";
+    document.getElementById("viewContainer").style.display = "block";
+    document.getElementById("testFormContainer").style.display = "block";
   });
 </script>
 {% endblock %}

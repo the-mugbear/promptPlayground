@@ -23,6 +23,19 @@
       id="create-endpoint-form"
       style="margin-bottom: 1rem;"
     >
+
+      <div class="form-group">
+        <label for="name">Endpoint Name</label>
+        <input 
+          type="text" 
+          id="name" 
+          name="name" 
+          required 
+          placeholder="Enter a friendly name for the endpoint"
+          value="{{ request.form.name|default('') }}"
+        >
+      </div>
+
       <div class="form-group">
         <label for="hostname">Hostname</label>
         <input 
@@ -36,7 +49,7 @@
       </div>
   
       <div class="form-group">
-        <label for="endpoint">Endpoint Path</label>
+        <label for="endpoint">Path</label>
         <input 
           type="text" 
           id="endpoint" 

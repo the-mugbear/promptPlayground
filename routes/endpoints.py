@@ -4,6 +4,7 @@ from models.model_Endpoints import Endpoint, APIHeader
 from services.endpoints.endpoint_services import parse_headers_from_form, parse_headers_from_list_of_dict, headers_from_apiheader_list, parse_raw_headers
 from services.endpoints.api_templates import PAYLOAD_TEMPLATES
 from werkzeug.exceptions import BadRequest
+from sqlalchemy.orm import joinedload
 import requests
 import json
 
@@ -32,9 +33,9 @@ def view_endpoint_details(endpoint_id):
     """
     GET /endpoints/<id> -> Shows the details of a single endpoint, including headers
     """
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    # Use joinedload to eagerly load the headers associated with the endpoint. 
+    ep = Endpoint.query.options(joinedload(Endpoint.headers)).get_or_404(endpoint_id) 
     return render_template('endpoints/view_endpoint.html', endpoint=ep)
-
 
 # ********************************
 # SERVICES
@@ -57,13 +58,15 @@ def handle_create_endpoint():
         BadRequest: If required fields are missing or if {{INJECT_PROMPT}} is not found
     """
     try:
+        # Retrieve the new name field from the form
+        name = request.form.get('name', '').strip()
         hostname = request.form.get('hostname', '').strip()
         endpoint_path = request.form.get('endpoint', '').strip()
         raw_payload = request.form.get('http_payload', '').strip()
 
         # 1) Validate minimal required fields
-        if not hostname or not endpoint_path:
-            raise BadRequest("Missing required fields: 'hostname' or 'endpoint'.")
+        if not name or not hostname or not endpoint_path:
+            raise BadRequest("Missing required fields: 'name', 'hostname' or 'endpoint'.")
 
         # 2) If the user provided a payload, ensure it contains {{INJECT_PROMPT}}
         if raw_payload:
@@ -84,6 +87,7 @@ def handle_create_endpoint():
 
         # 3) Create the Endpoint
         new_endpoint = Endpoint(
+            name=name,
             hostname=hostname,
             endpoint=endpoint_path,
             http_payload=formatted_payload
@@ -222,6 +226,55 @@ def test_temporary_endpoint():
         test_status_code=resp.status_code,         # e.g., 200
         test_headers_sent=final_headers             # the headers dictionary used in the POST
     )
+
+
+@endpoints_bp.route('/<int:endpoint_id>/update', methods=['POST'])
+def update_endpoint(endpoint_id):
+    # Fetch the existing endpoint record
+    endpoint = Endpoint.query.get_or_404(endpoint_id)
+    
+    # Get form values and trim extra whitespace
+    name = request.form.get('name', '').strip()
+    hostname = request.form.get('hostname', '').strip()
+    endpoint_path = request.form.get('endpoint', '').strip()
+    http_payload = request.form.get('http_payload', '').strip()
+    raw_headers = request.form.get('raw_headers', '').strip()
+
+    # Validate required fields
+    if not hostname or not endpoint_path:
+        flash("Hostname and Path are required.", "error")
+        return redirect(url_for('endpoints_bp.view_endpoint_details', endpoint_id=endpoint_id))
+
+    # Update the endpoint fields
+    endpoint.name = name
+    endpoint.hostname = hostname
+    endpoint.endpoint = endpoint_path
+    endpoint.http_payload = http_payload
+
+    # Update headers: remove existing headers and add new ones from the raw input
+    for header in endpoint.headers:
+        db.session.delete(header)
+    endpoint.headers = []  # Clear out the relationship list
+
+    # Process the raw headers input (each header on a new line, "Key: Value" format)
+    if raw_headers:
+        lines = [line.strip() for line in raw_headers.split('\n') if line.strip()]
+        for line in lines:
+            if ':' in line:
+                key, value = line.split(':', 1)
+                new_header = APIHeader(endpoint_id=endpoint.id, key=key.strip(), value=value.strip())
+                db.session.add(new_header)
+                endpoint.headers.append(new_header)
+
+    try:
+        db.session.commit()
+        flash("Endpoint updated successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash("Error updating endpoint: " + str(e), "error")
+
+    # Redirect back to the view details page
+    return redirect(url_for('endpoints_bp.view_endpoint_details', endpoint_id=endpoint_id))
 
 
 # TODO: Remove this function as it ONLY serves as test endpoint on the details page for an endpoint. Should be one test function

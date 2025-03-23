@@ -1,4 +1,12 @@
 Orphaned test cases are just shown on the Test Suite creation page.
 
-Endpoint creation
-    Format JSON may introduce characters that cause an error
+Endpoint 
+    create_endpoint
+        Format JSON may introduce characters that cause an error
+        If the user doesn't have {{INJECT_PROMPT}} the form POST just causes an error
+    list_endpoint
+        Filter by hostname actually filters only by path
+
+Test Run
+    Change disposition to an AJAX call so it doesn't reload page each time the user selects a disposition
+

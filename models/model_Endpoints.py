@@ -19,6 +19,7 @@ class Endpoint(db.Model):
     __tablename__ = 'endpoints'
     
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)  # New name attribute
     hostname = db.Column(db.String, nullable=False)
     endpoint = db.Column(db.String, nullable=False)
     http_payload = db.Column(db.Text, nullable=True)   # HTTP payload sent with the request, should handle and store as JSON

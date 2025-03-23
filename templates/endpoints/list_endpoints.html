@@ -21,6 +21,7 @@
 <table id="endpointsTable">
   <thead>
     <tr>
+      <th>Label</th>
       <th>Hostname</th>
       <th>Path</th>
       <th>Timestamp</th>
@@ -31,6 +32,7 @@
   <tbody>
     {% for ep in endpoints %}
       <tr>
+        <td>{{ ep.name }}</td>
         <td>{{ ep.hostname }}</td>
         <td>{{ ep.endpoint }}</td>
         <td>
