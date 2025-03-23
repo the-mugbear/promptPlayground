@@ -3,6 +3,18 @@
 
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+  <style>
+    .payload-pre {
+      white-space: pre-wrap;        /* Keep whitespace, but wrap long lines */
+      word-wrap: break-word;        /* Older name */
+      overflow-wrap: anywhere;      /* Newer name that helps with really long “words” */
+      max-width: 600px;             /* or width: 600px; if you want a fixed width */
+      max-height: 500px;            /* limit height so it doesn’t blow up the layout */
+      overflow-y: auto;             /* scroll vertically if content exceeds max-height */
+      border: 1px dashed #FF00AA;   /* style as you like */
+      padding: 0.5rem;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
@@ -53,7 +65,7 @@
       <div class="endpoint-field">
         <label>Payload:</label>
         {% if endpoint.http_payload %}
-          <pre>{{ endpoint.http_payload }}</pre>
+          <pre class="payload-pre">{{ endpoint.http_payload }}</pre>
         {% else %}
           <em>No payload</em>
         {% endif %}
