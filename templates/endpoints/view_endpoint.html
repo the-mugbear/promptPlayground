@@ -2,17 +2,35 @@
 {% block title %}View & Test Endpoint #{{ endpoint.id }}{% endblock %}
 
 {% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
   <style>
     .payload-pre {
-      white-space: pre-wrap;        /* Keep whitespace, but wrap long lines */
-      word-wrap: break-word;        /* Older name */
-      overflow-wrap: anywhere;      /* Newer name that helps with really long “words” */
-      max-width: 600px;             /* or width: 600px; if you want a fixed width */
-      max-height: 500px;            /* limit height so it doesn’t blow up the layout */
-      overflow-y: auto;             /* scroll vertically if content exceeds max-height */
-      border: 1px dashed #FF00AA;   /* style as you like */
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+      max-width: 600px;
+      max-height: 500px;
+      overflow-y: auto;
+      border: 1px dashed #FF00AA;
       padding: 0.5rem;
+    }
+    .headers-box {
+      padding: 1rem;
+      border-radius: 4px;
+      margin-top: 0.5rem;
+    }
+    .header-item {
+      margin-bottom: 0.25rem;
+    }
+    .header-key {
+      font-weight: bold;
+      margin-right: 0.5rem;
+    }
+    .header-value {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-wrap: break-word;
     }
   </style>
 {% endblock %}
@@ -29,28 +47,22 @@
   <!-- Left Card: Endpoint Configuration + Edit Functionality + Test Form -->
   <div class="left-card">
     <h2>Endpoint #{{ endpoint.id }}</h2>
-    
     <!-- Button to toggle edit mode -->
     <button id="editButton" type="button">Edit Endpoint</button>
-    
     <!-- Read-Only Display -->
     <div id="viewContainer">
-      <!-- Basic info fields -->
       <div class="endpoint-field">
         <label>Name:</label>
         <span>{{ endpoint.name }}</span>
       </div>
-
       <div class="endpoint-field">
         <label>Hostname:</label>
         <span>{{ endpoint.hostname }}</span>
       </div>
-
       <div class="endpoint-field">
         <label>Path:</label>
         <span>{{ endpoint.endpoint }}</span>
       </div>
-
       <div class="endpoint-field">
         <label>Timestamp:</label>
         <span>
@@ -61,7 +73,6 @@
           {% endif %}
         </span>
       </div>
-
       <div class="endpoint-field">
         <label>Payload:</label>
         {% if endpoint.http_payload %}
@@ -70,16 +81,18 @@
           <em>No payload</em>
         {% endif %}
       </div>
-
-      <!-- Headers -->
+      <!-- Headers Display -->
       <div class="endpoint-field">
         <label>Headers:</label>
         {% if endpoint.headers and endpoint.headers|length > 0 %}
-          <ul class="headers-list">
+          <div class="headers-box">
             {% for hdr in endpoint.headers %}
-              <li><strong>{{ hdr.key }}:</strong> {{ hdr.value }}</li>
+              <div class="header-item">
+                <span class="header-key">{{ hdr.key }}:</span>
+                <span class="header-value">{{ hdr.value }}</span>
+              </div>
             {% endfor %}
-          </ul>
+          </div>
         {% else %}
           <p style="margin: 0;"><em>No headers available.</em></p>
         {% endif %}
@@ -107,59 +120,56 @@
           <textarea id="edit_http_payload" name="http_payload" rows="14" placeholder="Enter HTTP Payload...">{{ endpoint.http_payload }}</textarea>
         </div>
         <div class="form-group">
-          <label for="edit_raw_headers">Headers (Key: Value per line):</label>
-          <textarea id="edit_raw_headers" name="raw_headers" rows="8" placeholder="e.g., Content-Type: application/json&#10;Authorization: Bearer &lt;token&gt;">{% for hdr in endpoint.headers %}{{ hdr.key }}: {{ hdr.value }}{% if not loop.last %}&#10;{% endif %}{% endfor %}</textarea>
+          <!-- Note: Change id to "raw_headers" so headers.js picks it up -->
+          <label for="raw_headers">Headers (Key: Value per line):</label>
+          <textarea id="raw_headers" name="raw_headers" rows="14" placeholder="e.g., Content-Type: application/json&#10;Authorization: Bearer &lt;token&gt;">{% for hdr in endpoint.headers %}{{ hdr.key }}: {{ hdr.value }}{% if not loop.last %}&#10;{% endif %}{% endfor %}</textarea>
         </div>
         <button type="submit">Save Changes</button>
         <button type="button" id="cancelEdit">Cancel</button>
       </form>
     </div>
 
-    <!-- Test Form Container (contains override payload and headers) -->
+    <!-- Test Form Container -->
     <div id="testFormContainer">
-      <form 
-        class="test-form" 
-        action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}" 
-        method="POST"
-        id="test-endpoint-form"
-      >
-        <label for="testPayload">Override Payload (optional):</label>
-        <textarea id="testPayload" name="test_payload" rows="14"
-         placeholder="Enter a custom payload to test...">{% if override_payload %}{{ override_payload }}{% endif %}</textarea>
-
-        <!-- Optional headers override -->
-        <label for="raw_headers">Override Headers (Key: Value per line):</label>
-        <textarea id="raw_headers" name="raw_headers" rows="8" placeholder="Content-Type: application/json
-Authorization: Bearer <token>"></textarea>
-
+      <form class="test-form" action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}" method="POST" id="test-endpoint-form">
         <button type="submit" style="margin-top: 1rem;">Test This Endpoint</button>
       </form>
     </div>
   </div>
 
-  <!-- Right Card: Display Test Results -->
+  <!-- Right Card: Contains Test Results and Parsed Headers (toggle based on edit mode) -->
   <div class="right-card">
-    <h2>Test Results</h2>
-
-    <div class="test-section">
-      <label>What was sent:</label>
-      <div class="results-box">
-        {% if test_payload %}
-          <pre>{{ test_payload }}</pre>
-        {% else %}
-          <em>No test performed yet.</em>
-        {% endif %}
+    <!-- Test Results Container -->
+    <div id="testResultsContainer">
+      <h2>Test Results</h2>
+      <div class="test-section">
+        <label>What was sent:</label>
+        <div class="results-box">
+          {% if test_payload %}
+            <pre>{{ test_payload }}</pre>
+          {% else %}
+            <em>No test performed yet.</em>
+          {% endif %}
+        </div>
+      </div>
+      <div class="test-section">
+        <label>What was received:</label>
+        <div class="results-box">
+          {% if test_response %}
+            <pre>{{ test_response }}</pre>
+          {% else %}
+            <em>No response yet.</em>
+          {% endif %}
+        </div>
       </div>
     </div>
-
-    <div class="test-section">
-      <label>What was received:</label>
-      <div class="results-box">
-        {% if test_response %}
-          <pre>{{ test_response }}</pre>
-        {% else %}
-          <em>No response yet.</em>
-        {% endif %}
+    
+    <!-- Parsed Headers Preview Container (hidden by default) -->
+    <div id="headersPreviewContainer" style="display: none;">
+      <h2>Parsed Headers</h2>
+      <!-- Use the same container ID as in create_endpoint.html -->
+      <div id="suggestion-list" class="headers-box">
+        <!-- headers.js will render parsed headers here -->
       </div>
     </div>
   </div>
@@ -168,24 +178,34 @@ Authorization: Bearer <token>"></textarea>
 {% endblock %}
 
 {% block scripts %}
-<script>
-  // Show loading indicator for the test form
-  document.getElementById('test-endpoint-form').addEventListener('submit', function(){
-    document.getElementById('loadingIndicator').style.display = 'block';
-  });
-  
-  // Toggle edit mode: show edit form, hide read-only view and test form
-  document.getElementById("editButton").addEventListener("click", function() {
-    document.getElementById("editContainer").style.display = "block";
-    document.getElementById("viewContainer").style.display = "none";
-    document.getElementById("testFormContainer").style.display = "none";
-  });
-  
-  // Cancel edit: hide edit form, show read-only view and test form
-  document.getElementById("cancelEdit").addEventListener("click", function() {
-    document.getElementById("editContainer").style.display = "none";
-    document.getElementById("viewContainer").style.display = "block";
-    document.getElementById("testFormContainer").style.display = "block";
-  });
-</script>
+  <!-- Include headers.js to reuse the parsing functionality -->
+  <script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>
+  <script>
+    // When Edit Endpoint is clicked, switch UI and trigger header parsing.
+    document.getElementById("editButton").addEventListener("click", function() {
+      document.getElementById("editContainer").style.display = "block";
+      document.getElementById("viewContainer").style.display = "none";
+      document.getElementById("testFormContainer").style.display = "none";
+      document.getElementById("testResultsContainer").style.display = "none";
+      document.getElementById("headersPreviewContainer").style.display = "block";
+      // Delay triggering the input event to ensure suggestion-list exists.
+      setTimeout(function(){
+        var rawHeaders = document.getElementById("raw_headers");
+        if (rawHeaders) {
+          rawHeaders.dispatchEvent(new Event('input'));
+        } else {
+          console.error("raw_headers element not found");
+        }
+      }, 0);
+    });
+    
+    // Cancel edit: revert UI back to view mode.
+    document.getElementById("cancelEdit").addEventListener("click", function() {
+      document.getElementById("editContainer").style.display = "none";
+      document.getElementById("viewContainer").style.display = "block";
+      document.getElementById("testFormContainer").style.display = "block";
+      document.getElementById("headersPreviewContainer").style.display = "none";
+      document.getElementById("testResultsContainer").style.display = "block";
+    });
+  </script>
 {% endblock %}
