@@ -3,6 +3,7 @@ from extensions import db
 from models.model_Endpoints import Endpoint, APIHeader
 from services.endpoints.endpoint_services import parse_headers_from_form, parse_headers_from_list_of_dict, headers_from_apiheader_list, parse_raw_headers
 from services.endpoints.api_templates import PAYLOAD_TEMPLATES
+from services.common.http_request_service import replay_post_request
 from werkzeug.exceptions import BadRequest
 from sqlalchemy.orm import joinedload
 import requests
@@ -188,43 +189,15 @@ def test_temporary_endpoint():
 
     raw_headers = request.form.get("raw_headers", "").strip()
 
-    # Construct final_headers from raw_headers
-    final_headers = parse_raw_headers(raw_headers)
-    # If user didn't specify 'Content-Type', let's default
-    final_headers.setdefault("Content-Type", "application/json")
+    # Use the service function to replay the POST request
+    result = replay_post_request(hostname, endpoint_path, actual_payload, raw_headers)
 
-    test_payload = actual_payload  # We'll pass it back to the template
-    response_text = ""
-    try:
-        import requests
-        url = f"{hostname.rstrip('/')}/{endpoint_path.lstrip('/')}"
-
-        # Try parse as JSON
-        try:
-            parsed_json = json.loads(actual_payload)
-            resp = requests.post(url, json=parsed_json, headers=final_headers, timeout=120, verify=False)
-        except json.JSONDecodeError:
-            # fallback to raw text
-            resp = requests.post(url, data=actual_payload, headers=final_headers, timeout=120)
-
-        resp.raise_for_status()
-
-        # Attempt to parse response as JSON
-        try:
-            parsed_resp = json.loads(resp.text)
-            response_text = json.dumps(parsed_resp, indent=2)
-        except json.JSONDecodeError:
-            response_text = resp.text
-    except requests.exceptions.RequestException as e:
-        response_text = f"Error: {str(e)}"
-
-    # Re-render the 'create_endpoint.html' template, but pass in test results
     return render_template(
         'endpoints/create_endpoint.html',
-        test_payload=test_payload,
-        test_response=response_text,
-        test_status_code=resp.status_code,         # e.g., 200
-        test_headers_sent=final_headers             # the headers dictionary used in the POST
+        test_payload=actual_payload,
+        test_response=result.get("response_text"),
+        test_status_code=result.get("status_code"),
+        test_headers_sent=result.get("headers_sent")
     )
 
 
@@ -280,64 +253,34 @@ def update_endpoint(endpoint_id):
 # TODO: Remove this function as it ONLY serves as test endpoint on the details page for an endpoint. Should be one test function
 @endpoints_bp.route('/<int:endpoint_id>/test', methods=['POST'])
 def test_endpoint(endpoint_id):
-    endpoint = Endpoint.query.get_or_404(endpoint_id)
+    # Fetch the endpoint from the database.
+    endpoint_obj = Endpoint.query.get_or_404(endpoint_id)
+    
+    # Use the form data; if an override is provided, use it; otherwise, fall back to stored data.
+    # Here, we assume the form fields are consistently named:
+    # "hostname", "endpoint", "http_payload", and "raw_headers".
+    hostname = request.form.get("hostname", "").strip() or endpoint_obj.hostname
+    endpoint_path = request.form.get("endpoint", "").strip() or endpoint_obj.endpoint
+    
+    # For the payload, prefer the "test_payload" if provided, else default to the stored http_payload.
+    http_payload = request.form.get("test_payload", "").strip() or endpoint_obj.http_payload or ""
+    
+    # If the payload contains the placeholder, replace it.
+    if "{{INJECT_PROMPT}}" in http_payload:
+        http_payload = http_payload.replace("{{INJECT_PROMPT}}", "What is 4 + 3?")
+    
+    raw_headers = request.form.get("raw_headers", "").strip()
 
-    # 1) Payload override vs. stored payload
-    override_payload = request.form.get('test_payload', '').strip()
-    actual_payload = override_payload or (endpoint.http_payload or "")
-
-    # 2) Headers from DB
-    existing_headers_dict = headers_from_apiheader_list(endpoint.headers)
-
-    # 3) Possibly parse user's raw header overrides
-    raw_headers = request.form.get('raw_headers', '').strip()
-    user_headers_dict = parse_raw_headers(raw_headers)
-
-    # Merge them. If the user typed a key that already exists, they override it
-    final_headers = {**existing_headers_dict, **user_headers_dict}
-    response_text = ""
-
-    try:
-        # lstrip and rstrip used to remove leading chars from left and right sides respectively
-        url = f"{endpoint.hostname.rstrip('/')}/{endpoint.endpoint.lstrip('/')}"
-        # If actual_payload is valid JSON, we do requests.post(..., json=...)
-
-        # We'll do a quick JSON parse attempt:
-        try:
-            parsed_json = json.loads(actual_payload)
-            # If parse succeeded, let's ensure we have "Content-Type" set if user didn't
-            final_headers.setdefault("Content-Type", "application/json")
-            resp = requests.post(url, json=parsed_json, headers=final_headers, timeout=120)
-
-        except json.JSONDecodeError:
-            # fallback to raw text
-            # if user didn't specify Content-Type, let's default to something
-            final_headers.setdefault("Content-Type", "application/json")
-            resp = requests.post(url, data=actual_payload, headers=final_headers, timeout=120)
-
-        resp.raise_for_status()
-
-        # Pretty print response for presentation to front
-        try:
-            # Attempt to parse as JSON
-            parsed_resp = json.loads(resp.text)
-            # Re-dump with pretty indentation
-            response_text = json.dumps(parsed_resp, indent=2)
-
-        except json.JSONDecodeError:
-            # If it's not valid JSON, fallback to the raw text
-            response_text = resp.text
-
-    except requests.exceptions.RequestException as e:
-        response_text = f"Error: {str(e)}"
+    # Call the service function to replay the POST request.
+    result = replay_post_request(hostname, endpoint_path, http_payload, raw_headers)
 
     return render_template(
         'endpoints/view_endpoint.html',
-        endpoint=endpoint,
-        override_payload=override_payload,
-        test_payload=actual_payload,
-        test_response=response_text
+        endpoint=endpoint_obj,
+        test_payload=http_payload,
+        test_response=result.get("response_text")
     )
+
 
 
 # AJAX call from Create Test Run page to support page functionality

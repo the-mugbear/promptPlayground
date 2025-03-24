@@ -8,6 +8,8 @@ from models.model_TestRun import TestRun
 from models.model_TestRunAttempt import TestRunAttempt
 from models.model_TestExecution import TestExecution
 from services.transformers.registry import apply_transformation, TRANSFORM_PARAM_CONFIG
+from services.common.http_request_service import replay_post_request
+from services.endpoints.endpoint_services import headers_from_apiheader_list
 
 import json, requests
 
@@ -251,11 +253,12 @@ def execute_test_run(run_id):
     db.session.commit()
 
     endpoint_obj = run.endpoint
-    url = f"{endpoint_obj.hostname.rstrip('/')}/{endpoint_obj.endpoint.lstrip('/')}"
     original_payload_str = endpoint_obj.http_payload or ""
 
-    # Extract headers from the endpoint object and build a dictionary.
-    headers = {header.key: header.value for header in endpoint_obj.headers}
+    # Build raw headers string from the stored headers, if any
+    stored_headers = headers_from_apiheader_list(endpoint_obj.headers)  # returns a dict
+    # Create a raw header string: "Key1: Value1; Key2: Value2"
+    raw_headers = "; ".join([f"{k}: {v}" for k, v in stored_headers.items()])
 
     # Process each pending execution in the current attempt.
     for execution in pending_executions:
@@ -268,35 +271,24 @@ def execute_test_run(run_id):
                 params["value"] = tinfo["value"]
             prompt = apply_transformation(t_type, prompt, params)
 
-        # Replace the placeholder in the payload.
-        replaced_str = original_payload_str.replace("{{INJECT_PROMPT}}", prompt)
+        # Replace the placeholder in the payload with the transformed prompt.
+        replaced_payload_str = original_payload_str.replace("{{INJECT_PROMPT}}", prompt)
+        execution.started_at = execution.started_at or datetime.now()
 
-        # Attempt to parse the payload as JSON.
-        try:
-            test_payload = json.loads(replaced_str)
-        except json.JSONDecodeError as e:
+        # Use the shared service to replay the POST request
+        result = replay_post_request(endpoint_obj.hostname, endpoint_obj.endpoint, replaced_payload_str, raw_headers)
+        execution.finished_at = datetime.now()
+
+        if result.get("status_code") is not None:
+            execution.status = 'passed'
+            execution.response_data = result.get("response_text")
+        else:
             execution.status = 'failed'
-            execution.response_data = f"Invalid JSON after substitution: {e}"
-            execution.started_at = execution.started_at or datetime.now()
-            execution.finished_at = datetime.now()
-            db.session.commit()
-            continue
-
-        try:
-            execution.started_at = execution.started_at or datetime.now()
-            resp = requests.post(url, json=test_payload, headers=headers, timeout=120, verify=False)
-            resp.raise_for_status()
-            execution.status = 'pending_review'
-            execution.response_data = resp.text
-            execution.finished_at = datetime.now()
-        except Exception as e:
-            execution.status = 'FAIL - no response'
-            execution.response_data = str(e)
-            execution.finished_at = datetime.now()
-
+            execution.response_data = result.get("response_text")
+        
         db.session.commit()
 
-    # If all executions in the current attempt are finished, mark it completed.
+    # If all executions are finished, mark the attempt as completed.
     if all(ex.status in ['passed', 'failed', 'skipped'] for ex in latest_attempt.executions):
         latest_attempt.status = 'completed'
         latest_attempt.finished_at = datetime.now()
