@@ -258,7 +258,8 @@ def execute_test_run(run_id):
     # Build raw headers string from the stored headers, if any
     stored_headers = headers_from_apiheader_list(endpoint_obj.headers)  # returns a dict
     # Create a raw header string: "Key1: Value1; Key2: Value2"
-    raw_headers = "; ".join([f"{k}: {v}" for k, v in stored_headers.items()])
+    # test_temporary endpoint expects (and the headers.js parser assumes) that each header is on its own line
+    raw_headers = "\n".join([f"{k}: {v}" for k, v in stored_headers.items()])
 
     # Process each pending execution in the current attempt.
     for execution in pending_executions:
