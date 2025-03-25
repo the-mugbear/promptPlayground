@@ -1,6 +1,46 @@
 // We'll keep an array in JS to track the parsed headers
 let headerEntries = [];
 
+// Robust cookie parsing function
+function parseCookieHeader(cookieString) {
+    const cookiePairs = [];
+    let currentPair = '';
+    let insideQuotes = false;
+    
+    for (let i = 0; i < cookieString.length; i++) {
+        const char = cookieString[i];
+        
+        if (char === '"' && cookieString[i-1] !== '\\') {
+            insideQuotes = !insideQuotes;
+        }
+        
+        if (char === ';' && !insideQuotes) {
+            // End of a cookie pair
+            if (currentPair.trim()) {
+                const [name, ...valueParts] = currentPair.trim().split('=');
+                cookiePairs.push({
+                    name: name.trim(),
+                    value: valueParts.join('=').trim().replace(/^"|"$/g, '')
+                });
+            }
+            currentPair = '';
+        } else {
+            currentPair += char;
+        }
+    }
+    
+    // Add the last cookie
+    if (currentPair.trim()) {
+        const [name, ...valueParts] = currentPair.trim().split('=');
+        cookiePairs.push({
+            name: name.trim(),
+            value: valueParts.join('=').trim().replace(/^"|"$/g, '')
+        });
+    }
+    
+    return cookiePairs;
+}
+
 // Automatically parse headers when the raw_headers textarea is modified
 document.getElementById('raw_headers').addEventListener('input', parseHeaders);
 
@@ -17,20 +57,12 @@ function parseHeaders() {
             const key = parts[0].trim();
             let value = parts[1].trim();
             let entry = { key, value };
-            // If this is a Cookie header, split its value into individual cookie pairs.
+            
+            // Special handling for Cookie header
             if (key.toLowerCase() === 'cookie') {
-                const cookiePairs = value.split(';')
-                    .map(pair => pair.trim())
-                    .filter(pair => pair)
-                    .map(pair => {
-                        const cookieParts = pair.split('=', 2);
-                        return {
-                            name: cookieParts[0].trim(),
-                            value: cookieParts[1] ? cookieParts[1].trim() : ""
-                        };
-                    });
-                entry.cookiePairs = cookiePairs;
+                entry.cookiePairs = parseCookieHeader(value);
             }
+            
             headerEntries.push(entry);
         }
     }
@@ -44,6 +76,7 @@ function renderHeaders() {
     headerEntries.forEach((entry, idx) => {
         const row = document.createElement('div');
         row.className = 'header-row';
+        
         // Check if this is a Cookie header with cookiePairs available
         if (entry.key.toLowerCase() === 'cookie' && entry.cookiePairs) {
             // Build HTML for each cookie pair
@@ -54,6 +87,7 @@ function renderHeaders() {
                             <button type="button" onclick="removeCookie(${idx}, ${cIdx})">X</button>
                         </div>`;
             }).join('');
+            
             row.innerHTML = `
                 <input type="text" class="header-key" value="${entry.key}" oninput="updateKey(${idx}, this.value)">
                 <div class="cookie-container">${cookieHtml}</div>
@@ -69,10 +103,12 @@ function renderHeaders() {
         }
         previewDiv.appendChild(row);
     });
+    
     // Update the raw textarea so that it stays in sync with headerEntries.
     updateRawHeaders();
 }
 
+// The rest of the functions remain the same as in your original script
 function updateRawHeaders() {
     const rawHeadersText = headerEntries.map(h => {
         if (h.key.toLowerCase() === 'cookie' && h.cookiePairs) {
@@ -102,7 +138,6 @@ function updateValue(index, newValue) {
 }
 
 // Cookie-specific functions
-
 function updateCookieKey(headerIdx, cookieIdx, newName) {
     headerEntries[headerIdx].cookiePairs[cookieIdx].name = newName;
     updateRawHeaders();
