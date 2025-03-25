@@ -42,8 +42,7 @@ function parseCookieHeader(cookieString) {
 }
 
 // Automatically parse headers when the raw_headers textarea is modified
-document.getElementById('raw_headers').addEventListener('input', parseHeaders);
-
+// use indexOf() to find the first colon and then use substring() so that any additional colons in the value remain intact
 function parseHeaders() {
     const rawText = document.getElementById('raw_headers').value;
     const lines = rawText.split('\n');
@@ -52,22 +51,24 @@ function parseHeaders() {
     for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed) continue;  // skip empty lines
-        const parts = trimmed.split(':', 2);
-        if (parts.length === 2) {
-            const key = parts[0].trim();
-            let value = parts[1].trim();
-            let entry = { key, value };
-            
-            // Special handling for Cookie header
-            if (key.toLowerCase() === 'cookie') {
-                entry.cookiePairs = parseCookieHeader(value);
-            }
-            
-            headerEntries.push(entry);
+
+        // Use indexOf to find the first colon, preserving additional colons in the value.
+        const colonIndex = trimmed.indexOf(':');
+        if (colonIndex === -1) continue;  // ignore lines with no colon
+
+        const key = trimmed.substring(0, colonIndex).trim();
+        const value = trimmed.substring(colonIndex + 1).trim();
+        let entry = { key, value };
+
+        // Special handling for Cookie header
+        if (key.toLowerCase() === 'cookie') {
+            entry.cookiePairs = parseCookieHeader(value);
         }
+        headerEntries.push(entry);
     }
     renderHeaders();
 }
+
 
 function renderHeaders() {
     const previewDiv = document.getElementById('suggestion-list');
