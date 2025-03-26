@@ -103,7 +103,7 @@ def delete_test_suite(suite_id):
     # Option A) If you want to block deletion if it’s used in a run:
     if suite.test_runs:
         flash("Cannot delete this suite because it's used by one or more test runs.", "error")
-        return redirect(url_for('...somewhere...', ...))
+        return redirect(url_for('test_suites_bp.list_test_suites'))
 
     # Option B) Or you just remove references from runs, or rely on cascade:
     #   e.g. suite.test_runs.clear() # if you want to disassociate it from runs

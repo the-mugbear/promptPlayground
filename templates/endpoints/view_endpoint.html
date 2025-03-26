@@ -5,33 +5,45 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
   <style>
-    .payload-pre {
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      overflow-wrap: anywhere;
-      max-width: 600px;
-      max-height: 500px;
-      overflow-y: auto;
-      border: 1px dashed #FF00AA;
-      padding: 0.5rem;
-    }
-    .headers-box {
-      padding: 1rem;
-      border-radius: 4px;
-      margin-top: 0.5rem;
-    }
-    .header-item {
-      margin-bottom: 0.25rem;
-    }
-    .header-key {
-      font-weight: bold;
-      margin-right: 0.5rem;
-    }
-    .header-value {
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      word-wrap: break-word;
-    }
+      /* Constrain the payload display (for reference) */
+      .payload-pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        overflow-wrap: anywhere;
+        max-width: 600px;
+        max-height: 500px;
+        overflow-y: auto;
+        border: 1px dashed #FF00AA;
+        padding: 0.5rem;
+        margin: 0; /* Remove default margins */
+      }
+
+      /* Constrain the header display to match payload styling */
+      .headers-box {
+        padding: 1rem;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+        max-width: 600px;    /* Limit width similar to payload */
+        max-height: 500px;   /* Limit height to prevent page resize */
+        overflow-y: auto;    /* Enable vertical scrolling when necessary */
+        border: 1px dashed #FF00AA;  /* Consistent border style */
+      }
+
+      .header-item {
+        margin-bottom: 0.25rem;
+      }
+
+      .header-key {
+        font-weight: bold;
+        margin-right: 0.5rem;
+      }
+
+      .header-value {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-wrap: break-word;
+      }
+
   </style>
 {% endblock %}
 
@@ -51,19 +63,19 @@
     <button id="editButton" type="button">Edit Endpoint</button>
     <!-- Read-Only Display -->
     <div id="viewContainer">
-      <div class="endpoint-field">
+      <div class="">
         <label>Name:</label>
         <span>{{ endpoint.name }}</span>
       </div>
-      <div class="endpoint-field">
+      <div class="">
         <label>Hostname:</label>
         <span>{{ endpoint.hostname }}</span>
       </div>
-      <div class="endpoint-field">
+      <div class="">
         <label>Path:</label>
         <span>{{ endpoint.endpoint }}</span>
       </div>
-      <div class="endpoint-field">
+      <div class="">
         <label>Timestamp:</label>
         <span>
           {% if endpoint.timestamp %}
@@ -102,7 +114,7 @@
     <!-- Edit Form (initially hidden) -->
     <div id="editContainer" style="display: none; margin-top: 1rem;">
       <h3>Edit Endpoint</h3>
-      <form action="{{ url_for('endpoints_bp.update_endpoint', endpoint_id=endpoint.id) }}" method="POST" id="edit-endpoint-form">
+      <form action="{{ url_for('endpoints_bp.update_endpoint', endpoint_id=endpoint.id) }}" method="POST" id="create-endpoint-form">
         <div class="form-group">
           <label for="edit_name">Name:</label>
           <input type="text" id="edit_name" name="name" value="{{ endpoint.name }}">
@@ -168,7 +180,7 @@
     <div id="headersPreviewContainer" style="display: none;">
       <h2>Parsed Headers</h2>
       <!-- Use the same container ID as in create_endpoint.html -->
-      <div id="suggestion-list" class="headers-box">
+      <div id="suggestion-list">
         <!-- headers.js will render parsed headers here -->
       </div>
     </div>
@@ -188,15 +200,16 @@
       document.getElementById("testFormContainer").style.display = "none";
       document.getElementById("testResultsContainer").style.display = "none";
       document.getElementById("headersPreviewContainer").style.display = "block";
-      // Delay triggering the input event to ensure suggestion-list exists.
+      // Use a slight delay before calling parseHeaders directly
       setTimeout(function(){
-        var rawHeaders = document.getElementById("raw_headers");
-        if (rawHeaders) {
-          rawHeaders.dispatchEvent(new Event('input'));
+        // Instead of dispatching an input event, call parseHeaders() directly
+        if (typeof parseHeaders === "function") {
+          parseHeaders();
+          console.log("parseHeaders called directly after showing headersPreviewContainer");
         } else {
-          console.error("raw_headers element not found");
+          console.error("parseHeaders function not found");
         }
-      }, 0);
+      }, 100);
     });
     
     // Cancel edit: revert UI back to view mode.
