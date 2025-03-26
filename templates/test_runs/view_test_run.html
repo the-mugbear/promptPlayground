@@ -157,9 +157,9 @@
                                             <div class="code-block json-response">{{ attempt.response }}</div>
                                         </td>
                                         <td class="px-4 py-2">
-                                            <form method="POST" action="{{ url_for('test_runs_bp.update_execution_status', run_id=run.id) }}">
+                                            <form method="POST" action="{{ url_for('test_runs_bp.update_execution_status', run_id=run.id) }}" class="update-status-form">
                                                 <input type="hidden" name="execution_id" value="{{ attempt.execution_id }}">
-                                                <select name="status" class="border rounded p-1" onchange="this.form.submit()">
+                                                <select name="status" class="border rounded p-1">
                                                     <option value="passed" {% if attempt.status == 'passed' %}selected{% endif %}>Passed</option>
                                                     <option value="failed" {% if attempt.status == 'failed' %}selected{% endif %}>Failed</option>
                                                     <option value="skipped" {% if attempt.status == 'skipped' %}selected{% endif %}>Skipped</option>
@@ -181,8 +181,9 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/testRuns/filterAttempts.js') }}"></script>
-<!-- <script src="{{ url_for('static', filename='js/testRuns/createTestRun.js') }}"></script> -->
+<script src="{{ url_for('static', filename='js/testRuns/updateDisposition.js') }}"></script>
 <script src="{{ url_for('static', filename='js/testRuns/filterResponse.js') }}"></script>
+
 <!-- For sick donuts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{{ url_for('static', filename='js/testRuns/donut.js') }}"></script>

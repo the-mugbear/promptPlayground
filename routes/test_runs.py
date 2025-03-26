@@ -305,25 +305,28 @@ def update_execution_status(run_id):
     execution_id = request.form.get('execution_id')
     new_status = request.form.get('status')
     
-    # Check if required values are provided
     if not execution_id or not new_status:
         flash("Missing execution ID or status.", "error")
+        # For AJAX requests, return JSON error
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"status": "error", "message": "Missing execution ID or status."}), 400
         return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
     
     try:
-        # Retrieve the execution record by its ID; 404 if not found
         execution = TestExecution.query.get_or_404(execution_id)
-        
-        # Update the status with the new value
         execution.status = new_status
-        
-        # Commit the changes to the database
         db.session.commit()
         flash("Test execution status updated successfully.", "success")
+        
+        # Return a JSON response for AJAX calls
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"status": "success", "message": "Test execution status updated successfully."})
+        else:
+            return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
     except Exception as e:
-        # Roll back on error and flash an error message
         db.session.rollback()
         flash(f"Error updating status: {str(e)}", "error")
-    
-    # Redirect back to the test run view page
-    return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"status": "error", "message": str(e)}), 400
+        return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
+

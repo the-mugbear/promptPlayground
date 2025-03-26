@@ -116,12 +116,12 @@ def handle_create_endpoint():
     except BadRequest as e:
         db.session.rollback()
         flash(str(e), 'error')
-        return redirect(url_for('endpoints_bp.create_endpoint'))
+        return redirect(url_for('endpoints_bp.create_endpoint_form'))
     
     except Exception as e:
         db.session.rollback()
         flash(f'Error creating endpoint: {str(e)}', 'error')
-        return redirect(url_for('endpoints_bp.create_endpoint'))
+        return redirect(url_for('endpoints_bp.create_endpoint_form'))
 
 @endpoints_bp.route('/get_suggestions', methods=['GET'])
 def get_endpoint_suggestions():

@@ -2,53 +2,35 @@
 {% block title %}Create Test Run{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
-<style>
-  .left-panel, .right-panel {
-    flex: 1;
-    background-color: #111;
-    padding: 1rem;
-    border: 2px dashed var(--accent-color);
-    border-radius: 4px;
-  }
-  .panel-heading {
-    color: var(--accent-color);
-    margin-top: 0;
-  }
-  .search-form {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    align-items: center;
-  }
-
-  /* Example styling for the container that holds header key-value rows */
-  .headers-container .header-row {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-  }
-  .headers-container .header-row input[type="text"] {
-    flex: 1;
-  }
-</style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <style>
+    /* Ensure header key/value pairs are side by side */
+    .headers-container .header-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .headers-container .header-row input[type="text"] {
+      flex: 1;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
 <div class="two-column-container">
   
-  <!-- Left: main POST form for run details + hidden suite IDs -->
-  <div class="left-panel">
-    <h2 class="panel-heading">Test Run Details</h2>
-
+  <!-- Left: Main POST form for run details + hidden suite IDs -->
+  <div class="left-card">
+    <h2>Test Run Details</h2>
     <form id="createRunForm" action="{{ url_for('test_runs_bp.handle_create_test_run') }}" method="POST">
-      <!-- run name -->
+      
+      <!-- Run Name -->
       <div class="form-group">
         <label for="run_name">Run Name (optional)</label>
         <input type="text" name="run_name" id="run_name" placeholder="e.g., All bias suites">
       </div>
 
-      <!-- endpoint -->
+      <!-- Endpoint Selection -->
       <div class="form-group">
         <label for="endpoint_id">Select Endpoint:</label>
         <select name="endpoint_id" id="endpoint_id">
@@ -58,7 +40,7 @@
         </select>
       </div>
 
-      <!-- Show the endpoint’s HTTP payload -->
+      <!-- HTTP Payload Override -->
       <div class="form-group">
         <label for="endpointPayload">HTTP Payload Override (optional)</label>
         <textarea 
@@ -69,23 +51,23 @@
         ></textarea>
       </div>
 
-      <!-- Show the endpoint’s headers for editing -->
+      <!-- Headers -->
       <div class="form-group">
         <label>Headers</label>
         <div class="headers-container" id="headersContainer">
-          <!-- Dynamically filled with key/value inputs -->
+          {# Dynamically filled with key/value inputs #}
         </div>
       </div>
 
-      <!-- Selected test suites display -->
+      <!-- Selected Test Suites Display -->
       <div class="form-group">
         <label>Selected Test Suites:</label>
         <ul id="selectedSuitesList" class="selected-suites-list">
-          <!-- We'll populate this via JS -->
+          {# Populated via JS #}
         </ul>
       </div>
 
-      <!-- Hidden inputs for suite IDs go here dynamically -->
+      <!-- Hidden Inputs for Suite IDs -->
       <div id="hiddenSuitesContainer"></div>
 
       <button type="submit">Create Test Run</button>
@@ -93,10 +75,10 @@
   </div>
 
   <!-- Right: GET form for searching test suites + checkboxes + "Add selected" -->
-  <div class="right-panel">
-    <h2 class="panel-heading">Find Test Suites</h2>
-
-    <!-- GET form for searching/pagination -->
+  <div class="right-card">
+    <h2>Find Test Suites</h2>
+    
+    <!-- Search Form -->
     <form class="search-form" method="GET" action="{{ url_for('test_runs_bp.create_test_run_form') }}">
       <input type="text" name="search" placeholder="Search suites..." value="{{ search|default('') }}">
       <button type="submit">Search</button>
@@ -113,16 +95,14 @@
           </div>
         {% endfor %}
       </div>
-      <!-- Add selected button -->
       <button type="button" id="addSelectedBtn">Add Selected Suites</button>
-
+      
       <!-- Pagination -->
       {% if pagination.pages > 1 %}
         <div class="pagination-links" style="margin-top: 1rem;">
           {% if pagination.has_prev %}
             <a href="{{ url_for('test_runs_bp.create_test_run_form', page=pagination.prev_num, search=search) }}">Previous</a>
           {% endif %}
-
           {% for p in range(1, pagination.pages+1) %}
             {% if p == pagination.page %}
               <strong>{{ p }}</strong>
@@ -130,7 +110,6 @@
               <a href="{{ url_for('test_runs_bp.create_test_run_form', page=p, search=search) }}">{{ p }}</a>
             {% endif %}
           {% endfor %}
-
           {% if pagination.has_next %}
             <a href="{{ url_for('test_runs_bp.create_test_run_form', page=pagination.next_num, search=search) }}">Next</a>
           {% endif %}
@@ -145,5 +124,9 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/testRuns/createTestRun.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/testRuns/endpointDetails.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/testRuns/testSuiteSelection.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/testRuns/ajaxSearch.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/testRuns/pagination.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/testRuns/findReplace.js') }}"></script>
 {% endblock %}

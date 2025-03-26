@@ -271,6 +271,7 @@
     font-size: 1rem;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
+    width: 50%;  /* Set a fixed width, or use a percentage */
   }
   .search-bar:focus {
     border-color: var(--secondary-color);
