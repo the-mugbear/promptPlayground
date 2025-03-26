@@ -1,4 +1,9 @@
 // We'll keep an array in JS to track the parsed headers
+// WARNING: one of the reasons this may be needlessly complicated is that
+// I encountered an issue where changes made on the right card to the parsed header entries
+// were successfully updating the contents of the Headers: textarea but the opposite was not true.
+// This caused an issue when the user edits Header values directly in the textarea to be overwritten
+// by what was stored in the parsed headers. 
 let headerEntries = [];
 
 // Robust cookie parsing function
@@ -111,17 +116,28 @@ function renderHeaders() {
 
 // The rest of the functions remain the same as in your original script
 function updateRawHeaders() {
-    const rawHeadersText = headerEntries.map(h => {
-        if (h.key.toLowerCase() === 'cookie' && h.cookiePairs) {
-            // Reconstruct the Cookie header from individual cookie pairs.
-            const cookieString = h.cookiePairs.map(c => `${c.name}=${c.value}`).join('; ');
-            return `${h.key}: ${cookieString}`;
-        } else {
-            return `${h.key}: ${h.value}`;
-        }
-    }).join('\n');
-    document.getElementById('raw_headers').value = rawHeadersText;
+    const rawHeadersElem = document.getElementById('raw_headers');
+    // Only update the textarea if it's not focused (so we don't override user input)
+    if (document.activeElement !== rawHeadersElem) {
+        const rawHeadersText = headerEntries.map(h => {
+            if (h.key.toLowerCase() === 'cookie' && h.cookiePairs) {
+                const cookieString = h.cookiePairs.map(c => `${c.name}=${c.value}`).join('; ');
+                return `${h.key}: ${cookieString}`;
+            } else {
+                return `${h.key}: ${h.value}`;
+            }
+        }).join('\n');
+        rawHeadersElem.value = rawHeadersText;
+    }
 }
+
+// Add a blur listener so that when the user finishes editing the textarea,
+// we update it to reflect the current headerEntries.
+document.getElementById('raw_headers').addEventListener('blur', function() {
+    updateRawHeaders();
+});
+
+document.getElementById('raw_headers').addEventListener('input', parseHeaders);
 
 function removeHeader(index) {
     headerEntries.splice(index, 1);
