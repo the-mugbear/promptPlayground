@@ -4,10 +4,9 @@ from models.model_Endpoints import Endpoint, APIHeader
 from services.endpoints.endpoint_services import parse_headers_from_form, parse_headers_from_list_of_dict, headers_from_apiheader_list, parse_raw_headers
 from services.endpoints.api_templates import PAYLOAD_TEMPLATES
 from services.common.http_request_service import replay_post_request
+from services.common.header_parser_service import parse_raw_headers
 from werkzeug.exceptions import BadRequest
 from sqlalchemy.orm import joinedload
-import requests
-import json
 
 endpoints_bp = Blueprint('endpoints_bp', __name__, url_prefix='/endpoints')
 
@@ -43,21 +42,6 @@ def view_endpoint_details(endpoint_id):
 # ********************************
 @endpoints_bp.route('/create', methods=['POST'])
 def handle_create_endpoint():
-    """
-    POST /endpoints/create -> Saves the new endpoint info and its headers in the DB
-    
-    Expected form data:
-        - hostname: str
-        - endpoint: str
-        - http_payload: str (must contain {{INJECT_PROMPT}} if present)
-        - raw_headers: str (newline-separated key:value pairs)
-        
-    Returns:
-        Redirect to endpoints list on success
-        
-    Raises:
-        BadRequest: If required fields are missing or if {{INJECT_PROMPT}} is not found
-    """
     try:
         # Retrieve the new name field from the form
         name = request.form.get('name', '').strip()
@@ -96,16 +80,11 @@ def handle_create_endpoint():
         db.session.add(new_endpoint)
         db.session.flush()
 
-        # 4) Parse headers from user
         raw_headers = request.form.get('raw_headers', '')
-        lines = [line.strip() for line in raw_headers.split('\n') if line.strip()]
-        for line in lines:
-            if ':' in line:
-                key, value = line.split(':', 1)
-                key = key.strip()
-                value = value.strip()
-                header = APIHeader(endpoint_id=new_endpoint.id, key=key, value=value)
-                db.session.add(header)
+        parsed_headers = parse_raw_headers(raw_headers)
+        for key, value in parsed_headers.items():
+            header = APIHeader(endpoint_id=new_endpoint.id, key=key, value=value)
+            db.session.add(header)
 
         db.session.commit()
         flash('Endpoint created successfully!', 'success')
@@ -229,15 +208,23 @@ def update_endpoint(endpoint_id):
         db.session.delete(header)
     endpoint.headers = []  # Clear out the relationship list
 
-    # Process the raw headers input (each header on a new line, "Key: Value" format)
+    # # Process the raw headers input (each header on a new line, "Key: Value" format)
+    # if raw_headers:
+    #     lines = [line.strip() for line in raw_headers.split('\n') if line.strip()]
+    #     for line in lines:
+    #         if ':' in line:
+    #             key, value = line.split(':', 1)
+    #             new_header = APIHeader(endpoint_id=endpoint.id, key=key.strip(), value=value.strip())
+    #             db.session.add(new_header)
+    #             endpoint.headers.append(new_header)
+
+    # Use the centralized header parser to process raw headers in the update.
     if raw_headers:
-        lines = [line.strip() for line in raw_headers.split('\n') if line.strip()]
-        for line in lines:
-            if ':' in line:
-                key, value = line.split(':', 1)
-                new_header = APIHeader(endpoint_id=endpoint.id, key=key.strip(), value=value.strip())
-                db.session.add(new_header)
-                endpoint.headers.append(new_header)
+        parsed_headers = parse_raw_headers(raw_headers)
+        for key, value in parsed_headers.items():
+            new_header = APIHeader(endpoint_id=endpoint.id, key=key, value=value)
+            db.session.add(new_header)
+            endpoint.headers.append(new_header)
 
     try:
         db.session.commit()

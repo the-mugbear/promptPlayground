@@ -281,18 +281,20 @@ def execute_test_run(run_id):
         execution.finished_at = datetime.now()
 
         if result.get("status_code") is not None:
-            execution.status = 'passed'
+            execution.status = 'pending_review'
             execution.response_data = result.get("response_text")
         else:
-            execution.status = 'failed'
+            execution.status = 'error'
             execution.response_data = result.get("response_text")
         
         db.session.commit()
 
     # If all executions are finished, mark the attempt as completed.
-    if all(ex.status in ['passed', 'failed', 'skipped'] for ex in latest_attempt.executions):
+    # TODO: Remove other states, all cases should be 'pending review' after execution
+    if all(ex.status in ['pending review', 'failed', 'skipped'] for ex in latest_attempt.executions):
         latest_attempt.status = 'completed'
         latest_attempt.finished_at = datetime.now()
+        run.status = 'completed' # sets the test run record as complete if all test cases were completed
         db.session.commit()
 
     flash("Test run executed with the custom {{INJECT_PROMPT}} variable replaced in http_payload.", "success")
