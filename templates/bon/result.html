@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Jailbreak Result{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
+{% endblock %}
+
+{% block content %}
+  <h1>Jailbreak Result</h1>
+  {% if augmented_prompt %}
+    <h3>Augmented Prompt:</h3>
+    <pre>{{ augmented_prompt }}</pre>
+    <h3>Response from Endpoint:</h3>
+    <pre>{{ response }}</pre>
+  {% else %}
+    <p>No successful jailbreak was achieved.</p>
+  {% endif %}
+  <br>
+  <a href="{{ url_for('bon_bp.bon_index') }}">Back to Configuration</a>
+{% endblock %}

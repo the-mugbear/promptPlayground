@@ -20,6 +20,14 @@
         <span class="hamburger"></span>
       </button>
       <ul class="nav-links">
+        <!-- Dropdown for Best of N -->
+        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
+          <a href="#">BoN</a>
+          <ul class="dropdown-menu">
+            <li><a href="{{ url_for('bon_bp.bon_index') }}">Best of N Engine</a></li>
+          </ul>
+        </li>
+
         <!-- Dropdown for Reports -->
         <li class="dropdown {% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
           <a href="#">Reports</a>
@@ -27,7 +35,6 @@
             <li><a href="{{ url_for('report_bp.report') }}">Endpoint Reports</a></li>
           </ul>
         </li>
-
 
         <!-- Dropdown for Test Runs -->
         <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_runs_bp') %}active{% endif %}">
