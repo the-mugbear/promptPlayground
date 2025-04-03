@@ -3,55 +3,151 @@
 {% block title %}Evil Agent{% endblock %}
 
 {% block head %}
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    /* Chat container styling */
+    .chat-container {
+      max-width: 800px;
+      margin: 1rem auto;
+      padding: 1rem;
+      background-color: #000;
+      border: 2px dashed var(--accent-color);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    /* Chat row for aligning the boxes */
+    .chat-row {
+      display: flex;
+      width: 100%;
+    }
+    .chat-row.left {
+      justify-content: flex-start;
+    }
+    .chat-row.right {
+      justify-content: flex-end;
+    }
+    /* Chat message bubbles */
+    .chat-bubble {
+      border: 2px dashed var(--accent-color);
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      max-width: 60%;
+      background-color: #111;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-wrap: break-word;
+      word-break: break-all;
+    }
+    .chat-bubble strong {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    /* Filter dropdown styling */
+    .filter-container {
+      max-width: 800px;
+      margin: 1rem auto;
+      padding: 0.5rem;
+      background-color: #111;
+      border: 2px dashed var(--accent-color);
+      border-radius: 8px;
+    }
+    .filter-container label {
+      margin-right: 1rem;
+      font-weight: bold;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
+<div class="container">
   <h1>Evil Agent</h1>
-  <form id="bon-form">
-    <div>
-      <label for="adversarial_endpoint">Adversarial Endpoint:</label>
-      <select name="adversarial_endpoint" id="adversarial_endpoint">
-        <option value="">--Select Endpoint--</option>
-        {% for ep in endpoints %}
-          <option value="{{ ep.id }}">{{ ep.name }}</option>
-        {% endfor %}
-      </select>
-      <div id="adversarial_details"></div>
-    </div>
-    <br>
-    <div>
-      <label for="recipient_endpoint">Recipient Endpoint:</label>
-      <select name="recipient_endpoint" id="recipient_endpoint">
-        <option value="">--Select Endpoint--</option>
-        {% for ep in endpoints %}
-          <option value="{{ ep.id }}">{{ ep.name }}</option>
-        {% endfor %}
-      </select>
-      <div id="recipient_details"></div>
-    </div>
-    <br>
-    <div>
-      <label for="initial_prompt">Initial Prompt for Adversarial Endpoint:</label>
-      <br>
-      <textarea name="initial_prompt" id="initial_prompt" rows="4" cols="50" placeholder="Enter your initial prompt here"></textarea>
-    </div>
-    <br>
-    <!-- Change the button type to "button" so it doesn't trigger form submission -->
-    <button type="button" id="run-jailbreak">Run Jailbreak</button>
-  </form>
-  
-  <h2>Attempts Log</h2>
-  <div id="attempts_log">
-    <!-- Each attempted prompt and its response will be appended here -->
+  <div class="form-card">
+    <form id="bon-form">
+      <div class="form-group">
+        <label for="adversarial_endpoint">Adversarial Endpoint:</label>
+        <select name="adversarial_endpoint" id="adversarial_endpoint">
+          <option value="">--Select Endpoint--</option>
+          {% for ep in endpoints %}
+            <option value="{{ ep.id }}">{{ ep.name }}</option>
+          {% endfor %}
+        </select>
+        <div id="adversarial_details"></div>
+      </div>
+      
+      <div class="form-group">
+        <label for="recipient_endpoint">Recipient Endpoint:</label>
+        <select name="recipient_endpoint" id="recipient_endpoint">
+          <option value="">--Select Endpoint--</option>
+          {% for ep in endpoints %}
+            <option value="{{ ep.id }}">{{ ep.name }}</option>
+          {% endfor %}
+        </select>
+        <div id="recipient_details"></div>
+      </div>
+      
+      <div class="form-group">
+        <label for="initial_prompt">Initial Prompt for Adversarial Endpoint:</label>
+        <textarea name="initial_prompt" id="initial_prompt" rows="4" placeholder="Enter your initial prompt here"></textarea>
+      </div>
+      
+      <button type="button" id="run-jailbreak">Run Jailbreak</button>
+    </form>
   </div>
+  
+  <h2>Communication Log</h2>
+  <div class="filter-container">
+    <label for="filter-select">Filter by key:</label>
+    <select id="filter-select">
+      <option value="">Show All</option>
+    </select>
+  </div>
+  <div id="attempts_log" class="chat-container">
+    <!-- Chat messages will be appended here -->
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
   $(document).ready(function(){
-    // Fetch endpoint details on selection as before
+
+    // Update the filter dropdown with new keys from the JSON object.
+    function updateFilterOptions(jsonObj) {
+      if (typeof jsonObj === 'object') {
+        for (var key in jsonObj) {
+          if (jsonObj.hasOwnProperty(key)) {
+            if ($("#filter-select option[value='" + key + "']").length === 0) {
+              $("#filter-select").append("<option value='" + key + "'>" + key + "</option>");
+            }
+          }
+        }
+      }
+    }
+
+    // Extract content based on the selected filter key.
+    function extractFilteredContent(content) {
+      var selectedKey = $("#filter-select").val();
+      if (!selectedKey) {
+        // Show entire content if no filter is selected.
+        if (typeof content === 'object') {
+          return "<pre>" + JSON.stringify(content, null, 2) + "</pre>";
+        } else {
+          return "<pre>" + content + "</pre>";
+        }
+      } else {
+        if (typeof content === 'object' && content.hasOwnProperty(selectedKey)) {
+          return "<pre>" + JSON.stringify(content[selectedKey], null, 2) + "</pre>";
+        } else {
+          return "<pre>N/A</pre>";
+        }
+      }
+    }
+
     function fetchEndpointDetails(endpointId, targetDiv) {
       if (endpointId) {
         $.ajax({
@@ -72,46 +168,49 @@
         $(targetDiv).html('');
       }
     }
-    
+
     $('#adversarial_endpoint').change(function() {
-      var epId = $(this).val();
-      fetchEndpointDetails(epId, '#adversarial_details');
+      fetchEndpointDetails($(this).val(), '#adversarial_details');
     });
-    
+
     $('#recipient_endpoint').change(function() {
-      var epId = $(this).val();
-      fetchEndpointDetails(epId, '#recipient_details');
+      fetchEndpointDetails($(this).val(), '#recipient_details');
     });
-    
-    // Use a click handler on the button (not form submission) to launch the stream.
+
     $('#run-jailbreak').click(function(){
-      $('#attempts_log').html(''); // Clear previous logs
+      $('#attempts_log').html('');
       var formData = $('#bon-form').serialize();
       var url = "{{ url_for('evil_agent_bp.run_evil_agent') }}?" + formData;
       var source = new EventSource(url);
-      
+
       source.onmessage = function(event) {
         var data = JSON.parse(event.data);
+        
+        // Update filter options with keys from incoming messages.
+        if (data.adv_response && typeof data.adv_response === 'object') {
+          updateFilterOptions(data.adv_response);
+        }
+        if (data.response && typeof data.response === 'object') {
+          updateFilterOptions(data.response);
+        }
+
+        var chatHtml = "";
         if (data.final) {
-          $('#attempts_log').append(
-            '<div class="final-result"><h3>Final Result</h3>' +
-            (data.augmented_prompt ? '<pre>' + data.augmented_prompt + '</pre>' : '<p>No success</p>') +
-            (data.response ? '<pre>' + data.response + '</pre>' : '') +
-            '</div>'
-          );
+          if(data.adv_response) {
+            chatHtml += '<div class="chat-row left"><div class="chat-bubble"><strong>Adversarial:</strong>' + extractFilteredContent(data.adv_response) + '</div></div>';
+          }
+          if(data.response) {
+            chatHtml += '<div class="chat-row right"><div class="chat-bubble"><strong>Recipient:</strong>' + extractFilteredContent(data.response) + '</div></div>';
+          }
+          $('#attempts_log').append(chatHtml);
           source.close();
         } else {
-          $('#attempts_log').append(
-            '<div class="attempt">' +
-              '<p><strong>Attempt ' + data.attempt + ':</strong></p>' +
-              '<p><em>Prompt:</em> ' + data.prompt + '</p>' +
-              '<p><em>Response:</em> ' + data.response + '</p>' +
-              '<hr>' +
-            '</div>'
-          );
+          chatHtml += '<div class="chat-row left"><div class="chat-bubble"><strong>Adversarial:</strong>' + extractFilteredContent(data.adv_response) + '</div></div>';
+          chatHtml += '<div class="chat-row right"><div class="chat-bubble"><strong>Recipient:</strong>' + extractFilteredContent(data.response) + '</div></div>';
+          $('#attempts_log').append(chatHtml);
         }
       };
-      
+
       source.onerror = function() {
         $('#attempts_log').append('<p>Error receiving stream.</p>');
         source.close();

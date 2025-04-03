@@ -67,7 +67,7 @@ def handle_create_endpoint():
                     {"role": "user", "content": "{{INJECT_PROMPT}}"}
                 ]
             }"""
-                        # Option B: raise an error if you want to enforce user always provides
+            # Option B: raise an error if you want to enforce user always provides
             # raise BadRequest("No payload provided, must contain {{INJECT_PROMPT}}.")
 
         # 3) Create the Endpoint
@@ -104,10 +104,6 @@ def handle_create_endpoint():
 
 @endpoints_bp.route('/get_suggestions', methods=['GET'])
 def get_endpoint_suggestions():
-    """
-    Return distinct hostnames, paths, and possibly payload samples
-    from existing Endpoint records. The client will use these as suggestions.
-    """
     # Distinct hostnames
     hostnames = (Endpoint.query
                  .with_entities(Endpoint.hostname)

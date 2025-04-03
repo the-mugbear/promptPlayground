@@ -19,7 +19,7 @@ def is_positive_response(response_text):
     # Placeholder: consider the response positive if it includes 'success'
     return response_text and "success" in response_text.lower()
 
-def evil_agent_jailbreak_generator(adversarial_endpoint, recipient_endpoint, base_prompt, max_samples=10):
+def evil_agent_jailbreak_generator(adversarial_endpoint, recipient_endpoint, base_prompt, max_samples=3):
     attempts_log = []
     
     def prepare_raw_headers(endpoint):
@@ -47,6 +47,7 @@ def evil_agent_jailbreak_generator(adversarial_endpoint, recipient_endpoint, bas
         attempt_data = {
             'attempt': i + 1,
             'prompt': trial_prompt,
+            'adv_response': adv_response.get("response_text"),
             'response': rec_response.get("response_text")
         }
         attempts_log.append(attempt_data)
@@ -59,6 +60,7 @@ def evil_agent_jailbreak_generator(adversarial_endpoint, recipient_endpoint, bas
             yield {
                 'final': True,
                 'augmented_prompt': trial_prompt,
+                'adv_response': adv_response.get("response_text"),
                 'response': rec_response.get("response_text"),
                 'attempts_log': attempts_log
             }
@@ -70,6 +72,8 @@ def evil_agent_jailbreak_generator(adversarial_endpoint, recipient_endpoint, bas
     yield {
         'final': True,
         'augmented_prompt': None,
+        'adv_response': None,
         'response': None,
         'attempts_log': attempts_log
     }
+
