@@ -20,13 +20,6 @@
         <span class="hamburger"></span>
       </button>
       <ul class="nav-links">
-        <!-- Dropdown for Best of N -->
-        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
-          <a href="#">BoN</a>
-          <ul class="dropdown-menu">
-            <li><a href="{{ url_for('bon_bp.bon_index') }}">Best of N Engine</a></li>
-          </ul>
-        </li>
 
         <!-- Dropdown for Reports -->
         <li class="dropdown {% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
@@ -69,6 +62,15 @@
           <ul class="dropdown-menu">
             <li><a href="{{ url_for('test_cases_bp.create_test_case_form') }}">Create Case</a></li>
             <li><a href="{{ url_for('test_cases_bp.list_test_cases') }}">View Cases</a></li>
+          </ul>
+        </li>
+
+        <!-- Dropdown for Best of N -->
+        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
+          <a href="#">Attacks</a>
+          <ul class="dropdown-menu">
+            <li><a href="{{ url_for('evil_agent_bp.evil_agent_index') }}">Evil Agent</a></li>
+            <li><a href="{{ url_for('best_of_n_bp.best_of_n_index') }}">Best of N</a></li>
           </ul>
         </li>
 

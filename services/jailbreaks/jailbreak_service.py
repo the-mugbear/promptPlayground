@@ -19,7 +19,7 @@ def is_positive_response(response_text):
     # Placeholder: consider the response positive if it includes 'success'
     return response_text and "success" in response_text.lower()
 
-def best_of_n_jailbreak_generator(adversarial_endpoint, recipient_endpoint, base_prompt, max_samples=10):
+def evil_agent_jailbreak_generator(adversarial_endpoint, recipient_endpoint, base_prompt, max_samples=10):
     attempts_log = []
     
     def prepare_raw_headers(endpoint):

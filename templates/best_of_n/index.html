@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Best of N Engine{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <div class="two-column-container">
+    <!-- LEFT: Form Card -->
+    <div class="left-card">
+      <h2>Configuration</h2>
+      <form id="best-of-n-form" action="{{ url_for('best_of_n_bp.best_of_n_index') }}" method="POST">
+        <div class="form-group">
+          <label for="initial_prompt">Initial Prompt</label>
+          <textarea name="initial_prompt" id="initial_prompt" rows="4" placeholder="Enter your prompt..."></textarea>
+        </div>
+
+        <p>
+          Select an endpoint below or 
+          <a href="{{ url_for('endpoints_bp.create_endpoint_form') }}">register a new one</a>.
+        </p>
+        <div class="form-group">
+          <label for="registered_endpoint">Registered Endpoint</label>
+          <select name="registered_endpoint" id="registered_endpoint">
+            <option value="">--Select Endpoint--</option>
+            {% for ep in endpoints %}
+              <option value="{{ ep.id }}">{{ ep.name }} ({{ ep.hostname }}{{ ep.endpoint }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="num_samples">Number of Permutations (N)</label>
+          <input type="number" name="num_samples" id="num_samples" value="10" min="1">
+        </div>
+
+        <div class="form-group">
+          <label>Permutation Options</label>
+          <label><input type="checkbox" name="rearrange"> Rearrange letters</label><br>
+          <label><input type="checkbox" name="capitalization"> Random capitalization</label><br>
+          <label><input type="checkbox" name="substitute"> Substitute letter</label>
+        </div>
+
+        <button type="submit" class="neon-hover">🚀 Run Best of N</button>
+      </form>
+    </div>
+
+    <!-- RIGHT: Endpoint Details -->
+    <div class="right-card content-card">
+      <h2>Endpoint Details</h2>
+      <div id="endpoint_details">
+        <p class="blink">Select an endpoint to view details...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Optional Loading Bar -->
+  <div class="loading-bar" style="display:none;" id="loadingBar"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  $(document).ready(function(){
+    function fetchEndpointDetails(endpointId, targetDiv) {
+      if (endpointId) {
+        $.ajax({
+          url: "{{ url_for('best_of_n_bp.endpoint_details', endpoint_id=0) }}".replace('0', endpointId),
+          method: 'GET',
+          success: function(data) {
+            let html = `
+              <div class="results-box">
+                <p><strong>Name:</strong> ${data.name}</p>
+                <p><strong>Hostname:</strong> ${data.hostname}</p>
+                <p><strong>Endpoint Path:</strong> ${data.endpoint}</p>
+                <p><strong>Payload Template:</strong> ${data.http_payload}</p>
+              </div>
+            `;
+
+            if (data.headers && data.headers.length > 0) {
+              html += `
+                <div class="results-box" style="margin-top: 1rem; max-height: 150px;">
+                  <p><strong>Headers:</strong></p>
+                  <ul style="padding-left: 1rem;">
+              `;
+              data.headers.forEach(function(header) {
+                html += `<li>${header.key}: ${header.value}</li>`;
+              });
+              html += `</ul></div>`;
+            }
+
+            $(targetDiv).html(html);
+          },
+          error: function() {
+            $(targetDiv).html('<p>Error fetching endpoint details.</p>');
+          }
+        });
+      } else {
+        $(targetDiv).html('<p>Select an endpoint to view details...</p>');
+      }
+    }
+
+    $('#registered_endpoint').change(function(){
+      var epId = $(this).val();
+      fetchEndpointDetails(epId, '#endpoint_details');
+    });
+
+    $('#best-of-n-form').on('submit', function(){
+      $('#loadingBar').fadeIn();
+    });
+  });
+</script>
+{% endblock %}

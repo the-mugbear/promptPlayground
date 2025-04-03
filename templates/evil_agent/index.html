@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Evil Agent{% endblock %}
+
+{% block head %}
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
+{% endblock %}
+
+{% block content %}
+  <h1>Evil Agent</h1>
+  <form id="bon-form">
+    <div>
+      <label for="adversarial_endpoint">Adversarial Endpoint:</label>
+      <select name="adversarial_endpoint" id="adversarial_endpoint">
+        <option value="">--Select Endpoint--</option>
+        {% for ep in endpoints %}
+          <option value="{{ ep.id }}">{{ ep.name }}</option>
+        {% endfor %}
+      </select>
+      <div id="adversarial_details"></div>
+    </div>
+    <br>
+    <div>
+      <label for="recipient_endpoint">Recipient Endpoint:</label>
+      <select name="recipient_endpoint" id="recipient_endpoint">
+        <option value="">--Select Endpoint--</option>
+        {% for ep in endpoints %}
+          <option value="{{ ep.id }}">{{ ep.name }}</option>
+        {% endfor %}
+      </select>
+      <div id="recipient_details"></div>
+    </div>
+    <br>
+    <div>
+      <label for="initial_prompt">Initial Prompt for Adversarial Endpoint:</label>
+      <br>
+      <textarea name="initial_prompt" id="initial_prompt" rows="4" cols="50" placeholder="Enter your initial prompt here"></textarea>
+    </div>
+    <br>
+    <!-- Change the button type to "button" so it doesn't trigger form submission -->
+    <button type="button" id="run-jailbreak">Run Jailbreak</button>
+  </form>
+  
+  <h2>Attempts Log</h2>
+  <div id="attempts_log">
+    <!-- Each attempted prompt and its response will be appended here -->
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  $(document).ready(function(){
+    // Fetch endpoint details on selection as before
+    function fetchEndpointDetails(endpointId, targetDiv) {
+      if (endpointId) {
+        $.ajax({
+          url: "{{ url_for('evil_agent_bp.endpoint_details', endpoint_id=0) }}".replace('0', endpointId),
+          method: 'GET',
+          success: function(data) {
+            $(targetDiv).html(
+              '<p><strong>Hostname:</strong> ' + data.hostname + '</p>' +
+              '<p><strong>Path:</strong> ' + data.endpoint + '</p>' +
+              '<p><strong>Payload:</strong> ' + data.http_payload + '</p>'
+            );
+          },
+          error: function() {
+            $(targetDiv).html('<p>Error fetching details.</p>');
+          }
+        });
+      } else {
+        $(targetDiv).html('');
+      }
+    }
+    
+    $('#adversarial_endpoint').change(function() {
+      var epId = $(this).val();
+      fetchEndpointDetails(epId, '#adversarial_details');
+    });
+    
+    $('#recipient_endpoint').change(function() {
+      var epId = $(this).val();
+      fetchEndpointDetails(epId, '#recipient_details');
+    });
+    
+    // Use a click handler on the button (not form submission) to launch the stream.
+    $('#run-jailbreak').click(function(){
+      $('#attempts_log').html(''); // Clear previous logs
+      var formData = $('#bon-form').serialize();
+      var url = "{{ url_for('evil_agent_bp.run_evil_agent') }}?" + formData;
+      var source = new EventSource(url);
+      
+      source.onmessage = function(event) {
+        var data = JSON.parse(event.data);
+        if (data.final) {
+          $('#attempts_log').append(
+            '<div class="final-result"><h3>Final Result</h3>' +
+            (data.augmented_prompt ? '<pre>' + data.augmented_prompt + '</pre>' : '<p>No success</p>') +
+            (data.response ? '<pre>' + data.response + '</pre>' : '') +
+            '</div>'
+          );
+          source.close();
+        } else {
+          $('#attempts_log').append(
+            '<div class="attempt">' +
+              '<p><strong>Attempt ' + data.attempt + ':</strong></p>' +
+              '<p><em>Prompt:</em> ' + data.prompt + '</p>' +
+              '<p><em>Response:</em> ' + data.response + '</p>' +
+              '<hr>' +
+            '</div>'
+          );
+        }
+      };
+      
+      source.onerror = function() {
+        $('#attempts_log').append('<p>Error receiving stream.</p>');
+        source.close();
+      };
+    });
+  });
+</script>
+{% endblock %}

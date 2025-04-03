@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Best of N Results{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
+{% endblock %}
+
+{% block content %}
+  <h1>Best of N Results</h1>
+  {% if attempts_log %}
+    <table border="1" cellpadding="5" cellspacing="0">
+      <tr>
+        <th>Attempt</th>
+        <th>Permutation</th>
+        <th>Response</th>
+      </tr>
+      {% for attempt in attempts_log %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td><pre>{{ attempt.prompt }}</pre></td>
+          <td><pre>{{ attempt.response }}</pre></td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p>No attempts were logged.</p>
+  {% endif %}
+  <br>
+  <a href="{{ url_for('best_of_n_bp.best_of_n_index') }}">Try Again</a>
+{% endblock %}

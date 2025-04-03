@@ -9,7 +9,9 @@ from routes.test_runs import test_runs_bp
 from routes.core import core_bp
 from routes.help import help_bp
 from routes.reports import report_bp
-from routes.bon import bon_bp
+from routes.evil_agent import evil_agent_bp
+from routes.best_of_n import best_of_n_bp
+from routes.testing_grounds import testing_grounds_bp
 
 migrate = Migrate()  # Instantiate the Migrate object outside create_app
 
@@ -34,7 +36,9 @@ def create_app():
     app.register_blueprint(endpoints_bp)
     app.register_blueprint(test_runs_bp)
     app.register_blueprint(report_bp)
-    app.register_blueprint(bon_bp)
+    app.register_blueprint(evil_agent_bp)
+    app.register_blueprint(best_of_n_bp)
+    app.register_blueprint(testing_grounds_bp)
 
     # The below is meant to be executed in a terminal/cmd window as is for my awful memory on performing a flask migration
     # flask db init         # creates a migrations folder
