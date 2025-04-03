@@ -9,7 +9,7 @@ from models.model_TestRunAttempt import TestRunAttempt
 from models.model_TestExecution import TestExecution
 from services.transformers.registry import apply_transformation, TRANSFORM_PARAM_CONFIG
 from services.common.http_request_service import replay_post_request
-from services.endpoints.endpoint_services import headers_from_apiheader_list
+from services.common.header_parser_service import headers_from_apiheader_list
 
 import json, requests
 
