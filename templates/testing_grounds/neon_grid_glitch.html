@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Grid with Glitch Effect</title>
+  <!-- Include p5.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <style>
+    /* Make sure the canvas fills the window and is positioned behind other elements */
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+  </style>
+</head>
+<body>
+  <div class="image-container">
+    <img src="{{ url_for('static', filename='images/j5.png') }}" alt="Description of the image">
+    <p><a href="{{ url_for('core_bp.index') }}">Back to Visual Selection</a></p>
+  </div>
+  
+  <script>
+    let gridSpacing = 40;
+    let glitchActive = false;
+    
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      background(0);
+      strokeWeight(2);
+      textSize(16);
+    }
+    
+    function draw() {
+      // Draw a translucent background to create a subtle trailing effect
+      background(0, 50);
+      
+      // Activate glitch effect for 10 frames every 100 frames
+      glitchActive = (frameCount % 100 < 10);
+      
+      // Set the stroke color; use a slightly different neon hue if glitch is active
+      stroke(glitchActive ? color(255, 100, 200) : color(255, 0, 170));
+      
+      // Draw vertical grid lines with optional horizontal offset during glitch
+      for (let x = 0; x < width; x += gridSpacing) {
+        let offset = glitchActive ? random(-5, 5) : 0;
+        line(x + offset, 0, x + offset, height);
+      }
+      
+      // Draw horizontal grid lines with optional vertical offset during glitch
+      for (let y = 0; y < height; y += gridSpacing) {
+        let offset = glitchActive ? random(-5, 5) : 0;
+        line(0, y + offset, width, y + offset);
+      }
+      
+      // If glitch is active, overlay additional glitch artifacts
+      if (glitchActive) {
+        for (let i = 0; i < 5; i++) {
+          let glitchX = random(width);
+          let glitchY = random(height);
+          let glitchW = random(20, 100);
+          let glitchH = random(5, 20);
+          noStroke();
+          // Random neon colors for the glitch artifacts
+          fill(255, random(0, 255), random(0, 255), 150);
+          rect(glitchX, glitchY, glitchW, glitchH);
+        }
+      }
+    }
+    
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+  </script>
+</body>
+{% endblock %}

@@ -1,14 +1,17 @@
 {% extends "base.html" %}
 
+
 {% block content %}
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Centered Image</title>
-</head>
-<body>
+
     <div class="image-container">
         <img src="{{ url_for('static', filename='images/j5.png') }}" alt="Description of the image">
     </div>
-</body>
+
+    <h3>Select a Visual Effect</h3>
+    <ul>
+      <li><a href="{{ url_for('core_bp.visual', effect='matrix_rain') }}">Matrix Rain</a></li>
+      <li><a href="{{ url_for('core_bp.visual', effect='neon_grid_glitch') }}">Neon Grid with Glitch Effect</a></li>
+      <li><a href="{{ url_for('core_bp.visual', effect='neon_circles') }}">Neon Circles</a></li>
+      <li><a href="{{ url_for('core_bp.visual', effect='8_bit_fire') }}">Campfire</a></li>
+    </ul>
 {% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Circles</title>
+  <!-- Include p5.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <style>
+    /* Ensure the canvas fills the window and is positioned behind other elements */
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+  </style>
+</head>
+<body>
+  <div class="image-container">
+    <img src="{{ url_for('static', filename='images/j5.png') }}" alt="Description of the image">
+    <p><a href="{{ url_for('core_bp.index') }}">Back to Visual Selection</a></p>
+  </div>
+
+  <script>
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      background(0);
+    }
+
+    function draw() {
+      // Create a subtle trailing effect by redrawing the background with transparency
+      background(0, 20);
+      
+      // Use neon accent color (#FF00AA) for the shapes
+      noStroke();
+      fill(255, 0, 170, 150);
+      
+      // Draw a circle at a random position with a random size
+      let x = random(width);
+      let y = random(height);
+      let size = random(10, 50);
+      ellipse(x, y, size);
+    }
+
+    // Adjust canvas size when the window is resized
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+  </script>
+</body>
+{% endblock %}

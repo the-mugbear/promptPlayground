@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>8-bit Campfire</title>
+  <!-- Include p5.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <style>
+    /* Ensure the canvas fills the window and stays behind other elements */
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+  </style>
+</head>
+<body>
+  <div class="image-container">
+    <img src="{{ url_for('static', filename='images/j5.png') }}" alt="Description of the image">
+  </div>
+  
+  <!-- Navigation to return to the visual selection -->
+  <p><a href="{{ url_for('core_bp.index') }}">Back to Visual Selection</a></p>
+  
+  <script>
+    // Parameters for the campfire
+    let campfireX, campfireY;
+    let campfireWidth = 120;
+    let campfireHeight = 120;
+    let pixelSize = 10;
+    // 8-bit style flame colors: red, orange, yellow
+    let flameColors = ['#FF4500', '#FFA500', '#FFFF00'];
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      frameRate(10); // Lower frame rate for that retro, choppy animation
+      campfireX = width / 2 - campfireWidth / 2;
+      campfireY = height - campfireHeight - 20;
+      noStroke();
+    }
+
+    function draw() {
+      background(0);
+      
+      // Draw the campfire logs (brown rectangles)
+      fill(101, 67, 33);
+      rect(campfireX + campfireWidth / 4, campfireY + campfireHeight - pixelSize, campfireWidth / 2, pixelSize);
+
+      // Draw the flickering flame using a pixel grid effect
+      for (let y = 0; y < campfireHeight; y += pixelSize) {
+        for (let x = 0; x < campfireWidth; x += pixelSize) {
+          // Higher rows (closer to the top of the fire) are less likely to have a pixel
+          let probability = map(y, 0, campfireHeight, 0.1, 1);
+          if (random() < probability) {
+            let colorIndex = floor(random(flameColors.length));
+            fill(flameColors[colorIndex]);
+            // Draw each "pixel" with a slight upward offset for a flickering effect
+            rect(campfireX + x, campfireY + y - campfireHeight * 0.6, pixelSize, pixelSize);
+          }
+        }
+      }
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+      campfireX = width / 2 - campfireWidth / 2;
+      campfireY = height - campfireHeight - 20;
+    }
+  </script>
+</body>
+{% endblock %}
