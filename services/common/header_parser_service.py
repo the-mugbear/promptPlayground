@@ -4,8 +4,17 @@ from http.cookies import SimpleCookie
 
 def parse_cookie_header(cookie_header: str) -> dict:
     """
-    Parse a Cookie header string using SimpleCookie and return a dictionary of cookies.
+    Parse a Cookie header string.
+    If the cookie header appears to be in JSON format, load it using json.loads.
+    Otherwise, use SimpleCookie to parse key=value pairs.
     """
+    cookie_header = cookie_header.strip()
+    if cookie_header.startswith("{") and cookie_header.endswith("}"):
+        try:
+            return json.loads(cookie_header)
+        except json.JSONDecodeError:
+            pass  # Fallback to SimpleCookie if JSON parsing fails
+
     simple_cookie = SimpleCookie()
     simple_cookie.load(cookie_header)
     return {key: morsel.value for key, morsel in simple_cookie.items()}
