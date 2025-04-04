@@ -1,37 +1,43 @@
 import random
 import string
 import time
-from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
+import json
+from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify, Response, stream_with_context
 from models.model_Endpoints import Endpoint
 from services.common.http_request_service import replay_post_request
 
 best_of_n_bp = Blueprint('best_of_n_bp', __name__, url_prefix='/best_of_n')
 
-# ********************************
-# ROUTES
-# ********************************
 @best_of_n_bp.route('/', methods=['GET', 'POST'])
 def best_of_n_index():
-    # Query the registered endpoints from the database.
     endpoints = Endpoint.query.all()
+
+    # On POST, validate and then redirect to GET with form data as query parameters.
     if request.method == 'POST':
         initial_prompt = request.form.get('initial_prompt')
         endpoint_id = request.form.get('registered_endpoint')
+        if not initial_prompt or not endpoint_id:
+            flash("Initial prompt and a registered endpoint are required.", "error")
+            return redirect(url_for('best_of_n_bp.best_of_n_index'))
+        # Convert the form data to a dictionary for redirection.
+        query_params = request.form.to_dict()
+        return redirect(url_for('best_of_n_bp.best_of_n_index', **query_params))
+
+    # If the required GET parameters exist, stream progress.
+    if request.args.get('initial_prompt') and request.args.get('registered_endpoint'):
+        initial_prompt = request.args.get('initial_prompt')
+        endpoint_id = request.args.get('registered_endpoint')
         try:
-            num_samples = int(request.form.get('num_samples', 10))
+            num_samples = int(request.args.get('num_samples', 10))
         except ValueError:
             num_samples = 10
 
         options = {
-            "rearrange": request.form.get('rearrange') == 'on',
-            "capitalization": request.form.get('capitalization') == 'on',
-            "substitute": request.form.get('substitute') == 'on',
-            "typo": request.form.get('typo') == 'on'
+            "rearrange": request.args.get('rearrange') == 'on',
+            "capitalization": request.args.get('capitalization') == 'on',
+            "substitute": request.args.get('substitute') == 'on',
+            "typo": request.args.get('typo') == 'on'
         }
-        
-        if not initial_prompt or not endpoint_id:
-            flash("Initial prompt and a registered endpoint are required.", "error")
-            return redirect(url_for('best_of_n_bp.best_of_n_index'))
         
         # Get the selected endpoint.
         endpoint = Endpoint.query.get_or_404(endpoint_id)
@@ -42,18 +48,26 @@ def best_of_n_index():
         # Generate the permutations.
         permutations = generate_permutations(initial_prompt, options, num_samples)
         attempts_log = []
-        for perm in permutations:
-            payload = payload_template.replace("{{INJECT_PROMPT}}", perm)
-            response = replay_post_request(hostname, endpoint_path, payload, raw_headers="")
-            attempts_log.append({
-                "prompt": perm,
-                "response": response.get("response_text")
-            })
-            time.sleep(0.1)
         
-        return render_template('best_of_n/result.html', attempts_log=attempts_log)
+        def generate():
+            for perm in permutations:
+                payload = payload_template.replace("{{INJECT_PROMPT}}", perm)
+                response = replay_post_request(hostname, endpoint_path, payload, raw_headers="")
+                attempt_data = {
+                    "prompt": perm,
+                    "response": response.get("response_text")
+                }
+                attempts_log.append(attempt_data)
+                yield f"data: {json.dumps(attempt_data)}\n\n"
+                time.sleep(0.1)
+            # After all attempts, yield a final message.
+            yield f"data: {json.dumps({'final': True, 'attempts_log': attempts_log})}\n\n"
+        
+        return Response(stream_with_context(generate()), mimetype="text/event-stream")
     
-    return render_template('best_of_n/index.html', endpoints=endpoints)
+    # Otherwise, render the index page with configuration options.
+    return render_template('attacks/best_of_n/index.html', endpoints=endpoints)
+
 
 @best_of_n_bp.route('/endpoint_details/<int:endpoint_id>', methods=['GET'])
 def endpoint_details(endpoint_id):
@@ -101,7 +115,6 @@ def substitute_common_typo(s):
     Substitute one randomly chosen letter in the input string with an adjacent key 
     (based on a QWERTY keyboard layout) to mimic a common typing error.
     """
-    # Define a mapping of each letter (in lowercase) to its adjacent keys.
     keyboard_adjacent = {
         'q': ['w', 'a'],
         'w': ['q', 'e', 'a', 's'],
@@ -130,28 +143,19 @@ def substitute_common_typo(s):
         'n': ['b', 'h', 'j', 'm'],
         'm': ['n', 'j', 'k']
     }
-
-    # Find indices of all alphabetical characters.
     indices = [i for i, ch in enumerate(s) if ch.isalpha()]
     if not indices:
         return s
-
-    # Choose one index at random.
     idx = random.choice(indices)
     original_letter = s[idx]
     lower_letter = original_letter.lower()
-
-    # If the letter is in our keyboard mapping, choose a random adjacent key.
     if lower_letter in keyboard_adjacent:
         neighbors = keyboard_adjacent[lower_letter]
         new_letter = random.choice(neighbors)
-        # Preserve the original letter's case.
         if original_letter.isupper():
             new_letter = new_letter.upper()
     else:
-        # Fallback: choose any random alphabetical character.
         new_letter = random.choice(string.ascii_letters)
-    
     return s[:idx] + new_letter + s[idx+1:]
 
 
@@ -163,6 +167,7 @@ def substitute_random_letter(s):
     idx = random.choice(indices)
     random_letter = random.choice(string.ascii_letters)
     return s[:idx] + random_letter + s[idx+1:]
+
 
 def generate_permutations(prompt, options, n):
     """Generate n permutations of the prompt using the selected options."""
@@ -179,5 +184,3 @@ def generate_permutations(prompt, options, n):
             perm = substitute_common_typo(perm)
         permutations.append(perm)
     return permutations
-
-

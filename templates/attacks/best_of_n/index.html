@@ -3,7 +3,6 @@
 {% block title %}Best of N Engine{% endblock %}
 
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 {% endblock %}
@@ -40,14 +39,37 @@
           <input type="number" name="num_samples" id="num_samples" value="10" min="1">
         </div>
 
-        <div class="form-group">
-          <label>Permutation Options</label>
-          <label><input type="checkbox" name="rearrange"> Rearrange letters</label><br>
-          <label><input type="checkbox" name="capitalization"> Random capitalization</label><br>
-          <label><input type="checkbox" name="substitute"> Substitute letter</label><br>
-          <label><input type="checkbox" name="typo"> Simulate common typo</label>
+        <!-- Refactored permutation options -->
+        <div class="form-group transformations-container">
+          <label>Select Permutation Options:</label>
+          
+          <div class="transform-option">
+            <label>
+              <input type="checkbox" name="rearrange" value="on">
+              Rearrange Letters
+            </label>
+          </div>
+          <div class="transform-option">
+            <label>
+              <input type="checkbox" name="capitalization" value="on">
+              Random Capitalization
+            </label>
+          </div>
+          <div class="transform-option">
+            <label>
+              <input type="checkbox" name="substitute" value="on">
+              Substitute Letter
+            </label>
+          </div>
+          <div class="transform-option">
+            <label>
+              <input type="checkbox" name="typo" value="on">
+              Simulate Common Typo
+            </label>
+          </div>
         </div>
-
+        <input type="hidden" name="ordered_transformations" id="ordered_transformations">
+        
         <button type="submit" class="neon-hover">🚀 Run Best of N</button>
       </form>
     </div>
@@ -59,6 +81,12 @@
         <p class="blink">Select an endpoint to view details...</p>
       </div>
     </div>
+  </div>
+
+  <!-- Communication Log -->
+  <h2>Communication Log</h2>
+  <div id="chat_log" class="chat-container">
+    <!-- Chat messages will be appended here -->
   </div>
 
   <!-- Optional Loading Bar -->
@@ -83,7 +111,6 @@
                 <p><strong>Payload Template:</strong> ${data.http_payload}</p>
               </div>
             `;
-
             if (data.headers && data.headers.length > 0) {
               html += `
                 <div class="results-box" style="margin-top: 1rem; max-height: 150px;">
@@ -95,7 +122,6 @@
               });
               html += `</ul></div>`;
             }
-
             $(targetDiv).html(html);
           },
           error: function() {
@@ -112,8 +138,26 @@
       fetchEndpointDetails(epId, '#endpoint_details');
     });
 
-    $('#best-of-n-form').on('submit', function(){
+    $('#best-of-n-form').on('submit', function(e){
+      e.preventDefault();
       $('#loadingBar').fadeIn();
+      $('#chat_log').html('');
+      
+      var formData = $(this).serialize();
+      var url = "{{ url_for('best_of_n_bp.best_of_n_index') }}?" + formData;
+      
+      var source = new EventSource(url);
+      source.onmessage = function(event) {
+        var data = JSON.parse(event.data);
+        var chatHtml = "";
+        chatHtml += '<div class="chat-row left"><div class="chat-bubble"><strong>Sent (Prompt):</strong><pre>' + data.prompt + '</pre></div></div>';
+        chatHtml += '<div class="chat-row right"><div class="chat-bubble"><strong>Received (Response):</strong><pre>' + data.response + '</pre></div></div>';
+        $('#chat_log').append(chatHtml);
+      };
+      source.onerror = function() {
+        $('#chat_log').append('<p>Error receiving stream.</p>');
+        source.close();
+      };
     });
   });
 </script>

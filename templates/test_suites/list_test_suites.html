@@ -19,7 +19,6 @@
 <table id="suitesTable">
   <thead>
     <tr>
-      <th>#</th>
       <th>Description</th>
       <th>Behavior</th>
       <!-- <th>Attack</th> -->
@@ -29,8 +28,11 @@
   <tbody>
     {% for suite in test_suites %}
       <tr>
-        <td>{{ loop.index }}</td>
-        <td>{{ suite.description }}</td>
+        <td>
+          <a href="{{ url_for('test_suites_bp.test_suite_details', suite_id=suite.id) }}">
+            {{ suite.description }}
+          </a>
+        </td>
         <td>{{ suite.behavior }}</td>
         <!-- <td>{{ suite.attack }}</td> -->
         <td>
@@ -42,18 +44,6 @@
           >
             View Test Cases
           </button>
-
-
-          <!-- Button to toggle the row below that displays test cases -->
-          <button 
-            type="button" 
-            data-suite-id="{{ suite.id }}"
-          >
-          <!-- New button linking to the details page for this test suite -->
-          <a href="{{ url_for('test_suites_bp.test_suite_details', suite_id=suite.id) }}" class="btn btn-info">
-            Details
-          </a>
-        </button>
 
           <!-- Delete form -->
           <form action="{{ url_for('test_suites_bp.delete_test_suite', suite_id=suite.id) }}" method="POST" style="display:inline;">

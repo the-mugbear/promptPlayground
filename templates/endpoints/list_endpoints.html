@@ -32,7 +32,11 @@
   <tbody>
     {% for ep in endpoints %}
       <tr>
-        <td>{{ ep.name }}</td>
+        <td>
+          <a href="{{ url_for('endpoints_bp.view_endpoint_details', endpoint_id=ep.id) }}">
+            {{ ep.name }}
+          </a>
+        </td>
         <td>{{ ep.hostname }}</td>
         <td>{{ ep.endpoint }}</td>
         <td>
@@ -42,27 +46,21 @@
             --
           {% endif %}
         </td>
-        <td>
+        <td title="{{ ep.http_payload | prettyjson }}">
           {% if ep.http_payload %}
-            {{ ep.http_payload|truncate(50) }}
+            {{ ep.http_payload | truncate(50) }}
           {% else %}
             --
           {% endif %}
         </td>
         <td>
-            <!-- Expand/collapse headers or link to a detail page -->
+            <!-- Expand/collapse headers -->
             <button 
               type="button" 
               class="view-headers-btn"
               data-endpoint-id="{{ ep.id }}"
             >
               View Headers
-            </button>
-
-            <button
-              type="button"
-              class="details-page-btn">
-              <a href="{{ url_for('endpoints_bp.view_endpoint_details', endpoint_id=ep.id) }}">Details Page</a>
             </button>
 
             <!-- Form to delete an endpoint -->

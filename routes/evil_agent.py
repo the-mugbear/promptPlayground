@@ -10,7 +10,7 @@ evil_agent_bp = Blueprint('evil_agent_bp', __name__, url_prefix='/evil_agent')
 @evil_agent_bp.route('/')
 def evil_agent_index():
     endpoints = Endpoint.query.all()
-    return render_template('evil_agent/index.html', endpoints=endpoints)
+    return render_template('attacks/evil_agent/index.html', endpoints=endpoints)
 
 @evil_agent_bp.route('/endpoint_details/<int:endpoint_id>', methods=['GET'])
 def endpoint_details(endpoint_id):

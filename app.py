@@ -12,11 +12,22 @@ from routes.reports import report_bp
 from routes.evil_agent import evil_agent_bp
 from routes.best_of_n import best_of_n_bp
 from routes.testing_grounds import testing_grounds_bp
+import json
 
 migrate = Migrate()  # Instantiate the Migrate object outside create_app
 
 def create_app():
     app = Flask(__name__)
+
+    def prettyjson_filter(value):
+        try:
+            parsed = json.loads(value)
+            return json.dumps(parsed, indent=2)
+        except Exception:
+            return value
+        
+    # Register the prettyjson filter with Jinja
+    app.add_template_filter(prettyjson_filter, 'prettyjson')
     
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fuzzy.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
