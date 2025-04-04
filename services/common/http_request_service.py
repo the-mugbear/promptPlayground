@@ -1,7 +1,7 @@
 import json
 import requests
 import traceback
-from services.endpoints.endpoint_services import parse_raw_headers
+from services.common.header_parser_service import parse_raw_headers_with_cookies
 
 # Moved the POST request functionality to a service file as it's common across endpoint creation/testing and test_run execution
 def replay_post_request(hostname, endpoint_path, http_payload, raw_headers, timeout=120, verify=True):
@@ -11,18 +11,8 @@ def replay_post_request(hostname, endpoint_path, http_payload, raw_headers, time
     Returns a dict with status_code, response_text, and headers_sent.
     """
     # Parse headers and set default Content-Type if missing
-    final_headers = parse_raw_headers(raw_headers)
+    final_headers, cookies = parse_raw_headers_with_cookies(raw_headers)
     final_headers.setdefault("Content-Type", "application/json")
-
-    # Extract cookies from the "Cookie" header, if present
-    cookies = {}
-    if "Cookie" in final_headers:
-        cookie_string = final_headers.pop("Cookie")
-        for cookie_pair in cookie_string.split(";"):
-            cookie_pair = cookie_pair.strip()
-            if cookie_pair and "=" in cookie_pair:
-                key, value = cookie_pair.split("=", 1)
-                cookies[key.strip()] = value.strip()
 
     # Build the URL
     url = f"{hostname.rstrip('/')}/{endpoint_path.lstrip('/')}"
