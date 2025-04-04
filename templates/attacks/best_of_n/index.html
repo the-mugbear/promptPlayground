@@ -5,6 +5,47 @@
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    /* Chat container styling */
+    .chat-container {
+      max-width: 800px;
+      margin: 1rem auto;
+      padding: 1rem;
+      background-color: #000;
+      border: 2px dashed var(--accent-color);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    /* Chat row for aligning the boxes */
+    .chat-row {
+      display: flex;
+      width: 100%;
+    }
+    .chat-row.left {
+      justify-content: flex-start;
+    }
+    .chat-row.right {
+      justify-content: flex-end;
+    }
+    /* Chat message bubbles */
+    .chat-bubble {
+      border: 2px dashed var(--accent-color);
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      max-width: 60%;
+      background-color: #111;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-wrap: break-word;
+      word-break: break-all;
+    }
+    .chat-bubble strong {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
@@ -22,7 +63,7 @@
 
         <p>
           Select an endpoint below or 
-          <a href="{{ url_for('endpoints_bp.create_endpoint_form') }}">register a new one</a>.
+          <a href="{{ url_for('endpoints_bp.create_endpoint_form') }}">register a new endpoint</a>.
         </p>
         <div class="form-group">
           <label for="registered_endpoint">Registered Endpoint</label>
@@ -34,12 +75,15 @@
           </select>
         </div>
 
+        <!-- Display endpoint details -->
+        <div id="endpoint_details"></div>
+
         <div class="form-group">
           <label for="num_samples">Number of Permutations (N)</label>
           <input type="number" name="num_samples" id="num_samples" value="10" min="1">
         </div>
 
-        <!-- Refactored permutation options -->
+        <!-- Permutation options -->
         <div class="form-group transformations-container">
           <label>Select Permutation Options:</label>
           
@@ -132,12 +176,12 @@
         $(targetDiv).html('<p>Select an endpoint to view details...</p>');
       }
     }
-
+    
     $('#registered_endpoint').change(function(){
       var epId = $(this).val();
       fetchEndpointDetails(epId, '#endpoint_details');
     });
-
+    
     $('#best-of-n-form').on('submit', function(e){
       e.preventDefault();
       $('#loadingBar').fadeIn();
@@ -149,6 +193,13 @@
       var source = new EventSource(url);
       source.onmessage = function(event) {
         var data = JSON.parse(event.data);
+        // If the final event, show a final message and do not append a prompt/response pair.
+        if (data.final) {
+          $('#chat_log').append('<div class="chat-row left"><div class="chat-bubble"><strong>Finished:</strong> Process completed after ' + data.attempts_log.length + ' attempts.</div></div>');
+          source.close();
+          return;
+        }
+        // Otherwise, append the sent and received pair.
         var chatHtml = "";
         chatHtml += '<div class="chat-row left"><div class="chat-bubble"><strong>Sent (Prompt):</strong><pre>' + data.prompt + '</pre></div></div>';
         chatHtml += '<div class="chat-row right"><div class="chat-bubble"><strong>Received (Response):</strong><pre>' + data.response + '</pre></div></div>';
@@ -162,3 +213,4 @@
   });
 </script>
 {% endblock %}
+

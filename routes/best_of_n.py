@@ -5,13 +5,13 @@ import json
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify, Response, stream_with_context
 from models.model_Endpoints import Endpoint
 from services.common.http_request_service import replay_post_request
+from services.common.header_parser_service import headers_from_apiheader_list
 
 best_of_n_bp = Blueprint('best_of_n_bp', __name__, url_prefix='/best_of_n')
 
 @best_of_n_bp.route('/', methods=['GET', 'POST'])
 def best_of_n_index():
     endpoints = Endpoint.query.all()
-
     # On POST, validate and then redirect to GET with form data as query parameters.
     if request.method == 'POST':
         initial_prompt = request.form.get('initial_prompt')
@@ -19,11 +19,10 @@ def best_of_n_index():
         if not initial_prompt or not endpoint_id:
             flash("Initial prompt and a registered endpoint are required.", "error")
             return redirect(url_for('best_of_n_bp.best_of_n_index'))
-        # Convert the form data to a dictionary for redirection.
         query_params = request.form.to_dict()
         return redirect(url_for('best_of_n_bp.best_of_n_index', **query_params))
-
-    # If the required GET parameters exist, stream progress.
+    
+    # If GET parameters exist, then perform the Best of N process and stream progress.
     if request.args.get('initial_prompt') and request.args.get('registered_endpoint'):
         initial_prompt = request.args.get('initial_prompt')
         endpoint_id = request.args.get('registered_endpoint')
@@ -39,20 +38,25 @@ def best_of_n_index():
             "typo": request.args.get('typo') == 'on'
         }
         
-        # Get the selected endpoint.
         endpoint = Endpoint.query.get_or_404(endpoint_id)
         hostname = endpoint.hostname
         endpoint_path = endpoint.endpoint
         payload_template = endpoint.http_payload
         
-        # Generate the permutations.
         permutations = generate_permutations(initial_prompt, options, num_samples)
         attempts_log = []
         
+        # Use the header_parser_service to prepare headers.
+        def prepare_raw_headers(endpoint):
+            headers_dict = headers_from_apiheader_list(endpoint.headers)
+            headers_dict.setdefault("Content-Type", "application/json")
+            return "\n".join([f"{k}: {v}" for k, v in headers_dict.items()])
+        
         def generate():
+            raw_headers = prepare_raw_headers(endpoint)
             for perm in permutations:
                 payload = payload_template.replace("{{INJECT_PROMPT}}", perm)
-                response = replay_post_request(hostname, endpoint_path, payload, raw_headers="")
+                response = replay_post_request(hostname, endpoint_path, payload, raw_headers=raw_headers)
                 attempt_data = {
                     "prompt": perm,
                     "response": response.get("response_text")
@@ -60,12 +64,10 @@ def best_of_n_index():
                 attempts_log.append(attempt_data)
                 yield f"data: {json.dumps(attempt_data)}\n\n"
                 time.sleep(0.1)
-            # After all attempts, yield a final message.
             yield f"data: {json.dumps({'final': True, 'attempts_log': attempts_log})}\n\n"
         
         return Response(stream_with_context(generate()), mimetype="text/event-stream")
     
-    # Otherwise, render the index page with configuration options.
     return render_template('attacks/best_of_n/index.html', endpoints=endpoints)
 
 
