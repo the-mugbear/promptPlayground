@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}How to Use the Post Inspector Plugin{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
+  <style>
+    ul {
+        list-style: none;
+    }
+    code {
+        padding: 0rem;
+    }
+    .download-button {
+        display: block;
+        width: fit-content;
+        margin: 0 auto;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="help-container">
+  <div class="help-header">
+    <h1>How to Download and Use the Post Inspector Plugin</h1>
+    <p>Follow these simple steps to download, install, and use the Post Inspector Plugin in your browser. Firefox support only.</p>
+  </div>
+
+  <ul>
+    <li class="step-card">
+      <div>
+        <span class="step-number">1</span>
+        <span class="step-title">Step 1: Download the Plugin</span>
+      </div>
+      <div class="step-description">
+        <p>
+          Click the 'Download Plugin' link below to get the packaged extension file.
+          The file is named <code>POSTInspector.xpi</code> (for Firefox). Save this file to your computer.
+        </p>
+        <p>
+          <a href="{{ url_for('help_bp.download_extension') }}" class="download-button">Download Plugin</a>
+        </p>
+      </div>
+    </li>
+    <li class="step-card">
+      <div>
+        <span class="step-number">2</span>
+        <span class="step-title">Step 2: Install the Plugin in Firefox</span>
+      </div>
+      <div class="step-description">
+        <p>
+          Open Firefox and navigate to <code>about:debugging#/runtime/this-firefox</code>.
+          Click on <strong>"Load Temporary Add-on"</strong> and select the downloaded <code>POSTInspector.xpi</code> file.
+          The plugin icon should now appear in your browser's toolbar.
+        </p>
+        <div class="image-container">
+          <img src="{{ url_for('static', filename='images/install_plugin.png') }}" alt="Install Plugin in Firefox">
+        </div>
+      </div>
+    </li>
+    <li class="step-card">
+      <div>
+        <span class="step-number">3</span>
+        <span class="step-title">Step 3: Use the PostInspector Plugin</span>
+      </div>
+      <div class="step-description">
+        <p>
+          Click on the plugin's icon in your browser toolbar to open the Post Inspector popup.
+        </p>
+        <div class="image-container">
+          <img src="{{ url_for('static', filename='images/use_plugin.png') }}" alt="Using the Post Inspector Plugin">
+        </div>
+        <p>
+          In the popup, you can view logged POST requests, filter them by hostname, and copy details such as Host, Filename, Request payload, and Request headers.
+          You can also clear the logs when needed.
+        </p>
+        <div class="image-container">
+          <img src="{{ url_for('static', filename='images/plugin_claude_example.png') }}" alt="Using the Post Inspector Plugin">
+        </div>
+      </div>
+    </li>
+  </ul>
+</div>
+{% endblock %}

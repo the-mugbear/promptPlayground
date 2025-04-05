@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, send_from_directory
 
 help_bp = Blueprint('help_bp', __name__, url_prefix='/help')
 
@@ -8,6 +8,11 @@ help_bp = Blueprint('help_bp', __name__, url_prefix='/help')
 @help_bp.route('/index')
 def index():
     return render_template('help/index.html')
+
+# Plugin Support
+@help_bp.route('/plugin')
+def plugin():
+    return render_template('help/post_inspector.html')
 
 # Learn the steps to configure and execute a test run.
 @help_bp.route('/create_test_run')
@@ -38,3 +43,11 @@ def results():
 @help_bp.route('/citations')
 def citations():
     return render_template('help/citations.html')
+
+
+# ********************************
+# SERVICES
+# ********************************
+@help_bp.route('/download_extension')
+def download_extension():
+    return send_from_directory('static', 'POSTInspector.xpi', as_attachment=True)
