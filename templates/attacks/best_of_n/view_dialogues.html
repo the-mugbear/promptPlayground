@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Saved Dialogues{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/communication_log.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1>Saved Dialogues</h1>
+  {% if dialogues %}
+    {% for dialogue in dialogues %}
+      <div class="dialogue-log">
+        <h3>Dialogue ID: {{ dialogue.id }} | Created: {{ dialogue.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</h3>
+        <div class="chat_log" id="chat_log_{{ dialogue.id }}">
+          {% for message in dialogue.loaded_conversation %}
+            <div class="chat-row left">
+              <div class="chat-bubble">
+                <strong>Sent (Prompt):</strong>
+                <pre>{{ message.prompt }}</pre>
+              </div>
+            </div>
+            <div class="chat-row right">
+              <div class="chat-bubble">
+                <strong>Received (Response):</strong>
+                <pre>{{ message.response }}</pre>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <hr>
+    {% endfor %}
+  {% else %}
+    <p>No dialogues saved yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

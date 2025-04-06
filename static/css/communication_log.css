@@ -37,3 +37,9 @@
     display: block;
     margin-bottom: 0.5rem;
 }
+
+.chat-bubble pre {
+    white-space: pre-wrap;       /* Wraps text and honors line breaks */
+    word-wrap: break-word;       /* Breaks long words if needed */
+    word-break: break-all;       /* Force break any word if necessary */
+  }

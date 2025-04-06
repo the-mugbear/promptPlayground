@@ -4,6 +4,7 @@ import time
 import json
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify, Response, stream_with_context
 from models.model_Endpoints import Endpoint
+from models.model_Dialogue import Dialogue
 from services.common.http_request_service import replay_post_request
 from services.common.header_parser_service import headers_from_apiheader_list
 
@@ -12,7 +13,6 @@ best_of_n_bp = Blueprint('best_of_n_bp', __name__, url_prefix='/best_of_n')
 @best_of_n_bp.route('/', methods=['GET', 'POST'])
 def best_of_n_index():
     endpoints = Endpoint.query.all()
-    # On POST, validate and then redirect to GET with form data as query parameters.
     if request.method == 'POST':
         initial_prompt = request.form.get('initial_prompt')
         endpoint_id = request.form.get('registered_endpoint')
@@ -22,7 +22,6 @@ def best_of_n_index():
         query_params = request.form.to_dict()
         return redirect(url_for('best_of_n_bp.best_of_n_index', **query_params))
     
-    # If GET parameters exist, then perform the Best of N process and stream progress.
     if request.args.get('initial_prompt') and request.args.get('registered_endpoint'):
         initial_prompt = request.args.get('initial_prompt')
         endpoint_id = request.args.get('registered_endpoint')
@@ -39,6 +38,20 @@ def best_of_n_index():
         }
         
         endpoint = Endpoint.query.get_or_404(endpoint_id)
+        # Override endpoint values with values from query parameters, if provided.
+        ep_name = request.args.get('ep_name')
+        if ep_name:
+            endpoint.name = ep_name
+        ep_hostname = request.args.get('ep_hostname')
+        if ep_hostname:
+            endpoint.hostname = ep_hostname
+        ep_endpoint = request.args.get('ep_endpoint')
+        if ep_endpoint:
+            endpoint.endpoint = ep_endpoint
+        ep_payload = request.args.get('ep_payload')
+        if ep_payload:
+            endpoint.http_payload = ep_payload
+
         hostname = endpoint.hostname
         endpoint_path = endpoint.endpoint
         payload_template = endpoint.http_payload
@@ -46,7 +59,6 @@ def best_of_n_index():
         permutations = generate_permutations(initial_prompt, options, num_samples)
         attempts_log = []
         
-        # Use the header_parser_service to prepare headers.
         def prepare_raw_headers(endpoint):
             headers_dict = headers_from_apiheader_list(endpoint.headers)
             headers_dict.setdefault("Content-Type", "application/json")
@@ -64,11 +76,17 @@ def best_of_n_index():
                 attempts_log.append(attempt_data)
                 yield f"data: {json.dumps(attempt_data)}\n\n"
                 time.sleep(0.1)
-            yield f"data: {json.dumps({'final': True, 'attempts_log': attempts_log})}\n\n"
+            final_message = {"final": True, "attempts_log": attempts_log}
+            dialogue_record = Dialogue(conversation=json.dumps(attempts_log), source="best_of_n")
+            from extensions import db  # ensure db is imported within this context
+            db.session.add(dialogue_record)
+            db.session.commit()
+            yield f"data: {json.dumps(final_message)}\n\n"
         
         return Response(stream_with_context(generate()), mimetype="text/event-stream")
     
     return render_template('attacks/best_of_n/index.html', endpoints=endpoints)
+
 
 
 @best_of_n_bp.route('/endpoint_details/<int:endpoint_id>', methods=['GET'])

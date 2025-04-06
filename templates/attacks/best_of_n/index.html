@@ -6,6 +6,14 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/communication_log.css') }}">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    /* Optionally style the input fields in the right card */
+    .endpoint-input {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
@@ -35,8 +43,12 @@
           </select>
         </div>
 
-        <!-- Display endpoint details -->
-        <div id="endpoint_details"></div>
+        <!-- Hidden inputs to store edited endpoint details -->
+        <input type="hidden" name="ep_name" id="hidden_ep_name">
+        <input type="hidden" name="ep_hostname" id="hidden_ep_hostname">
+        <input type="hidden" name="ep_endpoint" id="hidden_ep_endpoint">
+        <input type="hidden" name="ep_payload" id="hidden_ep_payload">
+        <!-- You could add one for headers if desired -->
 
         <div class="form-group">
           <label for="num_samples">Number of Permutations (N)</label>
@@ -48,27 +60,23 @@
           <label>Select Permutation Options:</label>
           
           <div class="transform-option">
-            <label>
-              <input type="checkbox" name="rearrange" value="on">
-              Rearrange Letters
+            <label title="Randomly rearranges the middle letters of words (keeping the first and last letters intact) to introduce a subtle mix-up.">
+              <input type="checkbox" name="rearrange" value="on"> Rearrange Letters
             </label>
           </div>
           <div class="transform-option">
-            <label>
-              <input type="checkbox" name="capitalization" value="on">
-              Random Capitalization
+            <label title="Randomly toggles the case of letters to mix up uppercase and lowercase letters.">
+              <input type="checkbox" name="capitalization" value="on"> Random Capitalization
             </label>
           </div>
           <div class="transform-option">
-            <label>
-              <input type="checkbox" name="substitute" value="on">
-              Substitute Letter
+            <label title="Substitutes a random letter with another random letter to create minor letter differences.">
+              <input type="checkbox" name="substitute" value="on"> Substitute Letter
             </label>
           </div>
           <div class="transform-option">
-            <label>
-              <input type="checkbox" name="typo" value="on">
-              Simulate Common Typo
+            <label title="Simulates a common typing error by replacing a letter with one of its adjacent keys on a QWERTY keyboard.">
+              <input type="checkbox" name="typo" value="on"> Simulate Common Typo
             </label>
           </div>
         </div>
@@ -82,7 +90,23 @@
     <div class="right-card content-card">
       <h2>Endpoint Details</h2>
       <div id="endpoint_details">
-        <p class="blink">Select an endpoint to view details...</p>
+        <!-- Editable fields to show endpoint details -->
+        <div class="form-group">
+          <label for="ep_name_input">Name:</label>
+          <input type="text" id="ep_name_input" class="endpoint-input">
+        </div>
+        <div class="form-group">
+          <label for="ep_hostname_input">Hostname:</label>
+          <input type="text" id="ep_hostname_input" class="endpoint-input">
+        </div>
+        <div class="form-group">
+          <label for="ep_endpoint_input">Endpoint Path:</label>
+          <input type="text" id="ep_endpoint_input" class="endpoint-input">
+        </div>
+        <div class="form-group">
+          <label for="ep_payload_input">Payload Template:</label>
+          <textarea id="ep_payload_input" class="endpoint-input" rows="19"></textarea>
+        </div>
       </div>
     </div>
   </div>
@@ -99,49 +123,42 @@
 {% block scripts %}
 <script>
   $(document).ready(function(){
-    function fetchEndpointDetails(endpointId, targetDiv) {
+    function fetchEndpointDetails(endpointId) {
       if (endpointId) {
         $.ajax({
           url: "{{ url_for('best_of_n_bp.endpoint_details', endpoint_id=0) }}".replace('0', endpointId),
           method: 'GET',
           success: function(data) {
-            let html = `
-              <div class="results-box">
-                <p><strong>Name:</strong> ${data.name}</p>
-                <p><strong>Hostname:</strong> ${data.hostname}</p>
-                <p><strong>Endpoint Path:</strong> ${data.endpoint}</p>
-                <p><strong>Payload Template:</strong> ${data.http_payload}</p>
-              </div>
-            `;
-            if (data.headers && data.headers.length > 0) {
-              html += `
-                <div class="results-box" style="margin-top: 1rem; max-height: 150px;">
-                  <p><strong>Headers:</strong></p>
-                  <ul style="padding-left: 1rem;">
-              `;
-              data.headers.forEach(function(header) {
-                html += `<li>${header.key}: ${header.value}</li>`;
-              });
-              html += `</ul></div>`;
-            }
-            $(targetDiv).html(html);
+            // Populate editable fields with fetched endpoint details.
+            $('#ep_name_input').val(data.name);
+            $('#ep_hostname_input').val(data.hostname);
+            $('#ep_endpoint_input').val(data.endpoint);
+            $('#ep_payload_input').val(data.http_payload);
+            // Optionally, update a headers container if needed.
           },
           error: function() {
-            $(targetDiv).html('<p>Error fetching endpoint details.</p>');
+            $('#endpoint_details').html('<p>Error fetching endpoint details.</p>');
           }
         });
       } else {
-        $(targetDiv).html('<p>Select an endpoint to view details...</p>');
+        $('#endpoint_details').html('<p class="blink">Select an endpoint to view details...</p>');
       }
     }
     
+    // When a new endpoint is selected from the dropdown, fetch its details.
     $('#registered_endpoint').change(function(){
       var epId = $(this).val();
-      fetchEndpointDetails(epId, '#endpoint_details');
+      fetchEndpointDetails(epId);
     });
     
+    // Before form submission, update the hidden inputs with the current values from the right card.
     $('#best-of-n-form').on('submit', function(e){
-      e.preventDefault();
+      // Copy the current values from the right-card inputs into the hidden fields.
+      $('#hidden_ep_name').val($('#ep_name_input').val());
+      $('#hidden_ep_hostname').val($('#ep_hostname_input').val());
+      $('#hidden_ep_endpoint').val($('#ep_endpoint_input').val());
+      $('#hidden_ep_payload').val($('#ep_payload_input').val());
+      
       $('#loadingBar').fadeIn();
       $('#chat_log').html('');
       
@@ -167,8 +184,9 @@
         $('#chat_log').append('<p>Error receiving stream.</p>');
         source.close();
       };
+      // Prevent the default form submission behavior.
+      return false;
     });
   });
 </script>
 {% endblock %}
-

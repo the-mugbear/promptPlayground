@@ -12,6 +12,7 @@ from routes.reports import report_bp
 from routes.evil_agent import evil_agent_bp
 from routes.best_of_n import best_of_n_bp
 from routes.testing_grounds import testing_grounds_bp
+from routes.dialogues import dialogue_bp
 import json
 
 migrate = Migrate()  # Instantiate the Migrate object outside create_app
@@ -50,6 +51,7 @@ def create_app():
     app.register_blueprint(evil_agent_bp)
     app.register_blueprint(best_of_n_bp)
     app.register_blueprint(testing_grounds_bp)
+    app.register_blueprint(dialogue_bp)
 
     # The below is meant to be executed in a terminal/cmd window as is for my awful memory on performing a flask migration
     # flask db init         # creates a migrations folder
