@@ -28,6 +28,7 @@ class Endpoint(db.Model):
     # Relationships
     headers = db.relationship('APIHeader', back_populates='endpoint', cascade='all, delete-orphan')
     test_runs = db.relationship('TestRun', back_populates='endpoint')
+    dialogues = db.relationship("Dialogue", back_populates="endpoint", cascade="all, delete-orphan")
 
     def to_dict(self):
         """Convert the endpoint log instance into a dictionary."""

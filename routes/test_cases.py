@@ -86,4 +86,4 @@ def handle_create_test_case_form():
     db.session.commit()
 
     flash('New test case created successfully!', 'success')
-    return redirect(url_for('test_cases_bp.list_test_cases'))
+    return redirect(url_for('test_cases_bp.create_test_case_api'))

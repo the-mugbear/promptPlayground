@@ -164,6 +164,8 @@ def test_endpoint():
         data["template"],
         test_payload=data["payload"],
         test_response=result.get("response_text"),
+        test_status_code=result.get("status_code", "N/A"),
+        test_headers_sent=result.get("headers_sent", {}),
         endpoint=data["endpoint_obj"]
     )
 
@@ -208,10 +210,19 @@ def get_endpoint_form_data(default_payload=None):
             data["raw_headers"] = "\n".join(f"{k}: {v}" for k, v in stored_headers.items())
         data["template"] = "endpoints/view_endpoint.html"
     else:
-        data["endpoint_obj"] = None
-        # For creation, if payload is missing, assign the default_payload (if provided)
-        if not data["payload"] and default_payload:
-            data["payload"] = default_payload
+        # Use the form values as a fallback endpoint object
+        data["endpoint_obj"] = {
+            "name": data["name"],
+            "hostname": data["hostname"],
+            "endpoint": data["endpoint_path"],
+            "http_payload": data["payload"]
+        }
+        # Also set a default template for creation.
         data["template"] = "endpoints/create_endpoint.html"
+    
+    # If an endpoint_id is provided, you may use a different template:
+    if data["endpoint_id"]:
+        data["template"] = request.form.get("template", "endpoints/view_endpoint.html").strip()
+
     
     return data

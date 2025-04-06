@@ -2,18 +2,34 @@
 {% block title %}Help Topics{% endblock %}
 
 {% block head %}
-  <!-- Optional: add or override styles specific to the help index page -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
   <style>
     .help-topic:hover {
-      background-color: #1a1a1a; /* A dark tone that fits the neon theme */
-      color: #00FF41; /* Neon green for readability */
-      text-shadow: 1px 1px 2px #01af26; /* Provides a subtle glow */
+      background-color: #1a1a1a;
+      color: #00FF41;
+      text-shadow: 1px 1px 2px #01af26;
     }
-    /* Ensure nested links inherit the hover text color */
     .help-topic:hover a {
       color: #00FF41;
       text-shadow: 1px 1px 2px #01af26;
+    }
+    /* Divider style between sections */
+    .divider {
+      margin: 2rem 0 1rem;
+      border-top: 2px solid #333;
+      text-align: center;
+      position: relative;
+    }
+    .divider::after {
+      content: "Developer Topics";
+      position: absolute;
+      top: -0.8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #000;
+      padding: 0 1rem;
+      color: #00FF41;
+      font-weight: bold;
     }
   </style>
 {% endblock %}
@@ -24,6 +40,8 @@
     <h1>Help Topics</h1>
     <p>Select a topic below to learn how to perform that action.</p>
   </div>
+  
+  <!-- General Help Topics -->
   <div class="help-topics">
     <div class="help-topic card">
       <h2><a href="{{ url_for('help_bp.create_test_run') }}">How to Create a Test Run</a></h2>
@@ -53,6 +71,18 @@
       <h2><a href="{{ url_for('help_bp.plugin') }}">POST Inspector (FireFox plugin)</a></h2>
       <p>Download and install FireFox plugin to help identify POST request fields.</p>
     </div>
+  </div>
+
+  <!-- Divider for Developer Topics -->
+  <div class="divider"></div>
+
+  <!-- Developer Topics (Debugging Commands) -->
+  <div class="help-topics">
+    <div class="help-topic card">
+      <h2><a href="{{ url_for('help_bp.purge') }}">Debugging Commands: Purge Orphaned Test Cases</a></h2>
+      <p>Remove test cases that are no longer associated with any test suite.</p>
+    </div>
+    {# Add more developer/debugging cards as needed #}
   </div>
 </div>
 {% endblock %}

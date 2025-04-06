@@ -77,7 +77,7 @@ def best_of_n_index():
                 yield f"data: {json.dumps(attempt_data)}\n\n"
                 time.sleep(0.1)
             final_message = {"final": True, "attempts_log": attempts_log}
-            dialogue_record = Dialogue(conversation=json.dumps(attempts_log), source="best_of_n")
+            dialogue_record = Dialogue(conversation=json.dumps(attempts_log), source="best_of_n", endpoint_id=endpoint.id)
             from extensions import db  # ensure db is imported within this context
             db.session.add(dialogue_record)
             db.session.commit()

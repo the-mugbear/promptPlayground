@@ -1,32 +1,55 @@
-// testSuiteSelection.js
 document.addEventListener("DOMContentLoaded", function() {
-  // Select the right card container instead of the old right-panel class.
+  // Select the right card container.
   const rightCard = document.querySelector('.right-card');
   
   if (rightCard) {
     rightCard.addEventListener('click', function(e) {
-      // Check if the clicked element is the "Add Selected Suites" button by its id.
       if (e.target && e.target.id === 'addSelectedBtn') {
-        // Gather all the checked checkboxes representing selected test suites.
         const checkboxes = document.querySelectorAll('.suite-checkbox:checked');
-        // Get the container on the left panel where the selected suites will be displayed.
         const selectedSuitesList = document.getElementById('selectedSuitesList');
-        // Get the container where hidden inputs for each suite ID will be added.
         const hiddenSuitesContainer = document.getElementById('hiddenSuitesContainer');
         
         checkboxes.forEach(cb => {
-          // Create a list item to display the test suite's description.
-          const li = document.createElement('li');
-          li.textContent = cb.dataset.description;
-          selectedSuitesList.appendChild(li);
-          
-          // Create a hidden input element for the test suite's ID.
-          const hiddenInput = document.createElement('input');
-          hiddenInput.type = 'hidden';
-          hiddenInput.name = 'suite_ids';
-          hiddenInput.value = cb.value;
-          hiddenSuitesContainer.appendChild(hiddenInput);
-          
+          // Use suite id as identifier.
+          const suiteId = cb.value;
+          // Check if this suite has already been added.
+          if (!selectedSuitesList.querySelector(`li[data-suite-id="${suiteId}"]`)) {
+            // Create a list item to display the test suite's description.
+            const li = document.createElement('li');
+            li.setAttribute('data-suite-id', suiteId);
+            li.style.display = 'flex';
+            li.style.justifyContent = 'space-between';
+            li.style.alignItems = 'center';
+            
+            const span = document.createElement('span');
+            span.textContent = cb.dataset.description;
+            li.appendChild(span);
+            
+            // Create a remove button.
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.textContent = '✕';
+            removeBtn.style.marginLeft = '1rem';
+            removeBtn.addEventListener('click', function() {
+              // Remove the list item.
+              li.remove();
+              // Remove the corresponding hidden input.
+              const hiddenInput = hiddenSuitesContainer.querySelector(`input[value="${suiteId}"]`);
+              if (hiddenInput) {
+                hiddenInput.remove();
+              }
+            });
+            li.appendChild(removeBtn);
+            
+            selectedSuitesList.appendChild(li);
+            
+            // Create a hidden input element for the test suite's ID.
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'suite_ids';
+            hiddenInput.value = suiteId;
+            hiddenSuitesContainer.appendChild(hiddenInput);
+          }
           // Uncheck the checkbox after processing.
           cb.checked = false;
         });

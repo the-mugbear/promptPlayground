@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, jsonify
 from collections import Counter
 
-from models.model_Endpoints import Endpoint  # :contentReference[oaicite:0]{index=0}&#8203;:contentReference[oaicite:1]{index=1}
-from models.model_TestRun import TestRun      # :contentReference[oaicite:2]{index=2}&#8203;:contentReference[oaicite:3]{index=3}
-from models.model_TestCase import TestCase      # :contentReference[oaicite:4]{index=4}&#8203;:contentReference[oaicite:5]{index=5}
+from models.model_Endpoints import Endpoint  
+from models.model_TestRun import TestRun     
+from models.model_TestCase import TestCase     
+from models.model_Dialogue import Dialogue
 
 report_bp = Blueprint('report_bp', __name__, url_prefix='/reports')
 
@@ -15,11 +16,10 @@ def report():
     endpoints = Endpoint.query.all()
     return render_template('reports/report.html', endpoints=endpoints)
 
+from models.model_Dialogue import Dialogue
+
 @report_bp.route('/report_ajax/<int:endpoint_id>', methods=['GET'])
 def report_ajax(endpoint_id):
-    """
-    Returns JSON report details for the selected endpoint.
-    """
     endpoint = Endpoint.query.get_or_404(endpoint_id)
     test_runs = TestRun.query.filter_by(endpoint_id=endpoint_id).order_by(TestRun.created_at.desc()).all()
 
@@ -42,7 +42,6 @@ def report_ajax(endpoint_id):
                     failed_count += 1
                     test_case = execution.test_case
                     if test_case and test_case.transformations:
-                        # Assume each transformation is a dict with a "type" key.
                         for transformation in test_case.transformations:
                             t_type = transformation.get('type')
                             if t_type:
@@ -61,13 +60,23 @@ def report_ajax(endpoint_id):
         "failed_transformations": dict(transformation_counter)
     }
 
-    # Return a simplified list of test runs.
     runs_data = [{
         "id": run.id,
         "name": run.name,
         "status": run.status,
         "created_at": run.created_at.isoformat() if run.created_at else ""
     } for run in test_runs]
+
+    # Query dialogues with target matching the endpoint id (cast to string)
+    dialogues = Dialogue.query.filter_by(endpoint_id=endpoint.id).all()
+    dialogues_list = []
+    for d in dialogues:
+        dialogues_list.append({
+            "id": d.id,
+            "source": d.source,
+            "created_at": d.created_at.isoformat() if d.created_at else "",
+            "conversation": d.conversation  # you could truncate this if needed
+        })
 
     return jsonify({
         "endpoint": {
@@ -77,5 +86,6 @@ def report_ajax(endpoint_id):
             "endpoint": endpoint.endpoint
         },
         "metrics": metrics,
-        "test_runs": runs_data
+        "test_runs": runs_data,
+        "dialogues": dialogues_list
     })

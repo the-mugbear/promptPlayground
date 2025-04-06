@@ -243,3 +243,15 @@
     margin-top: 2rem;
   }
   
+
+  ul {
+      list-style: none;
+  }
+  code {
+      padding: 0rem;
+  }
+  .download-button {
+      display: block;
+      width: fit-content;
+      margin: 0 auto;
+  }

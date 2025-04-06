@@ -58,6 +58,8 @@ def create_app():
     # flask db migrate -m "Initial migration"
     # flask db upgrade      # applies the migration, creating the tables & database file
 
+    # flask db stamp head when you modify the database manually and create an ouroboros of suck
+
     return app
 
 if __name__ == '__main__':

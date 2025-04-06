@@ -13,7 +13,9 @@
     <p>Follow these simple steps to complete the process to add and register your custom transformer.</p>
   </div>
 
-  <ol>
+  <ul>
+
+
     <li class="step-card">
       <div>
         <span class="step-number">1</span>
@@ -28,31 +30,65 @@
       </div>
       </div>
     </li>
+
+
     <li class="step-card">
       <div>
         <span class="step-number">2</span>
         <span class="step-title">Step 2: Populate the Template</span>
       </div>
       <div class="step-description">
-        <p>Describe the next step in the process. Make sure each instruction is clear and actionable.</p>
+        <p>Within this template, implement the transformation procedure and return the modified prompt. The template contains instructions highlighted below.
+          <br><br>
+          id - Provide a concise string used by the application to reference the class<br>
+          name - Provide a name for the transformation<br>
+          description - Describe what the transformation does and how it acts on the input prompt<br>
+        </p>
+        <div class="image-container">
+          <img src="{{ url_for('static', filename='images/transformer_template.png') }}" alt="Project Directory -> Transformers">
+      </div>
       </div>
     </li>
-    <!-- Add more steps as needed -->
+
     <li class="step-card">
       <div>
         <span class="step-number">3</span>
         <span class="step-title">Step 3: Modify registry.py</span>
       </div>
       <div class="step-description">
-        <p>Follow the conventions found within registry.py to accomplish the following:
-          <li>Import your newly added transformer function at the top
-              <div class="image-container">
-                <img src="{{ url_for('static', filename='images/registry_import.jpg') }}" alt="Project Directory -> Transformers">
-            </div>
+        <p>Follow the conventions found within registry.py to accomplish the following:</p>
+        <ul>
+          <li>
+            Import your newly added transformer function at the top.
           </li>
-        </p>
+        </ul>
+        <div class="image-container">
+          <img src="{{ url_for('static', filename='images/registry_import.jpg') }}" alt="Project Directory -> Transformers">
+        </div>
       </div>
     </li>
-  </ol>
+    
+
+    <li class="step-card">
+      <div>
+        <span class="step-number">4</span>
+        <span class="step-title">Step 4: Add new feature to transformations partial</span>
+      </div>
+      <div class="step-description">
+        <p>Modify _transformations.html to include the newly created transformation. Reference existing transformation options. This partial is intended to consolidate
+          transformation selection into one maintainable location.
+        </p>
+        <ul>
+          <li>
+          </li>
+        </ul>
+        <div class="image-container">
+          <img src="{{ url_for('static', filename='images/transformations_partial.png') }}" alt="Project Directory -> Transformers">
+        </div>
+      </div>
+    </li>
+    
+
+  </ul>
 </div>
 {% endblock %}

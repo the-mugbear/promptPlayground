@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, send_from_directory
+from flask import Blueprint, render_template, send_from_directory, flash, redirect, url_for
+from models.model_TestCase import TestCase
+from extensions import db
 
 help_bp = Blueprint('help_bp', __name__, url_prefix='/help')
 
@@ -51,9 +53,10 @@ def citations():
             "a harmful response is elicited..."
         },
         {
-            "title": "API Reference",
-            "url": "https://example.com/api",
-            "description": "..."
+            "title": "JailbreakBench",
+            "url": "https://github.com/JailbreakBench/jailbreakbench",
+            "description": "Jailbreakbench is an open-source robustness benchmark for jailbreaking large language models (LLMs). The goal of this benchmark "
+            "is to comprehensively track progress toward (1) generating successful jailbreaks and (2) defending against these jailbreaks."
         }
     ]
     return render_template('help/citations.html', research_items=research_items)
@@ -66,3 +69,16 @@ def citations():
 @help_bp.route('/download_extension')
 def download_extension():
     return send_from_directory('static', 'POSTInspector.xpi', as_attachment=True)
+
+@help_bp.route('/purge')
+def purge():
+    orphaned_test_cases = TestCase.query.filter(~TestCase.test_suites.any()).all()
+    count = len(orphaned_test_cases)
+    if count > 0:
+        for test_case in orphaned_test_cases:
+            db.session.delete(test_case)
+        db.session.commit()
+        flash(f"Purged {count} orphaned test case(s) from the database.", "success")
+    else:
+        flash("No orphaned test cases found.", "info")
+    return redirect(url_for('help_bp.index'))

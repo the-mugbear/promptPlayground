@@ -11,3 +11,12 @@ def list_dialogues():
     for dialogue in dialogues:
         dialogue.loaded_conversation = json.loads(dialogue.conversation)
     return render_template('attacks/best_of_n/view_dialogues.html', dialogues=dialogues)
+
+@dialogue_bp.route('/<int:dialogue_id>', methods=['GET'])
+def view_dialogue(dialogue_id):
+    dialogue = Dialogue.query.get_or_404(dialogue_id)
+    try:
+        loaded_conversation = json.loads(dialogue.conversation)
+    except Exception as e:
+        loaded_conversation = dialogue.conversation  # Fallback if not valid JSON.
+    return render_template('attacks/best_of_n/view_dialogue.html', dialogue=dialogue, conversation=loaded_conversation)

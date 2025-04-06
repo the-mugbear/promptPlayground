@@ -28,7 +28,7 @@
     padding: 0.5rem 1rem;
     max-width: 60%;
     background-color: #111;
-    white-space: pre-wrap;
+    /* white-space: pre-wrap; */
     overflow-wrap: anywhere;
     word-wrap: break-word;
     word-break: break-all;
