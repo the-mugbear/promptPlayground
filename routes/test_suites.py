@@ -69,40 +69,69 @@ def create_test_suite():
     description = request.form.get('description')
     behavior = request.form.get('behavior')
 
-    # Use the helper to process the transformation selections and parameters.
-    final_transformations = process_transformations(request.form)
-    
-    # Create the test suite (note: transformations now belong to TestCase)
+    # Process suite-level transformations (default for test cases that inherit)
+    suite_transformations = process_transformations(request.form)
+
+    # Create the test suite.
     new_suite = TestSuite(
-        description=description, 
+        description=description,
         behavior=behavior
     )
     db.session.add(new_suite)
     db.session.commit()
 
-    # 1. Process new test cases:
-    new_test_cases_data = request.form.get('new_test_cases')
-    if new_test_cases_data:
-        lines = [line.strip() for line in new_test_cases_data.split('\n') if line.strip()]
-        for line in lines:
-            test_case = TestCase(prompt=line, transformations=final_transformations)
+    # 1. Process dynamic new test cases from test_cases_data (JSON string)
+    test_cases_json = request.form.get('test_cases_data')
+    if test_cases_json:
+        try:
+            test_cases_list = json.loads(test_cases_json)
+        except Exception as e:
+            flash(f"Error parsing test cases data: {str(e)}", "error")
+            test_cases_list = []
+        for tc_data in test_cases_list:
+            prompt = tc_data.get("prompt", "").strip()
+            if not prompt:
+                continue  # Skip empty test cases.
+            # Decide which transformations to use:
+            # If the test case is flagged to inherit suite-level transformations, use the suite defaults.
+            # Otherwise, use the custom transformations provided in the test case.
+            inherit = tc_data.get("inheritSuiteTransformations", True)
+            if inherit:
+                transformations = suite_transformations
+            else:
+                transformations = tc_data.get("transformations", [])
+            test_case = TestCase(prompt=prompt, transformations=transformations)
             db.session.add(test_case)
-            db.session.flush()  # Ensure test_case.id is assigned
+            db.session.flush()  # Ensure test_case.id is assigned.
             new_suite.test_cases.append(test_case)
         db.session.commit()
+    else:
+        # Fallback: if no dynamic test cases data was provided, process from the plain text import field.
+        new_test_cases_data = request.form.get('new_test_cases')
+        if new_test_cases_data:
+            lines = [line.strip() for line in new_test_cases_data.split('\n') if line.strip()]
+            for line in lines:
+                # By default, assign suite-level transformations.
+                test_case = TestCase(prompt=line, transformations=suite_transformations)
+                db.session.add(test_case)
+                db.session.flush()
+                new_suite.test_cases.append(test_case)
+            db.session.commit()
 
-    # 2. Associate existing test cases:
+    # 2. Associate existing test cases (if any)
     selected_test_case_ids = request.form.getlist('selected_test_cases')
     for tc_id in selected_test_case_ids:
         existing_tc = TestCase.query.get(tc_id)
         if existing_tc:
+            # If the existing test case doesn't already have transformations, assign suite-level ones.
             if not existing_tc.transformations:
-                existing_tc.transformations = final_transformations
+                existing_tc.transformations = suite_transformations
             new_suite.test_cases.append(existing_tc)
     db.session.commit()
 
     flash('New test suite created successfully!', 'success')
     return redirect(url_for('test_suites_bp.list_test_suites'))
+
 
 
 # If the suite has already been used in a test run we block deletion, we could cascade and backfill entries but not today

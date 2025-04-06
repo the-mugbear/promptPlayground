@@ -2,114 +2,88 @@
 {% block title %}Create Test Suite{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <style>
+    .test-case-card { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; }
+    .remove-btn { background: none; border: none; color: red; font-weight: bold; cursor: pointer; }
+  </style>
 {% endblock %}
 
 {% block content %}
 <div class="two-column-container">
-  <!-- Left: main POST form for suite details + transformations -->
+  <!-- Left: Suite Details & Suite-Level Transformations -->
   <div class="left-card">
-    <h2 class="panel-heading">Create Test Suite</h2>
-
-    <!-- data-preview-url used by transformations preview pane! -->
-    <form 
-      action="{{ url_for('test_suites_bp.create_test_suite') }}" 
-      method="POST" 
-      id="create-suite-form"
-      data-preview-url="/test_suites/preview_transform"
-    >
-      <!-- Suite Description -->
+    <h2>Create Test Suite</h2>
+    <form id="create-suite-form" action="{{ url_for('test_suites_bp.create_test_suite') }}" method="POST" data-preview-url="/test_suites/preview_transform">
+      <!-- Suite Description, Behavior, Objective -->
       <div class="form-group">
         <label for="description">Description</label>
-        <input 
-          type="text" 
-          id="description" 
-          name="description" 
-          required
-          placeholder="A brief description of the suite"
-        >
+        <input type="text" id="description" name="description" required placeholder="A brief description of the suite">
       </div>
-
-      <!-- Behavior -->
       <div class="form-group">
         <label for="behavior">Behavior</label>
-        <input 
-          type="text" 
-          id="behavior" 
-          name="behavior"
-          placeholder="Behavior or scenario this suite tests"
-        >
+        <input type="text" id="behavior" name="behavior" placeholder="Behavior or scenario this suite tests">
       </div>
-      
-      <!-- Objective -->
       <div class="form-group">
         <label for="objective">Objective</label>
-        <textarea 
-          id="objective" 
-          name="objective" 
-          rows="8" 
-          placeholder="Enter the objective for this test suite"
-        ></textarea>
+        <textarea id="objective" name="objective" rows="8" placeholder="Enter the objective for this test suite"></textarea>
       </div>
-
-      <!-- New Test Cases -->
+  
+      <!-- Suite-Level Transformations -->
       <div class="form-group">
-        <label for="new_test_cases">New Test Cases (one per line)</label>
-        <textarea 
-          id="new_test_cases" 
-          name="new_test_cases" 
-          rows="8"
-          placeholder="e.g. Test case #1&#10;Test case #2"
-        ></textarea>
+        <label>Default Transformations for All Test Cases:</label>
+        {% include "partials/_transformations.html" %}
       </div>
-
-      <!-- Transformations Section -->
-      {% include "partials/_transformations.html" %}
-
-      <!-- Hidden input to store the ordered list -->
-      <input type="hidden" name="ordered_transformations" id="ordered_transformations">
-
-      <!-- Submit -->
+      <!-- Hidden input to store ordered suite-level transformations -->
+      <input type="hidden" name="suite_transformations" id="suite_transformations">
+  
+      <!-- New Test Cases Import -->
+      <div class="form-group">
+        <label for="test_cases_import">New Test Cases (one per line):</label>
+        <textarea id="test_cases_import" rows="8" placeholder="Paste test case prompts here, one per line"></textarea>
+        <button type="button" id="importTestCasesBtn">Import Test Cases</button>
+      </div>
+  
+      <!-- Dynamic Test Cases List -->
+      <h3>Test Cases</h3>
+      <div id="testCasesContainer"></div>
+      <button type="button" id="addTestCaseBtn">Add Empty Test Case</button>
+  
+      <!-- Hidden input for test cases data as JSON -->
+      <input type="hidden" name="test_cases_data" id="test_cases_data">
+  
       <button type="submit">Create Suite</button>
     </form>
   </div>
-
-  <!-- Right: empty or future expansions (e.g., searching existing test cases) -->
+  
+  <!-- Right: Preview / Orphaned Test Cases -->
   <div class="right-card">
-    <h2 class="panel-heading">Preview Pane</h2>
-    
-    <!-- Preview Area -->
-    <div class="form-group preview-container">
-      <label>Preview of Transformed Test Cases:</label>
-      <textarea id="preview-area" rows="8" readonly></textarea>
-    </div>
-
-    <!-- Transformation Order Queue Display -->
-    <div class="form-group">
-      <label>Transformation Order Queue:</label>
-      <ul id="transformation-queue">
-        <!-- Queue items will be dynamically added here -->
-      </ul>
-    </div>
-
-    
-    <!-- New Section: Orphaned Test Cases -->
-    <div class="form-group">
-      <label>Orphaned Test Cases:</label>
-      <ul id="orphaned-test-cases">
+    <h2>Preview & Add Orphaned Test Cases</h2>
+    <div id="orphaned-test-cases">
+      <ul id="orphaned-test-cases-list">
         {% for test_case in orphaned_test_cases %}
-          <li data-prompt="{{ test_case.prompt | e }}" style="cursor: pointer;">
+          <li 
+            data-prompt="{{ test_case.prompt | e }}" 
+            data-transformations="{{ test_case.transformations | tojson | e }}"
+            title="{% if test_case.transformations %}{{ test_case.transformations | join(', ') }}{% else %}No transformations{% endif %}"
+            style="cursor: pointer;">
             {{ test_case.prompt }}
           </li>
         {% endfor %}
       </ul>
-      <small>Click an orphaned test case to append it to the new test cases field.</small>
+      <small>Click an orphaned test case to add it as a new test case.</small>
     </div>
-
   </div>
+</div>
+
+<!-- Hidden template for per-test-case transformations partial -->
+<div id="transformation-template" style="display:none;">
+  {% include "partials/_transformations.html" %}
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/transformerPreview.js') }}"></script>
+<script src="{{ url_for('static', filename='js/testSuites/dynamicTestCase.js') }}"></script>
 {% endblock %}
+  
