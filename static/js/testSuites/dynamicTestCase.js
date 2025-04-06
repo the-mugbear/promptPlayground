@@ -1,47 +1,101 @@
 document.addEventListener("DOMContentLoaded", function() {
-  // Declare testCases in a scope accessible to all handlers.
+  // Global array holding the dynamic test case objects.
+  // Each object has: prompt, inheritSuiteTransformations (boolean), and transformations (array).
   let testCases = [];
 
-  // Helper function to collect transformation data from a given container.
-  function collectTransformationsFromUI(container) {
-    const transformations = [];
-    // Find all checkboxes in the container (they all have the same name "transformations")
+  // Helper: Initialize event listeners for the transformation controls in a given container.
+  // This function sets up listeners on each checkbox and its sibling text input.
+  function setupTransformationListeners(container, testCase) {
+    // Get all checkboxes within the container.
     const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+
     checkboxes.forEach(checkbox => {
-      if (checkbox.checked) {
-        // Use the checkbox's value as the transformation type.
-        let transform = { type: checkbox.value };
-        // For transformations that require an associated text (e.g., prepend_text, postpend_text),
-        // look for the sibling text input within the same parent container (".transform-option").
-        if (checkbox.value === "prepend_text" || checkbox.value === "postpend_text") {
-          const optionContainer = checkbox.closest('.transform-option');
-          if (optionContainer) {
-            const textInput = optionContainer.querySelector('input[type="text"]');
-            if (textInput && textInput.value.trim() !== "") {
-              transform.value = textInput.value.trim();
-            }
+      // On change, update the testCase.transformations array to preserve the check order.
+      checkbox.addEventListener('change', function() {
+        const transformType = checkbox.value;
+        // Find the sibling text input if any.
+        const optionContainer = checkbox.closest('.transform-option');
+        let associatedValue = "";
+        if (optionContainer) {
+          const textInput = optionContainer.querySelector('input[type="text"]');
+          if (textInput) {
+            associatedValue = textInput.value.trim();
           }
         }
-        transformations.push(transform);
-      }
+        if (checkbox.checked) {
+          // When checked, add the transformation at the end of the array.
+          testCase.transformations.push({ type: transformType, value: associatedValue });
+        } else {
+          // When unchecked, remove any transformation with this type.
+          testCase.transformations = testCase.transformations.filter(t => t.type !== transformType);
+        }
+        updateTestCasesData();
+        renderTransformationOrder(findCardForTestCase(testCase), testCase);
+      });
     });
-    return transformations;
+
+    // Also attach listeners to any text inputs so that when their value changes,
+    // the corresponding transformation object in testCase.transformations is updated.
+    const textInputs = container.querySelectorAll('input[type="text"]');
+    textInputs.forEach(input => {
+      input.addEventListener('input', function() {
+        // Determine the transformation type from the parent's checkbox.
+        const optionContainer = input.closest('.transform-option');
+        if (!optionContainer) return;
+        const checkbox = optionContainer.querySelector('input[type="checkbox"]');
+        if (!checkbox) return;
+        const transformType = checkbox.value;
+        // Find the transformation in the testCase array.
+        let found = false;
+        testCase.transformations = testCase.transformations.map(t => {
+          if (t.type === transformType) {
+            found = true;
+            return { type: transformType, value: input.value.trim() };
+          }
+          return t;
+        });
+        // If not found (and checkbox is checked) then add it.
+        if (checkbox.checked && !found) {
+          testCase.transformations.push({ type: transformType, value: input.value.trim() });
+        }
+        updateTestCasesData();
+        renderTransformationOrder(findCardForTestCase(testCase), testCase);
+      });
+    });
   }
 
-  // Helper to render transformation order for a test case card.
+  // Finds the card element associated with a given testCase object by searching for the matching data-index.
+  function findCardForTestCase(testCase) {
+    const container = document.getElementById('testCasesContainer');
+    // We assume testCases are rendered in order.
+    const cards = container.querySelectorAll('.test-case-card');
+    // Loop over the cards and find one whose "data-index" matches the index of testCase in testCases.
+    for (let i = 0; i < cards.length; i++) {
+      if (JSON.parse(cards[i].getAttribute('data-index')) === testCases.indexOf(testCase)) {
+        return cards[i];
+      }
+    }
+    return null;
+  }
+
+  // Update the hidden input that holds JSON data for test cases.
+  function updateTestCasesData() {
+    document.getElementById('test_cases_data').value = JSON.stringify(testCases);
+  }
+
+  // Render the transformation order for a test case card.
   function renderTransformationOrder(card, testCase) {
     const orderContainer = card.querySelector('.transformation-order');
-    orderContainer.innerHTML = ''; // Clear existing content
+    orderContainer.innerHTML = ''; // Clear previous content
 
     if (testCase.inheritSuiteTransformations) {
       orderContainer.textContent = 'Using suite-level transformations.';
     } else {
-      // Check if there are any custom transformations.
       if (!testCase.transformations || testCase.transformations.length === 0) {
         orderContainer.textContent = 'No custom transformations set.';
         return;
       }
-      // Create an ordered list showing the transformation order.
+      // Create an ordered list that reflects the order in which transformations were checked.
       const ol = document.createElement('ol');
       testCase.transformations.forEach(t => {
         const li = document.createElement('li');
@@ -52,26 +106,13 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
-  // Update test case data from the UI in a given card.
-  function updateTestCaseData(testCase, card) {
-    if (!testCase.inheritSuiteTransformations) {
-      const perCaseDiv = card.querySelector('.per-case-transformations');
-      // Collect the custom transformations from the UI.
-      testCase.transformations = collectTransformationsFromUI(perCaseDiv);
-    } else {
-      // If inheriting suite-level transformations, clear any custom ones.
-      testCase.transformations = [];
-    }
-    document.getElementById('test_cases_data').value = JSON.stringify(testCases);
-  }
-
-  // Toggle display of per-test-case transformation controls.
+  // Toggle display of the per-test-case transformation section.
   function toggleTransformationsSection(card, useSuiteLevel) {
     const perCaseDiv = card.querySelector('.per-case-transformations');
     perCaseDiv.style.display = useSuiteLevel ? 'none' : 'block';
   }
 
-  // Render the dynamic test case cards.
+  // Render all dynamic test case cards.
   function renderTestCases() {
     const container = document.getElementById('testCasesContainer');
     container.innerHTML = '';
@@ -85,7 +126,7 @@ document.addEventListener("DOMContentLoaded", function() {
       promptInput.type = 'text';
       promptInput.placeholder = 'Enter test case prompt';
       promptInput.value = tc.prompt || '';
-      promptInput.oninput = e => { tc.prompt = e.target.value; };
+      promptInput.oninput = e => { tc.prompt = e.target.value; updateTestCasesData(); };
       card.appendChild(promptInput);
 
       // Checkbox for inheriting suite-level transformations
@@ -93,12 +134,15 @@ document.addEventListener("DOMContentLoaded", function() {
       inheritLabel.textContent = ' Use suite-level transformations';
       const inheritCheckbox = document.createElement('input');
       inheritCheckbox.type = 'checkbox';
-      // Default to true unless explicitly set false.
       inheritCheckbox.checked = tc.inheritSuiteTransformations !== false;
-      inheritCheckbox.onchange = e => { 
-        tc.inheritSuiteTransformations = e.target.checked; 
+      inheritCheckbox.onchange = e => {
+        tc.inheritSuiteTransformations = e.target.checked;
+        // If switching to suite-level, clear any custom transformation order.
+        if (e.target.checked) {
+          tc.transformations = [];
+        }
         toggleTransformationsSection(card, e.target.checked);
-        updateTestCaseData(tc, card);
+        updateTestCasesData();
         renderTransformationOrder(card, tc);
       };
       inheritLabel.insertBefore(inheritCheckbox, inheritLabel.firstChild);
@@ -111,15 +155,13 @@ document.addEventListener("DOMContentLoaded", function() {
       const template = document.getElementById('transformation-template');
       perCaseDiv.innerHTML = template.innerHTML;
       
-      // If we have stored custom transformations (as an array), prepopulate the UI.
+      // If there are stored transformations in this test case, prepopulate the UI.
       if (tc.transformations && tc.transformations.length > 0 && !tc.inheritSuiteTransformations) {
-        // Loop over each transformation and apply it to the corresponding control.
+        // For each transformation stored, check the corresponding checkbox and set the value if applicable.
         tc.transformations.forEach(trans => {
-          // Find the corresponding checkbox by matching the value.
           const optionContainer = perCaseDiv.querySelector(`.transform-option input[type="checkbox"][value="${trans.type}"]`);
           if (optionContainer) {
             optionContainer.checked = true;
-            // If a parameter is provided, set it in the sibling text input.
             if (trans.value) {
               const textInput = optionContainer.closest('.transform-option').querySelector('input[type="text"]');
               if (textInput) {
@@ -129,24 +171,23 @@ document.addEventListener("DOMContentLoaded", function() {
           }
         });
       }
-      
-      // Listen for changes to update the test case data and transformation order display.
+      // Setup event listeners on the transformation controls.
+      setupTransformationListeners(perCaseDiv, tc);
+
+      // Listen for any additional input events in the container.
       perCaseDiv.addEventListener('input', function() {
-        updateTestCaseData(tc, card);
+        updateTestCasesData();
         renderTransformationOrder(card, tc);
       });
-      
       card.appendChild(perCaseDiv);
 
       // Container to display the transformation order.
       const orderDiv = document.createElement('div');
       orderDiv.className = 'transformation-order';
       card.appendChild(orderDiv);
-      
-      // Initialize the transformation order display.
       renderTransformationOrder(card, tc);
 
-      // Remove button.
+      // Remove button for the test case.
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.textContent = 'Remove';
@@ -159,7 +200,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
       container.appendChild(card);
     });
-    document.getElementById('test_cases_data').value = JSON.stringify(testCases);
+    updateTestCasesData();
   }
 
   // Handler for adding an empty test case.
@@ -211,14 +252,13 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   });
 
-  // On form submit, capture suite-level transformations and test cases data.
+  // On form submit, capture suite-level transformations and test case data.
   document.getElementById('create-suite-form').addEventListener('submit', function() {
     // Capture suite-level transformations.
     const suiteTransConfigElements = document.querySelectorAll('.suite-transformation-container input[type="checkbox"]:checked');
     const suiteTransformations = [];
     suiteTransConfigElements.forEach(checkbox => {
       let transform = { type: checkbox.value };
-      // Find associated text input if applicable.
       if (checkbox.value === "prepend_text" || checkbox.value === "postpend_text") {
         const optionContainer = checkbox.closest('.transform-option');
         if (optionContainer) {
@@ -235,4 +275,3 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
 });
-
