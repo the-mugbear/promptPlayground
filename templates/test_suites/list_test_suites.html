@@ -77,6 +77,18 @@
   </tbody>
 </table>
 
-<!-- Script for the list test suite logic -->
-<script src="{{ url_for('static', filename='js/listTestSuites.js') }}"></script>
+<!-- Page-Specific JavaScript for filtering or toggling details -->
+<script src="{{ url_for('static', filename='js/filterCommon.js') }}"></script>
+<script>
+  window.filterConfigs = [
+    {
+      searchInputId: "searchSuite",             // ID of the search input element
+      tableId: "suitesTable",                   // ID of the table to filter
+      toggleButtonSelector: ".view-test-cases-btn", // Selector for toggle buttons
+      rowGroupSize: 2,                         // Grouping of rows (e.g., main row and details row)
+      viewDetailsText: "View Details",         // Text when details are hidden
+      hideDetailsText: "Hide Details"          // Text when details are visible
+    }
+  ];
+</script>
 {% endblock %}

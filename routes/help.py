@@ -42,7 +42,22 @@ def results():
 # Citations / Resource Links
 @help_bp.route('/citations')
 def citations():
-    return render_template('help/citations.html')
+    research_items = [
+        {
+            "title": "Best-of-N Jailbreaking",
+            "url": "https://jplhughes.github.io/bon-jailbreaking/",
+            "description": "...a simple black-box algorithm that jailbreaks frontier AI systems across modalities. BoN Jailbreaking works by repeatedly "
+            "sampling variations of a prompt with a combination of augmentations - such as random shuffling or capitalization for textual prompts - until "
+            "a harmful response is elicited..."
+        },
+        {
+            "title": "API Reference",
+            "url": "https://example.com/api",
+            "description": "..."
+        }
+    ]
+    return render_template('help/citations.html', research_items=research_items)
+
 
 
 # ********************************

@@ -332,3 +332,20 @@ def update_execution_status(run_id):
             return jsonify({"status": "error", "message": str(e)}), 400
         return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
 
+# TestRun has a 1-to-many relationship with TestRunAttempt
+# These in turn cascade to TestExecution records
+# TestRun has a 1-to-many relationship with TestSuite through the association table
+@test_runs_bp.route('/<int:run_id>/delete', methods=['POST'])
+def delete_test_run(run_id):
+    # Retrieve the test run or return a 404 if not found
+    test_run = TestRun.query.get_or_404(run_id)
+    
+    # Clear the many-to-many association with test suites to avoid orphaned rows
+    test_run.test_suites.clear()
+    
+    # Delete the test run; its attempts (and their executions) will be removed via cascade
+    db.session.delete(test_run)
+    db.session.commit()
+    
+    flash("Test run deleted successfully", "success")
+    return redirect(url_for('test_runs_bp.list_test_runs'))

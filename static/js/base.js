@@ -11,8 +11,6 @@ document.addEventListener("DOMContentLoaded", () => {
         // Optionally animate the hamburger lines:
         const hamburger = toggleBtn.querySelector(".hamburger");
         hamburger.classList.toggle("active");
-        // You can define .hamburger.active in your CSS 
-        // to transform the lines into an 'X'
       });
     }
   });

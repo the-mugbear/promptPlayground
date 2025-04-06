@@ -5,13 +5,45 @@
 {% block head %}
   <!-- New list test suite styles -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+  <style>
+    .editable {
+      padding: 4px;
+      border-bottom: 1px dashed #ccc;
+      cursor: text;
+    }
+    .editable:focus {
+      outline: none;
+      border-bottom: 1px solid #66afe9;
+      background-color: #eaf2ff;
+    }
+    .table td {
+      word-wrap: break-word;
+      word-break: break-all;
+      white-space: normal;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
-<div class="test-suite-details">
-  <h1>Test Suite: {{ test_suite.description }}</h1>
-  <p><strong>Behavior:</strong> {{ test_suite.behavior or "N/A" }}</p>
-  <p><strong>Objective:</strong> {{ test_suite.objective or "N/A" }}</p>
+<div class="test-suite-details" data-suite-id="{{ test_suite.id }}">
+  <h1>
+    Test Suite: 
+    <span class="editable" contenteditable="true" data-field="description">
+      {{ test_suite.description }}
+    </span>
+  </h1>
+  <p>
+    <strong>Behavior:</strong>
+    <span class="editable" contenteditable="true" data-field="behavior">
+      {{ test_suite.behavior or "N/A" }}
+    </span>
+  </p>
+  <p>
+    <strong>Objective:</strong>
+    <span class="editable" contenteditable="true" data-field="objective">
+      {{ test_suite.objective or "N/A" }}
+    </span>
+  </p>
   <p>
     <strong>Created At:</strong>
     {% if test_suite.created_at %}
@@ -22,6 +54,8 @@
   </p>
 </div>
 
+{% set show_transformed = (test_suite.test_cases | selectattr("transformations") | list | length) > 0 %}
+
 <div class="test-cases">
   <h2>Associated Test Cases</h2>
   {% if test_suite.test_cases and test_suite.test_cases|length > 0 %}
@@ -29,7 +63,10 @@
       <thead>
         <tr>
           <th>#</th>
-          <th>Prompt</th>
+          <th>Original Prompt</th>
+          {% if show_transformed %}
+            <th>Transformed Prompt</th>
+          {% endif %}
           <th>Transformations</th>
         </tr>
       </thead>
@@ -38,6 +75,15 @@
           <tr>
             <td>{{ loop.index }}</td>
             <td>{{ case.prompt }}</td>
+            {% if show_transformed %}
+              <td>
+                {% if case.transformed_prompt %}
+                  {{ case.transformed_prompt }}
+                {% else %}
+                  N/A
+                {% endif %}
+              </td>
+            {% endif %}
             <td>
               {% if case.transformations %}
                 <ul>
@@ -66,4 +112,44 @@
     <p>No test cases are associated with this test suite.</p>
   {% endif %}
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const editableFields = document.querySelectorAll(".editable");
+  editableFields.forEach(function(field) {
+    field.addEventListener("blur", function(event) {
+      const newValue = event.target.textContent.trim();
+      const fieldName = event.target.getAttribute("data-field");
+      const suiteId = event.target.closest(".test-suite-details").getAttribute("data-suite-id");
+
+      // Prepare the payload with the updated field.
+      const payload = {};
+      payload[fieldName] = newValue;
+
+      // Send the AJAX request to update the test suite.
+      fetch("/test_suites/" + suiteId + "/update", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Failed to update " + fieldName);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("Successfully updated", fieldName, data);
+      })
+      .catch(error => {
+        console.error("Error updating test suite:", error);
+        alert("Error updating " + fieldName);
+      });
+    });
+  });
+});
+</script>
 {% endblock %}

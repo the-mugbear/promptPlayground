@@ -1,0 +1,39 @@
+/* Chat container styling */
+.chat-container {
+    max-width: 800px;
+    margin: 1rem auto;
+    padding: 1rem;
+    background-color: #000;
+    border: 2px dashed var(--accent-color);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+/* Chat row for aligning the boxes */
+.chat-row {
+    display: flex;
+    width: 100%;
+}
+.chat-row.left {
+    justify-content: flex-start;
+}
+.chat-row.right {
+    justify-content: flex-end;
+}
+/* Chat message bubbles */
+.chat-bubble {
+    border: 2px dashed var(--accent-color);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    max-width: 60%;
+    background-color: #111;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-wrap: break-word;
+    word-break: break-all;
+}
+.chat-bubble strong {
+    display: block;
+    margin-bottom: 0.5rem;
+}

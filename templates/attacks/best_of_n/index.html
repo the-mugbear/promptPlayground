@@ -4,48 +4,8 @@
 
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/communication_log.css') }}">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <style>
-    /* Chat container styling */
-    .chat-container {
-      max-width: 800px;
-      margin: 1rem auto;
-      padding: 1rem;
-      background-color: #000;
-      border: 2px dashed var(--accent-color);
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-    /* Chat row for aligning the boxes */
-    .chat-row {
-      display: flex;
-      width: 100%;
-    }
-    .chat-row.left {
-      justify-content: flex-start;
-    }
-    .chat-row.right {
-      justify-content: flex-end;
-    }
-    /* Chat message bubbles */
-    .chat-bubble {
-      border: 2px dashed var(--accent-color);
-      border-radius: 8px;
-      padding: 0.5rem 1rem;
-      max-width: 60%;
-      background-color: #111;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      word-wrap: break-word;
-      word-break: break-all;
-    }
-    .chat-bubble strong {
-      display: block;
-      margin-bottom: 0.5rem;
-    }
-  </style>
 {% endblock %}
 
 {% block content %}
@@ -129,9 +89,7 @@
 
   <!-- Communication Log -->
   <h2>Communication Log</h2>
-  <div id="chat_log" class="chat-container">
-    <!-- Chat messages will be appended here -->
-  </div>
+  {% include 'partials/_comm_log.html' %}
 
   <!-- Optional Loading Bar -->
   <div class="loading-bar" style="display:none;" id="loadingBar"></div>

@@ -75,11 +75,10 @@ document.getElementById('endpoint-select').addEventListener('change', function()
       html += '<h3>Test Runs</h3>';
       if (data.test_runs.length > 0) {
         html += '<table>';
-        html += '<thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Created At</th></tr></thead>';
+        html += '<thead><tr><th>Name</th><th>Status</th><th>Created At</th></tr></thead>';
         html += '<tbody>';
         data.test_runs.forEach(function(run) {
           html += '<tr>';
-          html += '<td>' + run.id + '</td>';
           html += '<td>' + run.name + '</td>';
           html += '<td>' + run.status + '</td>';
           html += '<td>' + run.created_at + '</td>';

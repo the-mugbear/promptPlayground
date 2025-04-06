@@ -85,6 +85,19 @@
 </table>
 
 <!-- Page-Specific JavaScript for filtering or toggling details -->
-<script src="{{ url_for('static', filename='js/listTestCases.js') }}"></script>
+<script src="{{ url_for('static', filename='js/filterCommon.js') }}"></script>
+<!-- Inline configuration for view_test_cases -->
+<script>
+  window.filterConfigs = [
+    {
+      searchInputId: "searchCase",             // ID of the search input element
+      tableId: "casesTable",                   // ID of the table to filter
+      toggleButtonSelector: ".view-case-details-btn", // Selector for toggle buttons
+      rowGroupSize: 2,                         // Grouping of rows (e.g., main row and details row)
+      viewDetailsText: "View Details",         // Text when details are hidden
+      hideDetailsText: "Hide Details"          // Text when details are visible
+    }
+  ];
+</script>
 
 {% endblock %}

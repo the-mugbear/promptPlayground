@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify, render_template, redirect, url_fo
 from extensions import db
 from models.model_TestCase import TestCase
 from models.model_TestSuite import TestSuite
-from services.transformers.registry import apply_transformations_to_lines, TRANSFORM_PARAM_CONFIG
+from services.transformers.registry import apply_transformations_to_lines, TRANSFORM_PARAM_CONFIG, apply_transformation
 from services.transformers.helpers import process_transformations
 from datetime import datetime
 
@@ -42,8 +42,21 @@ def create_test_suite_form():
 def test_suite_details(suite_id):
     # Retrieve the test suite by its ID, or return a 404 error if not found.
     test_suite = TestSuite.query.get_or_404(suite_id)
-    return render_template('test_suites/test_suite_details.html', test_suite=test_suite)
+    
+    # For each test case in the suite, apply its transformations to the prompt.
+    for test_case in test_suite.test_cases:
+        # Start with the original prompt.
+        transformed_prompt = test_case.prompt  
+        for tinfo in (test_case.transformations or []):
+            t_type = tinfo.get("type")
+            params = {}
+            if "value" in tinfo:
+                params["value"] = tinfo["value"]
+            transformed_prompt = apply_transformation(t_type, transformed_prompt, params)
+        # Attach the transformed prompt to the test case.
+        test_case.transformed_prompt = transformed_prompt
 
+    return render_template('test_suites/test_suite_details.html', test_suite=test_suite)
 
 # ********************************
 # SERVICES
@@ -149,3 +162,24 @@ def preview_transform():
     )
 
     return jsonify({"transformed_lines": transformed_lines})
+
+@test_suites_bp.route('/<int:suite_id>/update', methods=['PUT'])
+def update_test_suite(suite_id):
+    suite = TestSuite.query.get_or_404(suite_id)
+    data = request.get_json(force=True)
+    updated_fields = []
+
+    if "description" in data:
+        suite.description = data["description"]
+        updated_fields.append("description")
+
+    if "behavior" in data:
+        suite.behavior = data["behavior"]
+        updated_fields.append("behavior")
+
+    if "objective" in data:
+        suite.objective = data["objective"]
+        updated_fields.append("objective")
+
+    db.session.commit()
+    return jsonify({"message": "Updated fields: " + ", ".join(updated_fields)}), 200

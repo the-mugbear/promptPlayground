@@ -4,43 +4,55 @@
 {% block head %}
   <!-- Optional: add or override styles specific to the help index page -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
+  <style>
+    .help-topic:hover {
+      background-color: #1a1a1a; /* A dark tone that fits the neon theme */
+      color: #00FF41; /* Neon green for readability */
+      text-shadow: 1px 1px 2px #01af26; /* Provides a subtle glow */
+    }
+    /* Ensure nested links inherit the hover text color */
+    .help-topic:hover a {
+      color: #00FF41;
+      text-shadow: 1px 1px 2px #01af26;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
-<div class="help-index-container">
+<div class="help-container">
   <div class="help-header">
     <h1>Help Topics</h1>
     <p>Select a topic below to learn how to perform that action.</p>
   </div>
   <div class="help-topics">
-    <div class="help-topic">
+    <div class="help-topic card">
       <h2><a href="{{ url_for('help_bp.create_test_run') }}">How to Create a Test Run</a></h2>
       <p>Learn the steps to configure and execute a test run.</p>
     </div>
-    <div class="help-topic">
+    <div class="help-topic card">
       <h2><a href="{{ url_for('help_bp.manage_endpoints') }}">Managing Endpoints</a></h2>
       <p>Instructions on creating, testing, and deleting endpoints.</p>
     </div>
-    <div class="help-topic">
+    <div class="help-topic card">
       <h2><a href="{{ url_for('help_bp.using_transformations') }}">Using Transformations</a></h2>
       <p>Guide to applying transformations like ROT13, Base64, and Morse code.</p>
     </div>
-    <div class="help-topic">
+    <div class="help-topic card">
       <h2><a href="{{ url_for('help_bp.adding_transformers') }}">Adding Transformations</a></h2>
       <p>Guide to adding new transformations and registering them for use in test suite creation.</p>
     </div>
-    <div class="help-topic">
+    <div class="help-topic card">
       <h2><a href="{{ url_for('help_bp.results') }}">Interpreting Test Results</a></h2>
       <p>Understand the execution status, response codes, and more.</p>
     </div>
-    <div class="help-topic">
+    <div class="help-topic card">
       <h2><a href="{{ url_for('help_bp.citations') }}">Resources and Citations</a></h2>
-      <p>Aggregate of research and inspiratinon used to inspire and create prompts.</p>
+      <p>Aggregate of research and inspiration used to create prompts.</p>
     </div>
-    <!-- Add more topics as needed -->
-     <div class="help-topic">
+    <div class="help-topic card">
       <h2><a href="{{ url_for('help_bp.plugin') }}">POST Inspector (FireFox plugin)</a></h2>
-      <p>Download and install FireFox plugin to help identify POST request fields</p>
+      <p>Download and install FireFox plugin to help identify POST request fields.</p>
+    </div>
   </div>
 </div>
 {% endblock %}

@@ -98,5 +98,18 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/listEndpoints.js') }}"></script>
+<!-- Page-Specific JavaScript for filtering or toggling details -->
+<script src="{{ url_for('static', filename='js/filterCommon.js') }}"></script>
+<script>
+  window.filterConfigs = [
+    {
+      searchInputId: "searchEndpoint",             // ID of the search input element
+      tableId: "endpointsTable",                   // ID of the table to filter
+      toggleButtonSelector: ".view-headers-btn", // Selector for toggle buttons
+      rowGroupSize: 2,                         // Grouping of rows (e.g., main row and details row)
+      viewDetailsText: "View Details",         // Text when details are hidden
+      hideDetailsText: "Hide Details"          // Text when details are visible
+    }
+  ];
+</script>
 {% endblock %}

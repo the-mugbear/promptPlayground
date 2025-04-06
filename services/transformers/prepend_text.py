@@ -9,4 +9,4 @@ class PrependText(Transformation):
     def apply(self, prompt: str, params: dict = None) -> str:
         if not params:
             return prompt
-        return f"{params.get('text_to_prepend','')}{prompt}"
+        return f"{params.get('value','')}{prompt}"
