@@ -2,7 +2,6 @@ import random
 import string
 import time
 from services.common.http_request_service import replay_post_request
-from services.common.header_parser_service import parse_raw_headers
 
 def apply_random_transformations(prompt):
     # A simple example of a random transformation

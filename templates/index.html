@@ -1,12 +1,68 @@
 {% extends "base.html" %}
 
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <style>
+    /* Ensure header key/value pairs are side by side */
+    .headers-container .header-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .headers-container .header-row input[type="text"] {
+      flex: 1;
+    }
+  </style>
+{% endblock %}
 
 {% block content %}
+<div class="container">
+  <hr>
+  <div class="content-card">
+    <h2>Dataset References</h2>
+    <!-- Search Bar -->
+    <input type="text" id="dataset-search" placeholder="Search dataset references...">
+    <!-- Dataset List -->
+    {% if dataset_references %}
+      <ul id="dataset-references-list">
+        {% for ref in dataset_references %}
+          <li class="dataset-reference">
+            <a href="{{ ref.url }}" target="_blank">{{ ref.name }}</a>
+            - Added on {{ ref.date_added.strftime('%Y-%m-%d') }}
+            - <span class="dataset-status {{ 'added' if ref.added else 'not-added' }}">
+                {{ 'Added' if ref.added else 'Not Added' }}
+              </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No dataset references found.</p>
+    {% endif %}
+  </div>
 
-    <div class="image-container">
-        <img src="{{ url_for('static', filename='images/j5.png') }}" alt="Description of the image">
-    </div>
+  <hr>
+  <div class="content-card">
+    <h2>Add New Dataset Reference</h2>
+    <form method="POST" action="{{ url_for('core_bp.index') }}">
+      <div class="form-group">
+        <label for="dataset_name">Name:</label>
+        <input type="text" id="dataset_name" name="dataset_name" required placeholder="Enter dataset name">
+      </div>
+      <div class="form-group">
+        <label for="dataset_url">URL:</label>
+        <input type="url" id="dataset_url" name="dataset_url" required placeholder="Enter dataset URL">
+      </div>
+      <div class="form-group">
+        <label for="dataset_added">
+          <input type="checkbox" id="dataset_added" name="dataset_added"> Mark as Added
+        </label>
+      </div>
+      <button type="submit">Add Dataset Reference</button>
+    </form>
+  </div>
 
+  <!-- <hr>
+  <div class="content-card">
     <h3>Select a Visual Effect</h3>
     <ul>
       <li><a href="{{ url_for('core_bp.visual', effect='matrix_rain') }}">Matrix Rain</a></li>
@@ -14,4 +70,10 @@
       <li><a href="{{ url_for('core_bp.visual', effect='neon_circles') }}">Neon Circles</a></li>
       <li><a href="{{ url_for('core_bp.visual', effect='8_bit_fire') }}">Campfire</a></li>
     </ul>
+  </div> -->
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/core/search_datasets.js') }}"></script>
 {% endblock %}

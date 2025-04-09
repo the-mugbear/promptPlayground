@@ -193,7 +193,15 @@ def get_endpoint_form_data(default_payload=None):
     test_payload = request.form.get("test_payload", "").strip()
     http_payload = request.form.get("http_payload", "").strip()
     data["payload"] = test_payload if test_payload else http_payload
-    data["raw_headers"] = request.form.get("raw_headers", "").strip()
+
+    # Process raw headers using our helper function.
+    let_raw = request.form.get("raw_headers", "").strip()
+    if let_raw:
+        # Parse the raw headers and reassemble them as a newline-separated string.
+        parsed = parse_raw_headers(let_raw)
+        data["raw_headers"] = "\n".join(f"{k}: {v}" for k, v in parsed.items())
+    else:
+        data["raw_headers"] = ""
     
     if data["endpoint_id"]:
         # For update/test scenarios, fetch stored values for missing fields.

@@ -69,7 +69,8 @@
           placeholder='Paste or edit JSON here...'
         >{{ request.form.http_payload|default('') }}</textarea>
         <button type="button" onclick="formatHttpPayload()">Format JSON</button>
-      </div>
+        <button type="button" id="insertTokenBtn">Insert {{INJECT_PROMPT}} Token</button>
+      </div>      
   
       <div class="form-group">
         <label for="raw_headers">Headers (Key: Value per line)</label>
@@ -148,4 +149,5 @@
   <script src="{{ url_for('static', filename='js/endpoints/json_pretty_print.js') }}"></script>
   <script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>
   <script src="{{ url_for('static', filename='js/endpoints/loading_animation.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/endpoints/httpPayloadValidator.js') }}"></script>
 {% endblock %}
