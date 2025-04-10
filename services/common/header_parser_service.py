@@ -33,7 +33,11 @@ def parse_raw_headers(raw_headers: str) -> dict:
 
     for line in raw_headers.splitlines():
         line = line.strip()
-        if not line or ':' not in line:
+        if not line:
+            continue
+        if ':' not in line:
+            # This line might be a request line; log it for debugging.
+            print(f"Skipping line without colon: {line}")
             continue
         key, value = line.split(':', 1)
         key = key.strip()
