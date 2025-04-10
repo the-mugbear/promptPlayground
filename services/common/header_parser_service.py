@@ -39,8 +39,8 @@ def parse_raw_headers(raw_headers: str) -> dict:
         key = key.strip()
         value = value.strip()
         if key.lower() == 'cookie':
-            # Instead of manual splitting, use the helper to properly parse cookies.
-            headers[key] = json.dumps(parse_cookie_header(value))
+            cookies = parse_cookie_header(value)
+            headers[key] = "; ".join(f"{k}={v}" for k, v in cookies.items())
         else:
             headers[key] = value
     return headers

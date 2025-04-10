@@ -232,5 +232,4 @@ def get_endpoint_form_data(default_payload=None):
     if data["endpoint_id"]:
         data["template"] = request.form.get("template", "endpoints/view_endpoint.html").strip()
 
-    
     return data
