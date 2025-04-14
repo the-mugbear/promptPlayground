@@ -59,7 +59,8 @@ def handle_create_endpoint():
             name=data["name"],
             hostname=data["hostname"],
             endpoint=data["endpoint_path"],
-            http_payload=data["payload"]
+            http_payload=data["payload"],
+            invalid_characters=data["invalid_characters"]
         )
         db.session.add(new_endpoint)
         db.session.flush()  # Ensure new_endpoint.id is assigned
@@ -118,6 +119,7 @@ def update_endpoint(endpoint_id):
     endpoint_obj.hostname = data["hostname"]
     endpoint_obj.endpoint = data["endpoint_path"]
     endpoint_obj.http_payload = data["payload"]
+    endpoint_obj.invalid_characters = data["invalid_characters"]
 
     # Remove existing headers
     for header in endpoint_obj.headers:
@@ -188,6 +190,9 @@ def get_endpoint_form_data(default_payload=None):
     data["name"] = request.form.get("name", "").strip()
     data["hostname"] = request.form.get("hostname", "").strip()
     data["endpoint_path"] = request.form.get("endpoint", "").strip()
+
+    # capture invalid_characters from the form.
+    data["invalid_characters"] = request.form.get("invalid_characters", "").strip()
     
     test_payload = request.form.get("test_payload", "").strip()
     http_payload = request.form.get("http_payload", "").strip()
@@ -218,6 +223,8 @@ def get_endpoint_form_data(default_payload=None):
         if not data["raw_headers"]:
             stored_headers = headers_from_apiheader_list(endpoint_obj.headers)
             data["raw_headers"] = "\n".join(f"{k}: {v}" for k, v in stored_headers.items())
+        if not data["invalid_characters"]:
+            data["invalid_characters"] = endpoint_obj.invalid_characters or ""
         data["template"] = "endpoints/view_endpoint.html"
     else:
         # Use the form values as a fallback endpoint object
