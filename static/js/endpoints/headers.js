@@ -76,16 +76,19 @@ function parseHeaders() {
 
 
 function renderHeaders() {
-    const previewDiv = document.getElementById('suggestion-list');
+    // Prefer an editable header container if available.
+    const previewDiv = document.getElementById('suggestion-list') ||
+                         document.getElementById('editableHeaderPreview') ||
+                         document.getElementById('readOnlyHeadersDisplay');
+    if (!previewDiv) {
+        console.error("No container found for header preview.");
+        return;
+    }
     previewDiv.innerHTML = ''; // clear old entries
-
     headerEntries.forEach((entry, idx) => {
         const row = document.createElement('div');
         row.className = 'header-row';
-        
-        // Check if this is a Cookie header with cookiePairs available
         if (entry.key.toLowerCase() === 'cookie' && entry.cookiePairs) {
-            // Build HTML for each cookie pair
             let cookieHtml = entry.cookiePairs.map((cookie, cIdx) => {
                 return `<div class="cookie-row">
                             <input type="text" class="cookie-key" value="${cookie.name}" oninput="updateCookieKey(${idx}, ${cIdx}, this.value)">
@@ -93,7 +96,6 @@ function renderHeaders() {
                             <button type="button" onclick="removeCookie(${idx}, ${cIdx})">X</button>
                         </div>`;
             }).join('');
-            
             row.innerHTML = `
                 <input type="text" class="header-key" value="${entry.key}" oninput="updateKey(${idx}, this.value)">
                 <div class="cookie-container">${cookieHtml}</div>
@@ -109,8 +111,6 @@ function renderHeaders() {
         }
         previewDiv.appendChild(row);
     });
-    
-    // Update the raw textarea so that it stays in sync with headerEntries.
     updateRawHeaders();
 }
 

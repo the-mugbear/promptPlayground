@@ -2,25 +2,20 @@
 {% block title %}View & Test Endpoint #{{ endpoint.id }}{% endblock %}
 
 {% block head %}
-  <!-- Global CSS is loaded by base.html (including theme.css) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
   <style>
-    /* Ensure payload within the results-box wraps properly */
     .results-box, .results-box pre {
       white-space: pre-wrap;
       word-wrap: break-word;
-      overflow-wrap: break-word; /* 'anywhere' is less supported than 'break-word' */
-      word-break: break-word; /* 'break-all' can be too aggressive */
+      overflow-wrap: break-word;
+      word-break: break-word;
       width: 100%;
       max-width: 100%;
       overflow-x: hidden;
       overflow-y: auto;
     }
-    label {
-      margin-top: 0;
-    }
-    /* Read-only parsed headers (right card) */
+    label { margin-top: 0; }
     #readOnlyHeadersDisplay {
       background-color: #000;
       border: 1px solid var(--accent-color);
@@ -30,24 +25,16 @@
       max-height: 500px;
       overflow-y: auto;
     }
-    .header-display {
-      margin-bottom: 0.5rem;
-    }
-    .header-display strong {
-      color: var(--accent-color);
-    }
+    .header-display { margin-bottom: 0.5rem; }
+    .header-display strong { color: var(--accent-color); }
   </style>
 {% endblock %}
 
 {% block content %}
-  <!-- Loading indicator -->
   <div id="loadingIndicator" class="loading-indicator blink" style="display: none;">LOADING...</div>
-
   <div class="two-column-container">
-    <!-- Left Card: Endpoint Details, Headers, Edit Form & Test Form -->
     <div class="left-card">
       <h2>Endpoint #{{ endpoint.id }}</h2>
-      <!-- One Edit Endpoint button -->
       <button id="editButton" type="button">Edit Endpoint</button>
 
       <!-- View Mode Container -->
@@ -77,7 +64,7 @@
             <em>No payload</em>
           {% endif %}
         </div>
-        <!-- Headers displayed via Jinja (non-editable) -->
+        <!-- Headers display -->
         <div class="endpoint-field">
           <label>Headers:</label>
           {% if endpoint.headers and endpoint.headers|length > 0 %}
@@ -93,9 +80,14 @@
             <p><em>No headers available.</em></p>
           {% endif %}
         </div>
+        <!-- New Invalid Characters display -->
+        <div class="endpoint-field">
+          <label>Invalid Characters:</label>
+          <span>{{ endpoint.invalid_characters or 'None' }}</span>
+        </div>
       </div>
 
-      <!-- Edit Mode Container (hidden on page load) -->
+      <!-- Edit Mode Container -->
       <div id="editContainer" style="display: none; margin-top: 1rem;">
         <h3>Edit Endpoint</h3>
         <form action="{{ url_for('endpoints_bp.update_endpoint', endpoint_id=endpoint.id) }}"
@@ -115,21 +107,26 @@
           <div class="form-group">
             <label for="edit_http_payload">HTTP Payload:</label>
             <textarea id="edit_http_payload" name="http_payload" rows="14" placeholder="Enter HTTP Payload...">
-{{ endpoint.http_payload }}</textarea>
+{{ endpoint.http_payload }}
+            </textarea>
           </div>
           <div class="form-group">
             <label for="raw_headers">Headers (Key: Value per line):</label>
-            <!-- raw_headers textarea remains in the DOM (and is used by headers.js) -->
             <textarea id="raw_headers" name="raw_headers" rows="14" placeholder="e.g., Content-Type: application/json&#10;Authorization: Bearer &lt;token&gt;">
 {% for hdr in endpoint.headers %}{{ hdr.key }}: {{ hdr.value }}{% if not loop.last %}&#10;{% endif %}{% endfor %}
             </textarea>
+          </div>
+          <!-- New input field for invalid characters -->
+          <div class="form-group">
+            <label for="edit_invalid_characters">Invalid Characters:</label>
+            <input type="text" id="edit_invalid_characters" name="invalid_characters" value="{{ endpoint.invalid_characters }}">
           </div>
           <button type="submit">Save Changes</button>
           <button type="button" id="cancelEdit">Cancel</button>
         </form>
       </div>
 
-      <!-- Test Form Container (remains visible in view mode) -->
+      <!-- Test Form Container -->
       <div id="testFormContainer">
         <form class="test-form" action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}"
               method="POST" id="test-endpoint-form">
@@ -147,14 +144,13 @@
       </div>
     </div>
 
-    <!-- Right Card: Read-Only Parsed Headers for Mouseover Functionality -->
+    <!-- Right Card: Read-Only Parsed Headers -->
     <div class="right-card">
       <h2>Parsed Headers</h2>
       <div id="readOnlyHeadersDisplay"></div>
     </div>
   </div>
 
-  <!-- Test Results Section -->
   {% if test_payload or test_response %}
     <div class="results-container" id="testResultsContainer">
       <h2>Test Results</h2>
@@ -183,10 +179,9 @@
 {% endblock %}
 
 {% block scripts %}
-  <!-- Retain headers.js for the editable header functionality in edit mode -->
   <script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>
   <script>
-    // Function to parse raw headers (from the hidden textarea) and populate the read-only display.
+    // Parse raw headers for the read-only display.
     function parseReadOnlyHeaders() {
       const rawHeadersElem = document.getElementById('raw_headers');
       if (!rawHeadersElem) {
@@ -213,35 +208,28 @@
       }
     }
     
-    // Populate the right card read-only headers on DOMContentLoaded.
     document.addEventListener('DOMContentLoaded', function() {
       parseReadOnlyHeaders();
     });
     
-    // When "Edit Endpoint" is clicked, show the edit form and hide the right card read-only headers.
     document.getElementById("editButton").addEventListener("click", function() {
       document.getElementById("editContainer").style.display = "block";
       document.getElementById("viewContainer").style.display = "none";
       document.getElementById("testFormContainer").style.display = "none";
       document.getElementById("testResultsContainer").style.display = "none";
-      
       const readOnlyDisplay = document.getElementById("readOnlyHeadersDisplay");
-      if (readOnlyDisplay) {
-        readOnlyDisplay.style.display = "none";
-      }
+      if (readOnlyDisplay) { readOnlyDisplay.style.display = "none"; }
+      // Re-parse headers on switching to edit mode.
+      parseHeaders();
     });
     
-    // When "Cancel" is clicked, revert back to view mode and show the right card read-only headers.
     document.getElementById("cancelEdit").addEventListener("click", function() {
       document.getElementById("editContainer").style.display = "none";
       document.getElementById("viewContainer").style.display = "block";
       document.getElementById("testFormContainer").style.display = "block";
       document.getElementById("testResultsContainer").style.display = "block";
-      
       const readOnlyDisplay = document.getElementById("readOnlyHeadersDisplay");
-      if (readOnlyDisplay) {
-        readOnlyDisplay.style.display = "block";
-      }
+      if (readOnlyDisplay) { readOnlyDisplay.style.display = "block"; }
     });
   </script>
 {% endblock %}
