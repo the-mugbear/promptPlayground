@@ -1,0 +1,313 @@
+/* ==================================================
+   CYBERPUNK BOOTSTRAP OVERRIDES
+   This file applies the cyberpunk theme to Bootstrap elements
+   ================================================== */
+
+/* Base elements */
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--main-font);
+  }
+  
+  /* Card styling */
+  .card {
+    background-color: #111;
+    border: 2px dashed var(--accent-color);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+  }
+  
+  .card-header {
+    cursor: pointer;
+    background-color: #111;
+    border-bottom: 1px dashed var(--accent-color);
+    color: var(--accent-color);
+    padding: 0.75rem 1.25rem;
+  }
+  
+  .card-body {
+    background-color: #000;
+    color: var(--text-color);
+    padding: 1.25rem;
+  }
+  
+  /* Buttons */
+  .btn {
+    font-family: var(--main-font);
+    color: var(--text-color);
+    background: transparent;
+    border: 2px solid var(--accent-color);
+    transition: all 0.2s;
+  }
+  
+  .btn:hover {
+    background: var(--accent-color);
+    color: #000;
+    text-decoration: none;
+  }
+  
+  .btn-warning {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+  }
+  
+  .btn-warning:hover {
+    background: var(--secondary-color);
+    color: #000;
+  }
+  
+  .btn-danger {
+    border-color: #FF0000;
+    color: #FF0000;
+  }
+  
+  .btn-danger:hover {
+    background: #FF0000;
+    color: #000;
+  }
+  
+  .btn-success {
+    border-color: #00FF41;
+    color: #00FF41;
+  }
+  
+  .btn-success:hover {
+    background: #00FF41;
+    color: #000;
+  }
+  
+  .btn-primary {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+  }
+  
+  .btn-primary:hover {
+    background: var(--secondary-color);
+    color: #000;
+  }
+  
+  /* Editable fields */
+  .editable {
+    border-bottom: 1px dashed var(--accent-color);
+    padding: 0.25rem;
+  }
+  
+  .editable:focus {
+    outline: none;
+    border-bottom: 1px solid var(--secondary-color);
+    box-shadow: 0 2px 0 var(--secondary-color);
+  }
+  
+  /* Accordion collapse */
+  .collapse {
+    border-top: 1px dashed var(--accent-color);
+  }
+  
+  /* Container */
+  .container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 0;
+  }
+  
+  /* Headings */
+  h1, h2, h3, h4, h5 {
+    color: var(--accent-color);
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Action buttons */
+  .action-btn {
+    margin-right: 5px;
+    padding: 2px 6px;
+    font-size: 0.9em;
+    cursor: pointer;
+  }
+  
+  /* Strong elements */
+  strong {
+    color: var(--secondary-color);
+  }
+  
+  /* List items */
+  li {
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Form elements */
+  .form-control {
+    background-color: #111;
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+  }
+  
+  .form-control:focus {
+    background-color: #000;
+    border-color: var(--secondary-color);
+    color: var(--text-color);
+    box-shadow: 0 0 0 0.2rem rgba(0, 255, 255, 0.25);
+  }
+  
+  /* Form labels */
+  .form-label, label {
+    color: var(--secondary-color);
+  }
+  
+  /* Tables */
+  .table {
+    color: var(--text-color);
+    border-color: var(--accent-color);
+  }
+  
+  .table thead th {
+    background-color: #111;
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+  }
+  
+  .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 0, 170, 0.1);
+  }
+  
+  .table-hover tbody tr:hover {
+    background-color: rgba(0, 255, 255, 0.1);
+  }
+  
+  /* Alerts */
+  .alert {
+    background-color: #111;
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+  }
+  
+  .alert-success {
+    border-color: #00FF41;
+    color: #00FF41;
+  }
+  
+  .alert-danger {
+    border-color: #FF0000;
+    color: #FF0000;
+  }
+  
+  .alert-warning {
+    border-color: #FFFF00;
+    color: #FFFF00;
+  }
+  
+  .alert-info {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+  }
+  
+  /* Pagination */
+  .pagination .page-link {
+    background-color: #111;
+    border-color: var(--accent-color);
+    color: var(--text-color);
+  }
+  
+  .pagination .page-item.active .page-link {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #000;
+  }
+  
+  .pagination .page-link:hover {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    color: #000;
+  }
+  
+  /* Navbar */
+  .navbar {
+    background-color: var(--bg-color);
+    border-bottom: 2px solid var(--accent-color);
+  }
+  
+  .navbar-dark .navbar-brand,
+  .navbar-dark .navbar-nav .nav-link {
+    color: var(--text-color);
+  }
+  
+  .navbar-dark .navbar-nav .nav-link:hover {
+    color: var(--secondary-color);
+  }
+  
+  /* Dropdowns */
+  .dropdown-menu {
+    background-color: #111;
+    border: 1px solid var(--accent-color);
+  }
+  
+  .dropdown-item {
+    color: var(--text-color);
+  }
+  
+  .dropdown-item:hover {
+    background-color: var(--accent-color);
+    color: #000;
+  }
+  
+  /* Modal dialogs */
+  .modal-content {
+    background-color: #111;
+    border: 2px dashed var(--accent-color);
+  }
+  
+  .modal-header {
+    border-bottom: 1px dashed var(--accent-color);
+  }
+  
+  .modal-footer {
+    border-top: 1px dashed var(--accent-color);
+  }
+  
+  .close {
+    color: var(--accent-color);
+    text-shadow: none;
+  }
+  
+  .close:hover {
+    color: var(--secondary-color);
+  }
+  
+  /* Badges */
+  .badge {
+    background-color: transparent;
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+  }
+  
+  .badge-primary {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+  }
+  
+  .badge-success {
+    border-color: #00FF41;
+    color: #00FF41;
+  }
+  
+  .badge-warning {
+    border-color: #FFFF00;
+    color: #FFFF00;
+  }
+  
+  .badge-danger {
+    border-color: #FF0000;
+    color: #FF0000;
+  }
+  
+  /* Custom neon effects */
+  .neon-hover:hover {
+    box-shadow: 0 0 5px var(--accent-color), 0 0 15px var(--accent-color);
+  }
+  
+  .neon-box {
+    box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color);
+  }

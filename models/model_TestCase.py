@@ -2,7 +2,6 @@ from datetime import datetime
 from extensions import db
 from models.associations import test_suite_cases
 
-
 # Working on the taxonomy of a prompt
 class TestCase(db.Model):
     __tablename__ = 'test_cases'
@@ -14,6 +13,7 @@ class TestCase(db.Model):
     attack_type = db.Column(db.String(50), nullable=True) # jailbreak / other
     data_type = db.Column(db.String(50), nullable=True) # text / image / audio
     nist_risk = db.Column(db.String(50), nullable=True)
+    reviewed = db.Column(db.Boolean, default=False, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     # Relationships

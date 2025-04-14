@@ -212,3 +212,16 @@ def update_test_suite(suite_id):
 
     db.session.commit()
     return jsonify({"message": "Updated fields: " + ", ".join(updated_fields)}), 200
+
+@test_suites_bp.route('/<int:suite_id>/remove_test_case/<int:case_id>', methods=['POST'])
+def remove_test_case_from_suite(suite_id, case_id):
+    from models.model_TestCase import TestCase  # Ensure import if not already present
+    from models.model_TestSuite import TestSuite
+    suite = TestSuite.query.get_or_404(suite_id)
+    case = TestCase.query.get_or_404(case_id)
+    if case in suite.test_cases:
+        suite.test_cases.remove(case)
+        db.session.commit()
+        return jsonify({"message": "Test case removed from suite."}), 200
+    else:
+        return jsonify({"message": "Test case was not associated with this suite."}), 404

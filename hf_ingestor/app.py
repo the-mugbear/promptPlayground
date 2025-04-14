@@ -2,34 +2,143 @@ import os
 import sys
 import json
 
+# Ensure parent directory is on sys.path
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if parent_dir not in sys.path: sys.path.insert(0, parent_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
 
+from datetime import datetime
+from flask import Flask
 from datasets import load_dataset
 from models.model_TestCase import TestCase
 from models.model_TestSuite import TestSuite
-from datetime import datetime
+from models.model_DatasetReference import DatasetReference
 from classifier import nist_classify
 from extensions import db
-
-# Login using e.g. `huggingface-cli login` to access this dataset
-ds = load_dataset("Nannanzi/evaluation_jailbreak_unsafe")
-prompt_ds = ds['train']
-
-for entry in prompt_ds:
-    response = nist_classify(entry['prompt'])
-    # The real API JSON is in response["response_text"]
-    try:
-        api_data = json.loads(response["response_text"])
-    except json.JSONDecodeError as e:
-        print("Error parsing response_text:", e)
-        api_data = {}
-
-    choices = api_data.get("choices", [])
-    if choices:
-        content = choices[0].get("message", {}).get("content")
-        print('******')
-        print(content)
+from hf_ingestor.services import create_test_case
 
 
-x = 4
+# Create a minimal Flask app solely to provide an application context
+dummy_app = Flask(__name__)
+# Assume the instance folder is at the same level as this file's parent directory.
+base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+db_path = os.path.join(base_dir, "instance", "fuzzy.db")
+dummy_app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
+dummy_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize the db on your dummy app.
+db.init_app(dummy_app)
+
+def parse_datasets_and_create_suite(is_jailbreak, dataset_name, prompt_field):
+    """
+    Loads a dataset from Hugging Face, creates TestCase entries for each prompt,
+    and then asks if a TestSuite should be created that associates all these cases.
+    
+    Args:
+        is_jailbreak (bool): If True, treat all prompts as jailbreaks.
+        dataset_name (str): Identifier for the dataset in load_dataset.
+    """
+    # Check if a DatasetReference with this name already exists.
+    existing_ref = DatasetReference.query.filter_by(name=dataset_name).first()
+    if existing_ref:
+        decision = input(f"A DatasetReference for '{dataset_name}' already exists. Process the dataset again? (y/n): ")
+        if decision.strip().lower() != 'y':
+            print("Dataset processing aborted based on user input.")
+            return
+        else:
+            # Optionally update the reference's date_added.
+            existing_ref.date_added = datetime.utcnow()
+            db.session.commit()
+            print(f"Updating existing DatasetReference (id: {existing_ref.id}).")
+
+    # Load dataset and extract the 'train' split
+    ds = load_dataset(dataset_name)
+    prompt_ds = ds['train']
+    
+    if not prompt_ds:
+        print("Dataset is empty.")
+        return
+
+    # Check the first prompt only once
+    first_prompt = prompt_ds[0].get(prompt_field)
+    user_input = input("Is the following the correct prompt from the dataset? (y/n)\n" + first_prompt + "\n")
+    if user_input.strip().lower() != 'y':
+        print("Please adjust your dataset or update the parsing logic.")
+        return
+
+    created_test_cases = []
+
+    # Loop through each entry in the dataset
+    for entry in prompt_ds:
+        prompt = prompt = entry.get(prompt_field)
+        if not prompt:
+            continue
+
+        if is_jailbreak:
+            # Create a TestCase for jailbreak entries.
+            tc = create_test_case(
+                prompt=prompt,
+                transformations=None,
+                source=dataset_name,
+                attack_type="jailbreak",
+                data_type=None,
+                nist_risk=None
+            )
+            created_test_cases.append(tc)
+
+            suite_behavior = 'jailbreak'
+        else:
+            # For non-jailbreak cases, perform classification.
+            response = nist_classify(prompt)
+            try:
+                api_data = json.loads(response["response_text"])
+            except json.JSONDecodeError as e:
+                print("Error parsing response_text:", e)
+                api_data = {}
+            
+            choices = api_data.get("choices", [])
+            if choices:
+                content = choices[0].get("message", {}).get("content")
+                print("******")
+                print(content)
+
+    # After creating all test cases, ask if a testsuite should be made.
+    suite_choice = input("Would you like to create a TestSuite from these test cases? (y/n): ")
+    if suite_choice.strip().lower() == 'y':
+        suite_description = dataset_name
+        new_suite = TestSuite(
+            description=suite_description,
+            behavior=suite_behavior,
+            objective=None,
+            created_at=datetime.now()
+        )
+        # Associate the created test cases with the new TestSuite
+        new_suite.test_cases.extend(created_test_cases)
+        db.session.add(new_suite)
+        db.session.commit()
+        print(f"TestSuite created with id: {new_suite.id}")
+
+    # Create a DatasetReference record.
+    dataset_url = f"https://huggingface.co/datasets/{dataset_name}"
+    dataset_ref = DatasetReference(name=dataset_name, url=dataset_url, added=True)
+    db.session.add(dataset_ref)
+    db.session.commit()
+    print(f"DatasetReference created with id: {dataset_ref.id}")
+
+if __name__ == "__main__":
+    with dummy_app.app_context():
+
+        # set value to the text label that contains prompt for the added dataset
+        datasets = {
+            "rubend18/ChatGPT-Jailbreak-Prompts": "Prompt",
+            "deadbits/vigil-jailbreak-ada-002": "text",
+            "jdineen/human-jailbreaks": "text",
+            "Nannanzi/evaluation_jailbreak_safe": "prompt",
+            "dvilasuero/jailbreak-classification-gemma": "prompt",
+            # "tridm/jailbreak_test_v1.0": "text", DOESN'T SPLIT ON 'train' go back and read the docs
+            "usisoftware-org/JailbreakBench": "prompt",
+            "jackhhao/jailbreak-classification": "prompt"
+        }
+
+        for dataset_name, prompt_field in datasets.items():
+            parse_datasets_and_create_suite(True, dataset_name, prompt_field)

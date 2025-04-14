@@ -64,9 +64,8 @@ def handle_create_endpoint():
         db.session.add(new_endpoint)
         db.session.flush()  # Ensure new_endpoint.id is assigned
 
-        # Process headers using the centralized header parser.
-        parsed_headers = parse_raw_headers(data["raw_headers"])
-        for key, value in parsed_headers.items():
+        # Use the already parsed headers (which includes the cookie header handled appropriately).
+        for key, value in data["parsed_headers"].items():
             header = APIHeader(endpoint_id=new_endpoint.id, key=key, value=value)
             db.session.add(header)
 

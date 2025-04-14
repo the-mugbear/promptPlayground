@@ -1,9 +1,6 @@
-# https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf
-
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from extensions import db
 from datetime import datetime
-from models.model_Endpoints import Endpoint
 from models.model_TestSuite import TestSuite
 from services.common.http_request_service import replay_post_request
 import json, requests

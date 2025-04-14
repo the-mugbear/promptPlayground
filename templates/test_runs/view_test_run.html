@@ -32,7 +32,13 @@
             </div>
             <div style="margin-bottom:8px;">
                 <strong>Endpoint:</strong>
-                <span>{{ run.endpoint.hostname if run.endpoint else 'N/A' }}</span>
+                {% if run.endpoint %}
+                  <a href="{{ url_for('endpoints_bp.view_endpoint_details', endpoint_id=run.endpoint.id) }}">
+                    {{ run.endpoint.hostname }}
+                  </a>
+                {% else %}
+                  <span>N/A</span>
+                {% endif %}
             </div>
             <div style="margin-bottom:8px;">
                 <strong>Created:</strong>
@@ -43,7 +49,11 @@
                 {% if run.test_suites %}
                     <ul style="list-style: none; padding: 0; margin: 0;">
                         {% for suite in run.test_suites %}
-                            <li>{{ suite.description }}</li>
+                            <li>
+                                <a href="{{ url_for('test_suites_bp.test_suite_details', suite_id=suite.id) }}">
+                                    {{ suite.description }}
+                                </a>
+                            </li>
                         {% endfor %}
                     </ul>
                 {% else %}

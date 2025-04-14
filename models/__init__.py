@@ -6,3 +6,4 @@ from models.model_TestRun import TestRun
 from models.model_TestRunAttempt import TestRunAttempt  # Import before TestExecution
 from models.model_TestExecution import TestExecution
 from models.model_Endpoints import Endpoint, APIHeader
+from models.model_Dialogue import Dialogue

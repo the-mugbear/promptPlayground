@@ -190,7 +190,7 @@ def handle_create_test_run():
 
         db.session.commit()
         flash("Test run created successfully!", "success")
-        return redirect(url_for('test_runs_bp.list_test_runs'))
+        return redirect(url_for('test_runs_bp.view_test_run', run_id=new_run.id))
 
     except Exception as e:
         db.session.rollback()
