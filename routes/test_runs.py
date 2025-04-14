@@ -272,6 +272,11 @@ def execute_test_run(run_id):
                 params["value"] = tinfo["value"]
             prompt = apply_transformation(t_type, prompt, params)
 
+        # Remove any invalid characters specified in the endpoint's configuration.
+        if endpoint_obj.invalid_characters:
+            for char in endpoint_obj.invalid_characters:
+                prompt = prompt.replace(char, '')
+
         # Replace the placeholder in the payload with the transformed prompt.
         replaced_payload_str = original_payload_str.replace("{{INJECT_PROMPT}}", prompt)
         execution.started_at = execution.started_at or datetime.now()

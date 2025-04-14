@@ -82,6 +82,19 @@
         >{{ request.form.raw_headers|default('') }}</textarea>
       </div>
 
+    <!-- Additional field for specifying invalid characters -->
+    <div class="form-group">
+      <label for="invalid_characters">Invalid Characters</label>
+      <input
+        type="text"
+        id="invalid_characters"
+        name="invalid_characters"
+        placeholder="Enter characters to remove (e.g., !@#$%)"
+        value="{{ request.form.invalid_characters|default('') }}"
+      >
+    </div>
+
+
       <div style="display: flex; gap: 1rem;">
         <!-- Button to CREATE in the DB -->
         <button type="submit">Create Endpoint</button>
