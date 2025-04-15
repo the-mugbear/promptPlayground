@@ -301,13 +301,26 @@ def execute_test_run(run_id):
         result = replay_post_request(endpoint_obj.hostname, endpoint_obj.endpoint, replaced_payload_str, raw_headers)
         execution.finished_at = datetime.now()
 
-        if result.get("status_code") is not None:
+        # Use the shared service to replay the POST request
+        result = replay_post_request(endpoint_obj.hostname, endpoint_obj.endpoint, replaced_payload_str, raw_headers)
+        execution.finished_at = datetime.now()
+
+        # Check if the status code indicates success (200-299)
+        status_code = result.get("status_code")
+        if status_code is not None and 200 <= status_code < 300:
             execution.status = 'pending_review'
+            # For a successful response, assume result.get("response_text") is already a JSON response.
             execution.response_data = result.get("response_text")
         else:
             execution.status = 'error'
-            execution.response_data = result.get("response_text")
-        
+            # Build a composite debug dictionary.
+            debug_response = {
+                "response_text": result.get("response_text"),
+                "replaced_payload": replaced_payload_str,
+                "raw_headers": raw_headers
+            }
+            execution.response_data = json.dumps(debug_response)
+
         db.session.commit()
 
     # If all executions are finished, mark the attempt as completed.
