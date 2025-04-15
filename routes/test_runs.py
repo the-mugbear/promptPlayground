@@ -174,23 +174,25 @@ def handle_create_test_run():
             status='pending'
         )
         db.session.add(new_attempt)
+        db.session.flush()  # Ensure new_attempt.id is generated
         
-        # Create TestExecution records within the new attempt.
-        # Refactored to be a bulk insert as test_suites with a lot of testcases cause db write delays
+        # Build a list of TestExecution objects with explicit foreign keys.
         execution_records = []
         sequence = 0
         for suite in new_run.test_suites:
             for test_case in suite.test_cases:
                 execution_records.append(
                     TestExecution(
-                        attempt=new_attempt,
-                        test_case=test_case,
+                        test_run_attempt_id=new_attempt.id,  # Explicitly set the FK
+                        test_case_id=test_case.id,             # Explicitly set the test case FK
                         sequence=sequence,
                         status='pending'
                     )
                 )
                 sequence += 1
-        db.session.bulk_save_objects(execution_records)
+
+        # Instead of bulk_save_objects, use add_all.
+        db.session.add_all(execution_records)
         db.session.commit()
         flash("Test run created successfully!", "success")
         return redirect(url_for('test_runs_bp.view_test_run', run_id=new_run.id))
@@ -199,7 +201,6 @@ def handle_create_test_run():
         db.session.rollback()
         flash(f"Failed to create test run: {str(e)}", 'error')
         return redirect(url_for('test_runs_bp.create_test_run_form'))
-
 
 @test_runs_bp.route('/<int:run_id>/execute', methods=['POST'])
 def execute_test_run(run_id):
