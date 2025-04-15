@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from extensions import db
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
+from sqlalchemy import func
 from datetime import datetime
 from models.model_Endpoints import Endpoint
 from models.model_TestSuite import TestSuite
@@ -32,13 +33,14 @@ def list_test_runs():
 
 @test_runs_bp.route('/<int:run_id>', methods=['GET'])
 def view_test_run(run_id):
+
     run = (TestRun.query
-           .options(
-               joinedload(TestRun.endpoint),
-               joinedload(TestRun.test_suites).joinedload(TestSuite.test_cases),
-               joinedload(TestRun.attempts).joinedload(TestRunAttempt.executions).joinedload(TestExecution.test_case)
-           )
-           .get_or_404(run_id))
+        .options(
+            selectinload(TestRun.endpoint),
+            selectinload(TestRun.test_suites).selectinload(TestSuite.test_cases),
+            selectinload(TestRun.attempts).selectinload(TestRunAttempt.executions).selectinload(TestExecution.test_case)
+        )
+        .get_or_404(run_id))
 
     # Build a dictionary keyed by test_case.id with responses from each attempt.
     test_case_map = {}
@@ -66,32 +68,42 @@ def view_test_run(run_id):
         item['attempts'].sort(key=lambda x: x['attempt_number'])
 
     # Aggregate overall counts for the run.
-    passed_count = failed_count = skipped_count = pending_review_count = 0
-    for attempt in run.attempts:
-        for execution in attempt.executions:
-            if execution.status == 'passed':
-                passed_count += 1
-            elif execution.status == 'failed':
-                failed_count += 1
-            elif execution.status == 'skipped':
-                skipped_count += 1
-            elif execution.status == 'pending_review':
-                pending_review_count += 1
+    overall_counts = (
+        db.session.query(
+            func.lower(TestExecution.status),
+            func.count(TestExecution.id)
+        )
+        .join(TestRunAttempt)
+        .filter(TestRunAttempt.test_run_id == run_id)
+        .group_by(TestExecution.status)
+        .all()
+    )
 
-    # Compute per-attempt counts.
+    # Convert the result to a dictionary.
+    overall_counts_dict = {status: count for status, count in overall_counts}
+    passed_count = overall_counts_dict.get('passed', 0)
+    failed_count = overall_counts_dict.get('failed', 0)
+    skipped_count = overall_counts_dict.get('skipped', 0)
+    pending_review_count = overall_counts_dict.get('pending_review', 0)
+
+    per_attempt_counts = (
+        db.session.query(
+            TestRunAttempt.attempt_number,
+            TestExecution.status,
+            func.count(TestExecution.id)
+        )
+        .join(TestRunAttempt.executions)
+        .filter(TestRunAttempt.test_run_id == run_id)
+        .group_by(TestRunAttempt.attempt_number, TestExecution.status)
+        .all()
+    )
+
+    # Then, you can build your attempt_counts dictionary:
     attempt_counts = {}
-    for attempt in run.attempts:
-        counts = {"passed": 0, "failed": 0, "skipped": 0, "pending_review": 0}
-        for execution in attempt.executions:
-            if execution.status == 'passed':
-                counts["passed"] += 1
-            elif execution.status == 'failed':
-                counts["failed"] += 1
-            elif execution.status == 'skipped':
-                counts["skipped"] += 1
-            elif execution.status == 'pending_review':
-                counts["pending_review"] += 1
-        attempt_counts[attempt.attempt_number] = counts
+    for attempt_number, status, count in per_attempt_counts:
+        if attempt_number not in attempt_counts:
+            attempt_counts[attempt_number] = {"passed": 0, "failed": 0, "skipped": 0, "pending_review": 0}
+        attempt_counts[attempt_number][status] = count
 
     return render_template(
         'test_runs/view_test_run.html',
