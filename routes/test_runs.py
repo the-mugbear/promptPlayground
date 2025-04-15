@@ -98,7 +98,7 @@ def view_test_run(run_id):
         .all()
     )
 
-    # Then, you can build your attempt_counts dictionary:
+    # Build the attempt_counts dictionary:
     attempt_counts = {}
     for attempt_number, status, count in per_attempt_counts:
         if attempt_number not in attempt_counts:
@@ -136,7 +136,7 @@ def create_test_run_form():
     pagination = suites_query.paginate(page=page, per_page=10, error_out=False)
     test_suites = pagination.items  # the current page’s suite objects
     
-    # 5. We'll also fetch endpoints for the dropdown
+    # 5. Fetch endpoints for the dropdown
     endpoints = Endpoint.query.all()
     
     return render_template(
@@ -320,7 +320,6 @@ def execute_test_run(run_id):
                 "raw_headers": raw_headers
             }
             execution.response_data = json.dumps(debug_response)
-
         db.session.commit()
 
     # If all executions are finished, mark the attempt as completed.

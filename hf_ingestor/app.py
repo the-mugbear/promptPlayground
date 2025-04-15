@@ -29,7 +29,7 @@ dummy_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize the db on your dummy app.
 db.init_app(dummy_app)
 
-def parse_datasets_and_create_suite(is_jailbreak, dataset_name, prompt_field):
+def parse_datasets_and_create_suite(attack_type, dataset_name, prompt_field):
     """
     Loads a dataset from Hugging Face, creates TestCase entries for each prompt,
     and then asks if a TestSuite should be created that associates all these cases.
@@ -53,7 +53,17 @@ def parse_datasets_and_create_suite(is_jailbreak, dataset_name, prompt_field):
 
     # Load dataset and extract the 'train' split
     ds = load_dataset(dataset_name)
-    prompt_ds = ds['train']
+
+    try:
+        prompt_ds = ds['train']
+    except:
+        print("Failure to access dataset on train")
+
+    try:
+        prompt_ds = ds['test']
+    except:
+        print("Failure to access dataset on test")
+
     
     if not prompt_ds:
         print("Dataset is empty.")
@@ -67,6 +77,8 @@ def parse_datasets_and_create_suite(is_jailbreak, dataset_name, prompt_field):
         return
 
     created_test_cases = []
+    # Set the suite behavior to be the attack type by default.
+    suite_behavior = attack_type
 
     # Loop through each entry in the dataset
     for entry in prompt_ds:
@@ -74,13 +86,13 @@ def parse_datasets_and_create_suite(is_jailbreak, dataset_name, prompt_field):
         if not prompt:
             continue
 
-        if is_jailbreak:
+        if attack_type.lower() == "jailbreak":
             # Create a TestCase for jailbreak entries.
             tc = create_test_case(
                 prompt=prompt,
                 transformations=None,
                 source=dataset_name,
-                attack_type="jailbreak",
+                attack_type=attack_type,
                 data_type=None,
                 nist_risk=None
             )
@@ -120,7 +132,12 @@ def parse_datasets_and_create_suite(is_jailbreak, dataset_name, prompt_field):
 
     # Create a DatasetReference record.
     dataset_url = f"https://huggingface.co/datasets/{dataset_name}"
-    dataset_ref = DatasetReference(name=dataset_name, url=dataset_url, added=True)
+    # Assuming DatasetReference supports an attack_type field; if not, you may need to update the model.
+    dataset_ref = DatasetReference(
+        name=dataset_name,
+        url=dataset_url,
+        added=True,
+    )
     db.session.add(dataset_ref)
     db.session.commit()
     print(f"DatasetReference created with id: {dataset_ref.id}")
@@ -128,17 +145,25 @@ def parse_datasets_and_create_suite(is_jailbreak, dataset_name, prompt_field):
 if __name__ == "__main__":
     with dummy_app.app_context():
 
-        # set value to the text label that contains prompt for the added dataset
+        # Dictionary where keys are dataset names and values are tuples with (prompt_field, attack_type)
         datasets = {
-            "rubend18/ChatGPT-Jailbreak-Prompts": "Prompt",
-            "deadbits/vigil-jailbreak-ada-002": "text",
-            "jdineen/human-jailbreaks": "text",
-            "Nannanzi/evaluation_jailbreak_safe": "prompt",
-            "dvilasuero/jailbreak-classification-gemma": "prompt",
-            # "tridm/jailbreak_test_v1.0": "text", DOESN'T SPLIT ON 'train' go back and read the docs
-            "usisoftware-org/JailbreakBench": "prompt",
-            "jackhhao/jailbreak-classification": "prompt"
+            "rubend18/ChatGPT-Jailbreak-Prompts": ("Prompt", "jailbreak"),
+            "deadbits/vigil-jailbreak-ada-002": ("text", "jailbreak"),
+            "jdineen/human-jailbreaks": ("text", "jailbreak"),
+            "Nannanzi/evaluation_jailbreak_safe": ("prompt", "jailbreak"),
+            "dvilasuero/jailbreak-classification-gemma": ("prompt", "jailbreak"),
+            "usisoftware-org/JailbreakBench": ("prompt", "jailbreak"),
+            "jackhhao/jailbreak-classification": ("prompt", "jailbreak"),
+            "allenai/tulu-3-trustllm-jailbreaktrigger-eval": ("prompt", "jailbreak"),
+            "SpawnedShoyo/ai-jailbreak": ("text", "jailbreak"),
+            "GuardrailsAI/detect-jailbreak": ("prompt", "jailbreak"),
+            "mrcuddle/Synthetic-JailBreak-RP": ("instruction", "jailbreak"),
+            "efgmarquez/jailbreak_dataset": ("statement", "jailbreak"),
+            "EthanQzx/ImmuniPrompt-JailbreakDatasets": ("prompt", "jailbreak"),
+            "jkazdan/amazing-jailbreak-llama": ("prompt", "jailbreak"),
+            "sevdeawesome/jailbreak_success": ("jailbreak_prompt_text", "jailbreak"),
+            "BornSaint/harmful_instructor": ("inputs", "harm")
         }
 
-        for dataset_name, prompt_field in datasets.items():
-            parse_datasets_and_create_suite(True, dataset_name, prompt_field)
+        for dataset_name, (prompt_field, attack_type) in datasets.items():
+            parse_datasets_and_create_suite(attack_type, dataset_name, prompt_field)
