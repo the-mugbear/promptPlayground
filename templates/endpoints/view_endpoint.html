@@ -27,6 +27,13 @@
     }
     .header-display { margin-bottom: 0.5rem; }
     .header-display strong { color: var(--accent-color); }
+    .payload-box {
+      white-space: pre-wrap;
+    }
+
+    .headers-box {
+      white-space: normal;
+    }
   </style>
 {% endblock %}
 
@@ -59,7 +66,7 @@
         <div class="endpoint-field">
           <label>Payload:</label>
           {% if endpoint.http_payload %}
-            <pre class="results-box">{{ endpoint.http_payload }}</pre>
+            <pre class="results-box payload-box">{{ endpoint.http_payload | trim }}</pre>
           {% else %}
             <em>No payload</em>
           {% endif %}
@@ -68,14 +75,14 @@
         <div class="endpoint-field">
           <label>Headers:</label>
           {% if endpoint.headers and endpoint.headers|length > 0 %}
-            <div class="results-box">
+            <div class="results-box headers-box">
               {% for hdr in endpoint.headers %}
                 <div class="header-item">
                   <span class="header-key">{{ hdr.key }}:</span>
                   <span class="header-value">{{ hdr.value }}</span>
                 </div>
               {% endfor %}
-            </div>
+            </div>          
           {% else %}
             <p><em>No headers available.</em></p>
           {% endif %}
@@ -112,9 +119,7 @@
           </div>
           <div class="form-group">
             <label for="raw_headers">Headers (Key: Value per line):</label>
-            <textarea id="raw_headers" name="raw_headers" rows="14" placeholder="e.g., Content-Type: application/json&#10;Authorization: Bearer &lt;token&gt;">
-{% for hdr in endpoint.headers %}{{ hdr.key }}: {{ hdr.value }}{% if not loop.last %}&#10;{% endif %}{% endfor %}
-            </textarea>
+            <textarea id="raw_headers" name="raw_headers" rows="14" placeholder="e.g., Content-Type: application/json&#10;Authorization: Bearer &lt;token&gt;">{% for hdr in endpoint.headers %}{{ hdr.key }}: {{ hdr.value }}{% if not loop.last %}&#10;{% endif %}{% endfor %}</textarea>
           </div>
           <!-- New input field for invalid characters -->
           <div class="form-group">

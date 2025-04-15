@@ -176,18 +176,21 @@ def handle_create_test_run():
         db.session.add(new_attempt)
         
         # Create TestExecution records within the new attempt.
+        # Refactored to be a bulk insert as test_suites with a lot of testcases cause db write delays
+        execution_records = []
         sequence = 0
         for suite in new_run.test_suites:
             for test_case in suite.test_cases:
-                execution = TestExecution(
-                    attempt=new_attempt,
-                    test_case=test_case,
-                    sequence=sequence,
-                    status='pending'
+                execution_records.append(
+                    TestExecution(
+                        attempt=new_attempt,
+                        test_case=test_case,
+                        sequence=sequence,
+                        status='pending'
+                    )
                 )
-                db.session.add(execution)
                 sequence += 1
-
+        db.session.bulk_save_objects(execution_records)
         db.session.commit()
         flash("Test run created successfully!", "success")
         return redirect(url_for('test_runs_bp.view_test_run', run_id=new_run.id))

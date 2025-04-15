@@ -8,6 +8,7 @@ body {
     background-color: var(--bg-color);
     color: var(--text-color);
     font-family: var(--main-font);
+    padding-top: 0px;
   }
   
   /* Card styling */
@@ -224,7 +225,7 @@ body {
   }
   
   /* Navbar */
-  .navbar {
+  /* .navbar {
     background-color: var(--bg-color);
     border-bottom: 2px solid var(--accent-color);
   }
@@ -236,10 +237,10 @@ body {
   
   .navbar-dark .navbar-nav .nav-link:hover {
     color: var(--secondary-color);
-  }
+  } */
   
   /* Dropdowns */
-  .dropdown-menu {
+  /* .dropdown-menu {
     background-color: #111;
     border: 1px solid var(--accent-color);
   }
@@ -251,7 +252,7 @@ body {
   .dropdown-item:hover {
     background-color: var(--accent-color);
     color: #000;
-  }
+  } */
   
   /* Modal dialogs */
   .modal-content {
