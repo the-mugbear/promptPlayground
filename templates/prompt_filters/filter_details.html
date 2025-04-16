@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}View Prompt Filter{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h2>Prompt Filter: {{ prompt_filter.name }}</h2>
+  <p><strong>ID:</strong> {{ prompt_filter.id }}</p>
+  <p><strong>Invalid Characters:</strong> {{ prompt_filter.invalid_characters or "None" }}</p>
+  <p><strong>Words to Replace:</strong>
+    {% if prompt_filter.words_to_replace %}
+      <ul>
+      {% for word in prompt_filter.words_to_replace %}
+        <li>{{ word }}</li>
+      {% endfor %}
+      </ul>
+    {% else %}
+      None
+    {% endif %}
+  </p>
+  <p><strong>Created At:</strong> {{ prompt_filter.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+  
+  <!-- Optionally, add links for edit or delete -->
+  <a href="{{ url_for('prompt_filter_bp.list_prompt_filters') }}">Back to List</a>
+</div>
+{% endblock %}

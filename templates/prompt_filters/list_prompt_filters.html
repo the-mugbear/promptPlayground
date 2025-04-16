@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}List Prompt Filters{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h2>Existing Prompt Filters</h2>
+  {% if prompt_filters %}
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Invalid Characters</th>
+        <th>Words to Replace</th>
+        <th>Created At</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pf in prompt_filters %}
+      <tr>
+        <td>{{ pf.id }}</td>
+        <td><a href="{{ url_for('prompt_filter_bp.view_prompt_filter', filter_id=pf.id) }}">{{ pf.name }}View</a></td>
+        <td>{{ pf.invalid_characters or '' }}</td>
+        <td>
+          {% if pf.words_to_replace %}
+            {{ pf.words_to_replace | join(', ') }}
+          {% else %}
+            N/A
+          {% endif %}
+        </td>
+        <td>{{ pf.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td>
+          <form method="POST"
+          action="{{ url_for('prompt_filter_bp.delete_prompt_filter', filter_id=pf.id) }}"
+          style="display:inline;"
+          onsubmit="return confirm('Really delete filter “{{ pf.name }}”?');">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No prompt filters found.</p>
+  {% endif %}
+</div>
+{% endblock %}

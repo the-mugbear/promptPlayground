@@ -24,9 +24,6 @@ class Endpoint(db.Model):
     endpoint = db.Column(db.String, nullable=False)
     http_payload = db.Column(db.Text, nullable=True)   # HTTP payload sent with the request, should handle and store as JSON
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)  # <--- ADDED TIMESTAMP
-
-    # Field to store invalid characters provided by the user (e.g., "!@#$%")
-    invalid_characters = db.Column(db.String, nullable=True)
     
     # Relationships
     headers = db.relationship('APIHeader', back_populates='endpoint', cascade='all, delete-orphan')

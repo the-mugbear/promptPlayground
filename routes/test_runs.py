@@ -8,6 +8,7 @@ from models.model_TestSuite import TestSuite
 from models.model_TestRun import TestRun
 from models.model_TestRunAttempt import TestRunAttempt
 from models.model_TestExecution import TestExecution
+from models.model_PromptFilter import PromptFilter
 from services.transformers.registry import apply_transformation, TRANSFORM_PARAM_CONFIG
 from services.common.http_request_service import replay_post_request
 from services.common.header_parser_service import headers_from_apiheader_list
@@ -105,6 +106,9 @@ def view_test_run(run_id):
             attempt_counts[attempt_number] = {"passed": 0, "failed": 0, "skipped": 0, "pending_review": 0}
         attempt_counts[attempt_number][status] = count
 
+    # Load ALL prompt filters so we can offer “add” choices
+    all_filters = PromptFilter.query.order_by(PromptFilter.name).all()
+
     return render_template(
         'test_runs/view_test_run.html',
         run=run,
@@ -114,7 +118,8 @@ def view_test_run(run_id):
         failed_count=failed_count,
         skipped_count=skipped_count,
         pending_review_count=pending_review_count,
-        attempt_counts=attempt_counts
+        attempt_counts=attempt_counts,
+        prompt_filters=all_filters 
     )
 
 
@@ -139,12 +144,16 @@ def create_test_run_form():
     # 5. Fetch endpoints for the dropdown
     endpoints = Endpoint.query.all()
     
+    # 6. Fetch existing prompt filter configurations
+    prompt_filters = PromptFilter.query.order_by(PromptFilter.name).all()
+
     return render_template(
         'test_runs/create_test_run.html',
         endpoints=endpoints,
         test_suites=test_suites,
         pagination=pagination,
-        search=search
+        search=search,
+        prompt_filters=prompt_filters
     )
 
 
@@ -153,24 +162,27 @@ def create_test_run_form():
 # ********************************
 @test_runs_bp.route('/create', methods=['POST'])
 def handle_create_test_run():
+    # 1) Pull form data
+    run_name            = request.form.get('run_name')
+    endpoint_id         = request.form.get('endpoint_id')
+    selected_suite_ids  = request.form.getlist('suite_ids')
+    selected_filter_ids = request.form.getlist('filter_ids')
+
+    # 2) Validate **before** creating anything
+    if not run_name or not endpoint_id or not selected_suite_ids:
+        flash("Missing required fields: run_name, endpoint_id, or suite_ids", 'error')
+        return redirect(url_for('test_runs_bp.create_test_run_form'))
+
     try:
-        run_name = request.form.get('run_name')
-        endpoint_id = request.form.get('endpoint_id')
-        selected_suite_ids = request.form.getlist('suite_ids')
-
-        if not run_name or not endpoint_id or not selected_suite_ids:
-            flash("Missing required fields: run_name, endpoint_id, or suite_ids", 'error')
-            return redirect(url_for('test_runs_bp.create_test_run_form'))
-
-        # Create the TestRun record
+        # 3) Create the TestRun
         new_run = TestRun(
             name=run_name,
             endpoint_id=endpoint_id,
             status='pending'
         )
         db.session.add(new_run)
-        
-        # Associate selected test suites
+
+        # 4) Associate selected test suites
         for suite_id in selected_suite_ids:
             suite = TestSuite.query.get(suite_id)
             if not suite:
@@ -178,7 +190,13 @@ def handle_create_test_run():
                 return redirect(url_for('test_runs_bp.create_test_run_form'))
             new_run.test_suites.append(suite)
 
-        # Create an initial TestRunAttempt (attempt_number 1)
+        # 5) **Then** associate selected prompt filters
+        for pf_id in selected_filter_ids:
+            pf = PromptFilter.query.get(pf_id)
+            if pf:
+                new_run.filters.append(pf)
+
+        # 6) Create initial attempt
         new_attempt = TestRunAttempt(
             test_run=new_run,
             attempt_number=1,
@@ -186,32 +204,30 @@ def handle_create_test_run():
             status='pending'
         )
         db.session.add(new_attempt)
-        db.session.flush()  # Ensure new_attempt.id is generated
-        
-        # Build a list of TestExecution objects with explicit foreign keys.
-        execution_records = []
-        sequence = 0
-        for suite in new_run.test_suites:
-            for test_case in suite.test_cases:
-                execution_records.append(
-                    TestExecution(
-                        test_run_attempt_id=new_attempt.id,  # Explicitly set the FK
-                        test_case_id=test_case.id,             # Explicitly set the test case FK
-                        sequence=sequence,
-                        status='pending'
-                    )
-                )
-                sequence += 1
+        db.session.flush()  # give us new_attempt.id
 
-        # Instead of bulk_save_objects, use add_all.
+        # 7) Build and add executions
+        execution_records = []
+        seq = 0
+        for suite in new_run.test_suites:
+            for tc in suite.test_cases:
+                execution_records.append(TestExecution(
+                    test_run_attempt_id=new_attempt.id,
+                    test_case_id=tc.id,
+                    sequence=seq,
+                    status='pending'
+                ))
+                seq += 1
         db.session.add_all(execution_records)
+
+        # 8) Commit everything
         db.session.commit()
         flash("Test run created successfully!", "success")
         return redirect(url_for('test_runs_bp.view_test_run', run_id=new_run.id))
 
     except Exception as e:
         db.session.rollback()
-        flash(f"Failed to create test run: {str(e)}", 'error')
+        flash(f"Failed to create test run: {e}", 'error')
         return redirect(url_for('test_runs_bp.create_test_run_form'))
 
 @test_runs_bp.route('/<int:run_id>/execute', methods=['POST'])
@@ -289,9 +305,16 @@ def execute_test_run(run_id):
             prompt = apply_transformation(t_type, prompt, params)
 
         # Remove any invalid characters specified in the endpoint's configuration.
-        if endpoint_obj.invalid_characters:
-            for char in endpoint_obj.invalid_characters:
-                prompt = prompt.replace(char, '')
+        # New filter functionality under test
+        for prompt_filter in run.filters:
+            if prompt_filter.invalid_characters:
+                for char in prompt_filter.invalid_characters:
+                    prompt = prompt.replace(char, '')
+            if prompt_filter.words_to_replace:
+                # Assume words_to_replace is a dict mapping word to replacement.
+                # apply word‑by‑word replacements
+                for target, replacement in (prompt_filter.words_to_replace or {}).items():
+                    prompt = prompt.replace(target, replacement)
 
         # Replace the placeholder in the payload with the transformed prompt.
         replaced_payload_str = original_payload_str.replace("{{INJECT_PROMPT}}", prompt)
@@ -382,3 +405,25 @@ def delete_test_run(run_id):
     
     flash("Test run deleted successfully", "success")
     return redirect(url_for('test_runs_bp.list_test_runs'))
+
+
+@test_runs_bp.route('/<int:run_id>/add_filter', methods=['POST'])
+def add_filter(run_id):
+    run = TestRun.query.get_or_404(run_id)
+    filter_id = request.form.get('filter_id')
+    pf = PromptFilter.query.get(filter_id)
+    if pf and pf not in run.filters:
+        run.filters.append(pf)
+        db.session.commit()
+        flash(f"Added filter “{pf.name}”", "success")
+    return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
+
+@test_runs_bp.route('/<int:run_id>/remove_filter/<int:filter_id>', methods=['POST'])
+def remove_filter(run_id, filter_id):
+    run = TestRun.query.get_or_404(run_id)
+    pf = PromptFilter.query.get_or_404(filter_id)
+    if pf in run.filters:
+        run.filters.remove(pf)
+        db.session.commit()
+        flash(f"Removed filter “{pf.name}”", "warning")
+    return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))

@@ -74,6 +74,15 @@
           </ul>
         </li>
 
+        <!-- Dropdown for Utilities -->
+        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('prompt_filter') %}active{% endif %}">
+          <a href="#">Utilities</a>
+          <ul class="dropdown-menu">
+            <li><a href="{{ url_for('prompt_filter_bp.create_prompt_filter') }}">Create Prompt Filter</a></li>
+            <li><a href="{{ url_for('prompt_filter_bp.list_prompt_filters') }}">View Prompt Filters</a></li>
+          </ul>
+        </li>
+
         <!-- Help (single link, no dropdown) -->
         <li class="dropdown {% if request.endpoint and request.endpoint.startswith('help_bp') %}active{% endif %}">
           <a href="{{ url_for('help_bp.index') }}">Help</a>

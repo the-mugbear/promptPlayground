@@ -40,6 +40,39 @@
         </select>
       </div>
 
+    <!-- Prompt Filters -->
+    <div class="form-group">
+      <label for="filterSelect">Available Prompt Filters</label>
+      <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+        <select id="filterSelect" class="form-control" style="flex:1">
+          <option value="" disabled selected>— choose a filter —</option>
+          {% for pf in prompt_filters %}
+            <option value="{{ pf.id }}">{{ pf.name }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" id="addFilterBtn">Add Filter</button>
+      </div>
+    </div>
+
+    <!-- Selected Prompt Filters -->
+    <div class="form-group">
+      <label>Selected Prompt Filters</label>
+      <ul id="selectedFiltersList" class="selected-suites-list">
+        <!-- filled by JS -->
+      </ul>
+      <!-- Hidden inputs go here -->
+      <div id="hiddenFiltersContainer"></div>
+    </div>
+
+
+    <!-- Selected Test Suites Display -->
+    <div class="form-group">
+      <label>Selected Test Suites:</label>
+      <ul id="selectedSuitesList" class="selected-suites-list">
+        {# Populated via JS #}
+      </ul>
+    </div>
+
       <!-- HTTP Payload Override -->
       <div class="form-group">
         <label for="endpointPayload">HTTP Payload Override (optional)</label>
@@ -57,14 +90,6 @@
         <div class="headers-container" id="headersContainer">
           {# Dynamically filled with key/value inputs #}
         </div>
-      </div>
-
-      <!-- Selected Test Suites Display -->
-      <div class="form-group">
-        <label>Selected Test Suites:</label>
-        <ul id="selectedSuitesList" class="selected-suites-list">
-          {# Populated via JS #}
-        </ul>
       </div>
 
       <!-- Hidden Inputs for Suite IDs -->
@@ -129,4 +154,43 @@
   <script src="{{ url_for('static', filename='js/testRuns/ajaxSearch.js') }}"></script>
   <script src="{{ url_for('static', filename='js/testRuns/pagination.js') }}"></script>
   <script src="{{ url_for('static', filename='js/testRuns/findReplace.js') }}"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const select = document.getElementById('filterSelect');
+    const addBtn = document.getElementById('addFilterBtn');
+    const list = document.getElementById('selectedFiltersList');
+    const hiddenContainer = document.getElementById('hiddenFiltersContainer');
+
+    addBtn.addEventListener('click', () => {
+      const pfId = select.value;
+      const pfName = select.options[select.selectedIndex].text;
+      if (!pfId) return;
+      // Prevent duplicates
+      if (hiddenContainer.querySelector(`input[value="${pfId}"]`)) return;
+
+      // 1) Add to the visible list
+      const li = document.createElement('li');
+      li.textContent = pfName + ' ';
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.textContent = '×';
+      rm.style.marginLeft = '0.5em';
+      li.appendChild(rm);
+      list.appendChild(li);
+
+      // 2) Create hidden input for form submit
+      const inp = document.createElement('input');
+      inp.type = 'hidden';
+      inp.name = 'filter_ids';
+      inp.value = pfId;
+      hiddenContainer.appendChild(inp);
+
+      // 3) Wire removal
+      rm.addEventListener('click', () => {
+        li.remove();
+        inp.remove();
+      });
+    });
+  });
+  </script>
 {% endblock %}

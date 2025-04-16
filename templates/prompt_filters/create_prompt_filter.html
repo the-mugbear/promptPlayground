@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Create Prompt Filter{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="form-card">
+    <h2>Create Prompt Filter</h2>
+    <form method="post">
+      <div class="form-group">
+        <label for="name">Filter Name</label>
+        <input type="text" name="name" id="name" placeholder="Enter filter name" required>
+      </div>
+      <div class="form-group">
+        <label for="invalid_characters">Invalid Characters</label>
+        <input type="text" name="invalid_characters" id="invalid_characters" placeholder="e.g. @, #, $, %" >
+        <small>Separate multiple characters with commas.</small>
+      </div>
+      <div class="form-group">
+        <label for="words_to_replace">Words to Replace</label>
+        <textarea name="words_to_replace" id="words_to_replace" rows="4" placeholder='Enter words to replace (JSON format or comma separated)'></textarea>
+        <small>You can enter a JSON array or a comma-separated list.</small>
+      </div>
+      <button type="submit">Create Filter</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

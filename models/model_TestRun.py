@@ -1,7 +1,7 @@
 # models/model_TestRun.py
 from extensions import db
 from datetime import datetime
-from models.associations import test_run_suites
+from models.associations import test_run_suites, test_run_filters
 
 class TestRun(db.Model):
     __tablename__ = 'test_runs'
@@ -22,6 +22,7 @@ class TestRun(db.Model):
     
     # Relationship to execution attempts
     attempts = db.relationship('TestRunAttempt', back_populates='test_run', cascade='all, delete-orphan')
+    filters = db.relationship('PromptFilter', secondary=test_run_filters, backref='test_runs')
     
     def __repr__(self):
         return f"<TestRun id={self.id}, status={self.status}, endpoint={self.endpoint_id}>"

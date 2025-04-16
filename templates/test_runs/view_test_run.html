@@ -61,6 +61,43 @@
                 {% endif %}
             </div>
 
+            <!-- Prompt Filters -->
+            <div style="margin-bottom:8px;">
+                <strong>Prompt Filters:</strong>
+                {% if run.filters %}
+                <ul style="padding-left:1rem;">
+                    {% for f in run.filters %}
+                    <li>
+                        {{ f.name }}
+                        <form action="{{ url_for('test_runs_bp.remove_filter', run_id=run.id, filter_id=f.id) }}"
+                            method="POST" style="display:inline; margin-left:0.5rem;">
+                        <button type="submit" class="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600">
+                            Remove
+                        </button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <span>N/A</span>
+                {% endif %}
+            </div>
+        
+            <!-- Add a new filter -->
+            <form action="{{ url_for('test_runs_bp.add_filter', run_id=run.id) }}" method="POST" style="margin-bottom:1rem;">
+                <label for="filter_id"><strong>Add Filter:</strong></label>
+                <select name="filter_id" id="filter_id">
+                {% for pf in prompt_filters %}
+                    {% if pf not in run.filters %}
+                    <option value="{{ pf.id }}">{{ pf.name }}</option>
+                    {% endif %}
+                {% endfor %}
+                </select>
+                <button type="submit" class="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm">
+                Add
+                </button>
+            </form>
+  
         </div>
         <!-- Right Column: Donut Chart -->
         <div class="card-right" style="width: 200px; text-align: center;">
