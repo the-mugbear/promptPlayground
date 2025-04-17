@@ -99,10 +99,9 @@ def manual_test():
                 "response_data": rec.response_data
             }
         })
-
-    # otherwise fall back to full‑page reload
-    return redirect(url_for('endpoints_bp.manual_test'))
-
+    else:
+        return redirect(url_for('endpoints_bp.manual_test'))
+    
 # ********************************
 # SERVICES
 # ********************************
