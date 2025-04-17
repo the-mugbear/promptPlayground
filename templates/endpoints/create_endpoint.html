@@ -118,35 +118,56 @@
 {% if test_payload or test_response %}
 <div class="results-container">
   <h2>Test Results</h2>
+
+
+  <summary class="collapsible-header">HTTP Status Code</summary>
   <div>
-    <strong>HTTP Status Code:</strong>
-    <span>{{ test_status_code }}</span>
+    <strong>{{ test_status_code }}</strong>
   </div>
-  <div class="results-box">
-    <div>
-      <strong>What was sent:</strong>
-      <pre class="results-box">{{ test_payload }}</pre>
-      <div>
-        <strong>Headers Sent:</strong>
-        <pre class="results-box">{{ test_headers_sent|tojson(indent=2) }}</pre>
-      </div>
+
+
+  <details class="collapsible-section">
+    <summary class="collapsible-header">What was sent</summary>
+    <div class="results-box">
+      <pre>{{ test_payload }}</pre>
     </div>
-    <div>
-      <strong>What was received:</strong>
-      <pre class="results-box">{{ test_response }}</pre>
+  </details>
+
+  <details class="collapsible-section">
+    <summary class="collapsible-header">Headers Sent</summary>
+    <div class="results-box">
+      <pre>{{ test_headers_sent|tojson(indent=2) }}</pre>
     </div>
-  </div>
+  </details>
+
+  <!-- This one is expanded by default and scrolled into view -->
+  <details class="collapsible-section" id="received-section" open>
+    <summary class="collapsible-header">What was received</summary>
+    <div class="results-box">
+      <pre>{{ test_response }}</pre>
+    </div>
+  </details>
 </div>
 {% endif %}
-
 
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/endpoints/suggestions.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/endpoints/createEndpointSuggestions.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/endpoints/form-field-syncer.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/endpoints/field-suggestion-helper.js') }}"></script>
   <script src="{{ url_for('static', filename='js/endpoints/json_pretty_print.js') }}"></script>
   <script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>
   <script src="{{ url_for('static', filename='js/endpoints/loading_animation.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/endpoints/httpPayloadValidator.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/endpoints/payload-token-enforcer.js') }}"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const received = document.getElementById('received-section');
+      if (received) {
+        // Smoothly scroll the page so "What was received" is in view
+        received.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  </script>
+    
 {% endblock %}

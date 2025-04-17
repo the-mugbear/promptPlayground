@@ -1,7 +1,9 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
 from extensions import db
 from models.model_Endpoints import Endpoint, APIHeader
+from models.model_ManualTestRecord import ManualTestRecord
 from services.endpoints.api_templates import PAYLOAD_TEMPLATES
+from services.transformers.registry import apply_transformations_to_lines, TRANSFORM_PARAM_CONFIG, apply_transformation
 from services.common.http_request_service import replay_post_request
 from services.common.header_parser_service import parse_raw_headers, headers_from_apiheader_list
 from werkzeug.exceptions import BadRequest
@@ -34,6 +36,72 @@ def view_endpoint_details(endpoint_id):
     """
     ep = Endpoint.query.options(joinedload(Endpoint.headers)).get_or_404(endpoint_id)
     return render_template('endpoints/view_endpoint.html', endpoint=ep)
+
+@endpoints_bp.route('/manual_test', methods=['GET', 'POST'])
+def manual_test():
+    # 1) On GET, show the form + load history:
+    if request.method == 'GET':
+        history = ManualTestRecord.query.order_by(ManualTestRecord.created_at.desc()).all()
+        return render_template('endpoints/manual_test.html',
+                               payload_templates=PAYLOAD_TEMPLATES,
+                               transform_params=TRANSFORM_PARAM_CONFIG,
+                               history=history)
+
+    # 2) On POST, extract form data:
+    host     = request.form['hostname'].strip()
+    path     = request.form['endpoint_path'].strip()
+    raw_hdrs = request.form.get('raw_headers', '').strip()
+    tpl      = request.form['http_payload'].strip()
+    # the user‑entered replacement value:
+    repl     = request.form['replacement_value'].strip()
+
+    # parse headers
+    hdrs_dict = parse_raw_headers(raw_hdrs) if raw_hdrs else {}
+    assembled_hdrs = "\n".join(f"{k}: {v}" for k,v in hdrs_dict.items())
+
+    # collect requested transformations
+    transforms = []
+    for t_id in request.form.getlist('transforms'):
+        params = {}
+        if val := request.form.get(f"{t_id}_value"):
+            params['value'] = val
+        transforms.append({'type': t_id, **params})
+
+    # apply them in order
+    for tinfo in transforms:
+        repl = apply_transformation(tinfo['type'], repl, {'value': tinfo.get('value')})
+
+    # build the final payload
+    payload = tpl.replace("{{INJECT_PROMPT}}", repl)
+
+    # fire off the POST
+    result = replay_post_request(host, path, payload, assembled_hdrs)
+
+    # record it
+    rec = ManualTestRecord(
+        hostname=host,
+        endpoint=path,
+        raw_headers=assembled_hdrs,
+        payload_sent=payload,
+        response_data=result.get("response_text"),
+    )
+    db.session.add(rec)
+    db.session.commit()
+
+    # If this was an AJAX submission, return JSON instead of redirect
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            "success": True,
+            "record": {
+                "id": rec.id,
+                "created_at": rec.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "payload_sent": rec.payload_sent,
+                "response_data": rec.response_data
+            }
+        })
+
+    # otherwise fall back to full‑page reload
+    return redirect(url_for('endpoints_bp.manual_test'))
 
 # ********************************
 # SERVICES

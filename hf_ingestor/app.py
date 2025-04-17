@@ -26,7 +26,7 @@ db_path = os.path.join(base_dir, "instance", "fuzzy.db")
 dummy_app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 dummy_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize the db on your dummy app.
+# Initialize the db on dummy app
 db.init_app(dummy_app)
 
 def parse_datasets_and_create_suite(attack_type, dataset_name, prompt_field):
@@ -47,7 +47,7 @@ def parse_datasets_and_create_suite(attack_type, dataset_name, prompt_field):
             return
         else:
             # Optionally update the reference's date_added.
-            existing_ref.date_added = datetime.utcnow()
+            existing_ref.date_added = datetime.now()
             db.session.commit()
             print(f"Updating existing DatasetReference (id: {existing_ref.id}).")
 

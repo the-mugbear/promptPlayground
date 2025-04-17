@@ -1,11 +1,4 @@
-Orphaned test cases are just shown on the Test Suite creation page.
-
-Endpoint 
-    create_endpoint
-        Format JSON may introduce characters that cause an error
-        If the user doesn't have {{INJECT_PROMPT}} the form POST just causes an error
-    list_endpoint
-        Filter by hostname actually filters only by path
+When testing invalid chars we send the string "Hello <char of interest>" and I believe some chars aren't exited safely within the python causing a client error.
 
 Test Run
     Change disposition to an AJAX call so it doesn't reload page each time the user selects a disposition

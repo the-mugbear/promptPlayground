@@ -38,14 +38,16 @@
           </ul>
         </li>
 
-        <!-- Dropdown for Endpoints -->
-        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('endpoints_bp') %}active{% endif %}">
-          <a href="#">Endpoints</a>
-          <ul class="dropdown-menu">
-            <li><a href="{{ url_for('endpoints_bp.create_endpoint_form') }}">Register Endpoint</a></li>
-            <li><a href="{{ url_for('endpoints_bp.list_endpoints') }}">View Existing Endpoints</a></li>
-          </ul>
-        </li>
+      <!-- Dropdown for Endpoints -->
+      <li class="dropdown {% if request.endpoint and request.endpoint.startswith('endpoints_bp') %}active{% endif %}">
+        <a href="#">Endpoints</a>
+        <ul class="dropdown-menu">
+          <li><a href="{{ url_for('endpoints_bp.create_endpoint_form') }}">Register Endpoint</a></li>
+          <li><a href="{{ url_for('endpoints_bp.list_endpoints') }}">View Existing Endpoints</a></li>
+          <li><a href="{{ url_for('endpoints_bp.manual_test') }}">Manual Tester</a></li>
+        </ul>
+      </li>
+
         
         <!-- Dropdown for Test Suites -->
         <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_suites_bp') %}active{% endif %}">

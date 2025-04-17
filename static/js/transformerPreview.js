@@ -1,12 +1,21 @@
 // This is responsible for providing the preview pane functionality when selecting transformations
 
 document.addEventListener("DOMContentLoaded", function() {
-    const formEl = document.getElementById("create-case-form") || document.getElementById("create-suite-form");
-    // Use data-preview-url attribute to determine the AJAX endpoint.
-    const previewUrl = formEl.getAttribute("data-preview-url") || "/test_suites/preview_transform";
+    const formEl =
+      document.getElementById("create-case-form") ||
+      document.getElementById("create-suite-form") ||
+      document.getElementById("manual-test-form");
+    
+    // 1b) grab data‑preview-url from whichever form we found:
+    const previewUrl =
+      formEl.getAttribute("data-preview-url") ||
+      "/test_suites/preview_transform";
   
-    const newTestCasesEl = document.getElementById("new_test_cases");
-    const previewArea = document.getElementById("preview-area");
+    // 2) find our “to‑transform” and “show‑result” elements:
+    const newTestCasesEl =
+      document.querySelector("[data-preview-input]");    // replacement_value
+    const previewArea =
+      document.querySelector("[data-preview-output]");   // same textarea
   
     const transformationCheckboxes = document.querySelectorAll(
       'input[type="checkbox"][name="transformations"]'

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="two-column-container">
+
+    <!-- LEFT: Manual Tester Form -->
+    <div class="left-card">
+      <h2>Manual Endpoint Tester</h2>
+
+        <form
+           id="manual-test-form"
+           method="POST"
+           action="{{ url_for('endpoints_bp.manual_test') }}"
+           data-preview-url="{{ url_for('test_suites_bp.preview_transform') }}">
+        <div class="form-group">
+          <label for="hostname">Hostname</label>
+          <input id="hostname" name="hostname" required>
+        </div>
+
+        <div class="form-group">
+          <label for="endpoint_path">Endpoint Path</label>
+          <input id="endpoint_path" name="endpoint_path" required>
+        </div>
+
+        <div class="form-group">
+          <label for="payloadTemplateSelect">Payload Template</label>
+          <select id="payloadTemplateSelect" name="template">
+            {% for tpl in payload_templates %}
+              {% set label = tpl.get('model', 'Template ' ~ loop.index) %}
+              <option value='{{ tpl | tojson | e }}'>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <textarea
+            id="http_payload"
+            name="http_payload"
+            rows="10">{{ payload_templates[0] | tojson(indent=2) }}</textarea>
+            <button type="button" id="insertTokenBtn">Insert Token</button>
+        </div>
+
+        <div class="form-group">
+          <label for="replacement_value">Replacement Value</label>
+          <textarea
+            id="replacement_value"
+            name="replacement_value"
+            rows="4"
+            data-preview-input
+            data-preview-output></textarea>
+        </div>
+
+        {% include 'partials/_transformations.html' %}
+
+        <div class="form-group">
+          <label>Transform Order Preview</label>
+          <ul id="transformation-queue" class="headers-list"></ul>
+        </div>        
+
+        <div class="form-group">
+          <label for="raw_headers">Raw Headers <small>(one per line)</small></label>
+          <textarea id="raw_headers" name="raw_headers" rows="13"></textarea>
+        </div>
+
+        <button type="submit">Send Test</button>
+      </form>
+    </div>
+
+    <!-- RIGHT: History Accordion -->
+    <div class="right-card test-results-card">
+      <h3>History</h3>
+
+      <!-- 1a) Dropdown to pick a record -->
+      <div class="form-group">
+        <label for="history-select">Choose a past test:</label>
+        <select id="history-select">
+          {% for rec in history %}
+            <option value="{{ rec.id }}">
+              {{ rec.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- 1b) Detail pane for the selected record -->
+      <div id="history-details" class="results-container">
+        <div class="results-box">
+          <strong>Payload Sent:</strong>
+          <pre id="detail-payload" class="code-block"></pre>
+
+          <strong>Response:</strong>
+          <pre id="detail-response" class="code-block"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    const historyData = {
+      {% for rec in history %}
+      "{{ rec.id }}": {
+        payload_sent: {{ rec.payload_sent|tojson }},
+        response_data: {{ rec.response_data|tojson }}
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    };
+  </script>
+  <script src="{{ url_for('static', filename='js/endpoints/payload-token-enforcer.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/transformerPreview.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/endpoints/manual_test.js') }}"></script>
+  
+{% endblock %}
