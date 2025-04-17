@@ -2,6 +2,63 @@
 
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <style>
+    /* make the container flex so response can expand */
+    #history-details {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* cap payload height when expanded */
+    .payload-block {
+      max-height: 200px;       /* adjust as desired */
+      overflow-y: auto;
+    }
+
+    /* let the response block fill remaining space */
+    .response-container {
+      flex: 1;
+      margin-top: 1rem;
+    }
+
+    .response-block {
+      /* remove old max‑height or override it */
+      max-height: none !important;
+      height: 100%;
+      overflow-y: auto;
+    }
+    .collapse {
+      display: none;
+    }
+    .collapse.show {
+      display: block;
+    }
+    /* 1) Make #history-details fill its parent’s height */
+    .right-card .results-container {
+      display: flex;
+      flex-direction: column;
+      /* pick a height that works for you: */
+      height: 1200px;
+    }
+
+    /* 2) Default flex ratios */
+    #payload-section.show + .response-container {
+      flex: 1;       /* when payload is visible, give equal (or whatever) share */
+    }
+    .response-container {
+      flex: 1;       /* baseline */
+      margin-top: 1rem;
+      overflow-y: auto;
+      transition: flex 0.3s ease;
+    }
+
+    /* 3) When payload is collapsed (no .show), bump the response’s flex up */
+    #payload-section:not(.show) + .response-container {
+      flex: 2;       /* allocate twice as much space to response */
+    }
+
+
+  </style>
 {% endblock %}
 
 {% block content %}
@@ -95,15 +152,34 @@
         </select>
       </div>
 
+      <!-- RIGHT: History Details -->
       <div id="history-details" class="results-container">
-        <div class="results-box">
-          <strong>Payload Sent:</strong>
-          <pre id="detail-payload" class="code-block"></pre>
 
-          <strong>Response:</strong>
-          <pre id="detail-response" class="code-block"></pre>
+        <!-- Payload collapsible -->
+        <div class="collapsible-section">
+          <button
+            class="collapsible-header"
+            type="button"
+            data-toggle="collapse"
+            data-target="#payload-section"
+            aria-expanded="true"
+            aria-controls="payload-section">
+            Payload Sent
+          </button>
+
+          <div id="payload-section" class="collapse show">
+            <pre id="detail-payload" class="code-block payload-block"></pre>
+          </div>
         </div>
+
+        <!-- Response always visible, takes up the rest of the space -->
+        <div class="response-container">
+          <strong>Response:</strong>
+          <pre id="detail-response" class="code-block response-block"></pre>
+        </div>
+
       </div>
+
     </div>
 
   </div>
@@ -122,8 +198,24 @@
       {% endfor %}
     };
   </script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".collapsible-header").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = document.querySelector(btn.getAttribute("data-target"));
+        if (!target) return;
+        target.classList.toggle("show");
+        // Optional: toggle aria-expanded
+        const expanded = btn.getAttribute("aria-expanded") === "true";
+        btn.setAttribute("aria-expanded", String(!expanded));
+      });
+    });
+  });
+  </script>
   <script src="{{ url_for('static', filename='js/endpoints/payload-token-enforcer.js') }}"></script>
   <script src="{{ url_for('static', filename='js/transformerPreview.js') }}"></script>
   <script src="{{ url_for('static', filename='js/endpoints/manual_test.js') }}"></script>
   <script src="{{ url_for('static', filename='js/endpoints/json_pretty_print.js') }}"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
 {% endblock %}

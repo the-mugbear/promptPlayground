@@ -22,70 +22,46 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 2) AJAX form submission
   const form = document.getElementById("manual-test-form");
-  const accordion = document.getElementById("historyAccordion");
   const submitBtn = form.querySelector('button[type="submit"]');
   form.addEventListener("submit", async e => {
     e.preventDefault();
     submitBtn.disabled = true;
-    const originalText = submitBtn.textContent;
+    const origText = submitBtn.textContent;
     submitBtn.textContent = "Sending…";
-
+  
     try {
-      const res = await fetch(form.action, {
+      const res  = await fetch(form.action, {
         method: "POST",
         headers: { "X-Requested-With": "XMLHttpRequest" },
         body: new FormData(form)
       });
       const json = await res.json();
-      if (!json.success) {
-        throw new Error(json.error || "Unknown error");
-      }
-
+      if (!json.success) throw new Error(json.error||"Unknown");
+  
+      // 1) Add new option to the dropdown
       const rec = json.record;
-      const hdrId = `heading-${rec.id}`, colId = `collapse-${rec.id}`;
-      const card = document.createElement("div");
-      card.className = "card";
-      card.innerHTML = `
-        <div class="card-header" id="${hdrId}">
-          <h5 class="mb-0">
-            <button class="btn btn-link collapsed" type="button"
-                    data-toggle="collapse"
-                    data-target="#${colId}"
-                    aria-expanded="false"
-                    aria-controls="${colId}">
-              ${rec.created_at}
-            </button>
-          </h5>
-        </div>
-        <div id="${colId}" class="collapse" aria-labelledby="${hdrId}" data-parent="#historyAccordion">
-          <div class="card-body">
-            <strong>Payload Sent:</strong>
-            <pre class="code-block">${escapeHtml(rec.payload_sent)}</pre>
-            <strong>Response:</strong>
-            <pre class="code-block">${escapeHtml(rec.response_data)}</pre>
-          </div>
-        </div>`;
-      accordion.prepend(card);
-
-      // also add to history-select
       const sel = document.getElementById("history-select");
       const opt = document.createElement("option");
-      opt.value = rec.id;
+      opt.value       = rec.id;
       opt.textContent = rec.created_at;
-      opt.dataset.payload = rec.payload_sent;
-      opt.dataset.response = rec.response_data;
       sel.prepend(opt);
+  
+      // 2) Show it in the detail pane
+      historyData[rec.id] = {
+        payload_sent: rec.payload_sent,
+        response_data: rec.response_data
+      };
       sel.value = rec.id;
       showRecord(rec.id);
-
-    } catch (err) {
+  
+    } catch(err) {
       console.error(err);
       alert("Error sending test: " + err.message);
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
+      submitBtn.textContent = origText;
     }
-  });
+  });  
 
   // 3) History selector → details pane
   const selectEl = document.getElementById("history-select");
