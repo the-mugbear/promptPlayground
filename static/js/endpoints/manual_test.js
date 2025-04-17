@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     });
   
-    // 2) AJAX form submit (manual_test.js code from earlier)
+    // 2) AJAX form submit 
     const form      = document.getElementById("manual-test-form");
     const accordion = document.getElementById("historyAccordion");
     const submitBtn = form.querySelector('button[type="submit"]');

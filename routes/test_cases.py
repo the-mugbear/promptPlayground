@@ -9,13 +9,28 @@ test_cases_bp = Blueprint('test_cases_bp', __name__, url_prefix='/test_cases')
 # ********************************
 # ROUTES
 # ********************************
+# models/test_cases.py (excerpt)
 @test_cases_bp.route('/', methods=['GET'])
 def list_test_cases():
-    """
-    GET /test_cases -> Display all test cases (could be a JSON or HTML page)
-    """
-    test_cases = TestCase.query.all()
-    return render_template('test_cases/list_test_cases.html', test_cases=test_cases)
+    # 1. pull page & search from query string
+    page   = request.args.get('page',   1,   type=int)
+    search = request.args.get('search', '',  type=str)
+
+    # 2. build base query and filter if needed
+    q = TestCase.query.order_by(TestCase.created_at.desc())
+    if search:
+        q = q.filter(TestCase.prompt.ilike(f'%{search}%'))
+
+    # 3. paginate
+    pagination = q.paginate(page=page, per_page=20, error_out=False)
+    test_cases = pagination.items
+
+    return render_template(
+      'test_cases/list_test_cases.html',
+      test_cases=test_cases,
+      pagination=pagination,
+      search=search,            # so template can echo it back
+    )
 
 @test_cases_bp.route('/', methods=['POST'])
 def create_test_case_api():
