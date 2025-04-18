@@ -162,7 +162,11 @@ if __name__ == "__main__":
             "EthanQzx/ImmuniPrompt-JailbreakDatasets": ("prompt", "jailbreak"),
             "jkazdan/amazing-jailbreak-llama": ("prompt", "jailbreak"),
             "sevdeawesome/jailbreak_success": ("jailbreak_prompt_text", "jailbreak"),
-            "BornSaint/harmful_instructor": ("inputs", "harm")
+            "BornSaint/harmful_instructor": ("inputs", "harm"),
+
+            "r1char9/prompt-2-prompt-injection": ("prompt_injection", "prompt_injection"),
+            "Arthur-AI/arthur_prompt_injection_benchmark": ("text", "prompt_injection"),
+
         }
 
         for dataset_name, (prompt_field, attack_type) in datasets.items():

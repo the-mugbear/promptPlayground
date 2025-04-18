@@ -5,6 +5,7 @@ from models.model_TestCase import TestCase
 from models.model_TestSuite import TestSuite
 from services.transformers.registry import apply_transformations_to_lines, TRANSFORM_PARAM_CONFIG, apply_transformation
 from services.transformers.helpers import process_transformations
+from models.associations import test_suite_cases
 from datetime import datetime
 
 test_suites_bp = Blueprint("test_suites_bp", __name__, url_prefix="/test_suites")
@@ -140,28 +141,46 @@ def delete_test_suite(suite_id):
     """
     POST /test_suites/<suite_id>/delete -> Deletes a test suite if allowed.
     """
-    suite = TestSuite.query.get_or_404(suite_id)
+    suite_to_delete = TestSuite.query.get_or_404(suite_id)
 
     # Option A) If you want to block deletion if it’s used in a run:
-    if suite.test_runs:
+    if suite_to_delete.test_runs:
         flash("Cannot delete this suite because it's used by one or more test runs.", "error")
         return redirect(url_for('test_suites_bp.list_test_suites'))
 
-    # Option B) Or you just remove references from runs, or rely on cascade:
-    #   e.g. suite.test_runs.clear() # if you want to disassociate it from runs
-    #   db.session.commit()
+    # Find potentially orphaned test cases BEFORE deleting the suite's associations
+    potential_orphans = list(suite_to_delete.test_cases) 
 
+    # 
     try:
-        db.session.delete(suite)
-        db.session.commit()
+        # Delete the suite (this removes entries from test_suite_cases)
+        db.session.delete(suite_to_delete)
+        db.session.commit() # Commit the suite deletion
         flash(f"Test Suite #{suite_id} deleted.", "success")
+        
+        # Now check potential orphans
+        deleted_orphan_count = 0
+        for case in potential_orphans:
+            # Refresh the case or query its associations count
+            # Using count() might be efficient
+            # Now test_suite_cases should be recognized
+            assoc_count = db.session.query(test_suite_cases).filter_by(test_case_id=case.id).count() 
+            if assoc_count == 0:
+                print(f"Deleting orphaned TestCase {case.id} after deleting suite {suite_id}")
+                db.session.delete(case)
+                deleted_orphan_count += 1
+        
+        # Commit the deletion of orphaned cases (if any)
+        if deleted_orphan_count > 0:
+            db.session.commit() 
+            flash(f"Removed {deleted_orphan_count} orphaned test case(s).", "info")
+
     except Exception as e:
         db.session.rollback()
         flash(f"Error deleting Test Suite #{suite_id}: {str(e)}", "error")
 
     # Redirect back to your list of suites
     return redirect(url_for('test_suites_bp.list_test_suites'))
-
 
 # Used to make AJAX calls for demo purposes on create_suite.html
 @test_suites_bp.route('/preview_transform', methods=['POST'])
@@ -225,3 +244,38 @@ def remove_test_case_from_suite(suite_id, case_id):
         return jsonify({"message": "Test case removed from suite."}), 200
     else:
         return jsonify({"message": "Test case was not associated with this suite."}), 404
+
+# let users create new test cases and add them to a test suite when viewing the details of said suite
+@test_suites_bp.route('/<int:suite_id>/add_test_case', methods=['POST'])
+def add_test_case_to_suite(suite_id):
+    data = request.get_json(force=True) or {}
+    prompt = data.get('prompt', '').strip()
+    if not prompt:
+        return jsonify({"success": False, "error": "Prompt cannot be empty"}), 400
+
+    # Fetch suite
+    suite = TestSuite.query.get_or_404(suite_id)
+
+    # Decide on transformations (here: inherit suite’s defaults)
+    transformations = suite_transformations = suite_transformations = suite_transformations = process_transformations(request.form) if False else (suite_transformations := [])
+
+    # Create & associate
+    new_tc = TestCase(prompt=prompt, transformations=transformations)
+    db.session.add(new_tc)
+    suite.test_cases.append(new_tc)
+    db.session.commit()
+
+    return jsonify({
+      "success": True,
+      "case": {
+        "id": new_tc.id,
+        "prompt": new_tc.prompt,
+        "created_at": new_tc.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        "source": new_tc.source or "",
+        "attack_type": new_tc.attack_type or "",
+        "data_type": new_tc.data_type or "",
+        "nist_risk": new_tc.nist_risk or "",
+        "reviewed": new_tc.reviewed,
+        "transformations": new_tc.transformations or []
+      }
+    })

@@ -26,7 +26,7 @@
 <table id="casesTable">
   <thead>
     <tr>
-      <th>#</th>
+      {# Column removed #}
       <th>Prompt</th>
       <th>Transformations</th>
       <th>Created At</th>
@@ -36,13 +36,14 @@
   <tbody>
     {% for case in test_cases %}
       <tr>
-        <td>{{ loop.index }}</td>
+        {# Column removed #}
         <td>{{ case.prompt }}</td>
         <td>
           {% if case.transformations %}
             <ul>
               {% for transform in case.transformations %}
-                <li>{{ transform }}</li>
+                {# Adjust display based on transform structure if needed #}
+                <li>{{ transform.type | default('Unknown Type') }}: {{ transform.value | default('N/A') }}</li> 
               {% endfor %}
             </ul>
           {% else %}
@@ -67,16 +68,20 @@
         </td>
       </tr>
 
-      <!-- Hidden row for additional details (like suites) if you want a toggle approach -->
+      {# Hidden row for additional details #}
       <tr class="case-details-row" style="display: none;">
-        <td colspan="5">
+        {# *** Adjusted colspan from 5 to 4 *** #}
+        <td colspan="4"> 
           <div class="case-details-container">
-            <strong>Test Case ID {{ case.id }}</strong><br>
+            <strong>Test Case ID: {{ case.id }}</strong><br>
+            <strong>Test Case Source: </strong> {{ case.source or 'N/A' }}<br> {# Added 'or N/A' for safety #}
+            <strong>Attack Type: {{ case.attack_type }}</strong><br>
             <em>Suites:</em>
             {% if case.test_suites and case.test_suites|length > 0 %}
               <ul>
                 {% for suite in case.test_suites %}
-                  <li>{{ suite.description }}</li>
+                  {# Assuming suite has a 'description' or 'name' attribute #}
+                  <li>{{ suite.description or suite.name or 'Unnamed Suite' }}</li> 
                 {% endfor %}
               </ul>
             {% else %}
@@ -96,33 +101,35 @@
       {# Previous arrow #}
       <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
         {% if pagination.has_prev %}
+          {# *** ADD search=search HERE *** #}
           <a class="page-link"
-             href="{{ url_for('test_cases_bp.list_test_cases', page=pagination.prev_num) }}"
-             aria-label="Previous">&laquo;</a>
+            href="{{ url_for('test_cases_bp.list_test_cases', page=pagination.prev_num, search=search) }}" 
+            aria-label="Previous">&laquo;</a>
         {% else %}
           <span class="page-link">&laquo;</span>
         {% endif %}
       </li>
 
-      {# page numbers with smart ellipses #}
-      {% for p in pagination.iter_pages(left_edge=1, right_edge=1,
-                                        left_current=2, right_current=2) %}
-        {% if p %}
-          <li class="page-item {% if p == pagination.page %}active{% endif %}">
-            <a class="page-link"
-               href="{{ url_for('test_cases_bp.list_test_cases', page=p) }}">{{ p }}</a>
-          </li>
-        {% else %}
-          <li class="page-item disabled"><span class="page-link">…</span></li>
-        {% endif %}
-      {% endfor %}
+      {# page numbers #}
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %} {# <-- Keep your original arguments here #}
+      {% if p %}
+        <li class="page-item {% if p == pagination.page %}active{% endif %}">
+          {# *** ADD search=search to the url_for call below *** #}
+          <a class="page-link"
+             href="{{ url_for('test_cases_bp.list_test_cases', page=p, search=search) }}">{{ p }}</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+      {% endif %}
+    {% endfor %}
 
       {# Next arrow #}
       <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
         {% if pagination.has_next %}
+          {# *** ADD search=search HERE *** #}
           <a class="page-link"
-             href="{{ url_for('test_cases_bp.list_test_cases', page=pagination.next_num) }}"
-             aria-label="Next">&raquo;</a>
+            href="{{ url_for('test_cases_bp.list_test_cases', page=pagination.next_num, search=search) }}"
+            aria-label="Next">&raquo;</a>
         {% else %}
           <span class="page-link">&raquo;</span>
         {% endif %}

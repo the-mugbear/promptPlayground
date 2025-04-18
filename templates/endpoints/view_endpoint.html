@@ -120,11 +120,7 @@
             <label for="raw_headers">Headers (Key: Value per line):</label>
             <textarea id="raw_headers" name="raw_headers" rows="14" placeholder="e.g., Content-Type: application/json&#10;Authorization: Bearer &lt;token&gt;">{% for hdr in endpoint.headers %}{{ hdr.key }}: {{ hdr.value }}{% if not loop.last %}&#10;{% endif %}{% endfor %}</textarea>
           </div>
-          <!-- New input field for invalid characters -->
-          <div class="form-group">
-            <label for="edit_invalid_characters">Invalid Characters:</label>
-            <input type="text" id="edit_invalid_characters" name="invalid_characters" value="{{ endpoint.invalid_characters }}">
-          </div>
+
           <button type="submit">Save Changes</button>
           <button type="button" id="cancelEdit">Cancel</button>
         </form>

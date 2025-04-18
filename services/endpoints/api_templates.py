@@ -52,5 +52,36 @@ PAYLOAD_TEMPLATES = [
             "temperature": 0.7,
             "maxOutputTokens": 1024
         }
+    },
+# ******************************
+# Ollama
+# ******************************
+    {
+    "model": "llama3.1",
+    "messages": [{"role": "user", "content": "Tell me about Canada."}],
+    "stream": False,
+    "format": {
+        "type": "object",
+        "properties": {
+        "name": {
+            "type": "string"
+        },
+        "capital": {
+            "type": "string"
+        },
+        "languages": {
+            "type": "array",
+            "items": {
+            "type": "string"
+            }
+        }
+        },
+        "required": [
+        "name",
+        "capital", 
+        "languages"
+        ]
+        }
     }
+
 ]

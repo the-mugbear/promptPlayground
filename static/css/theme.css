@@ -114,15 +114,45 @@
      ================================================== */
   .left-card,
   .right-card {
-    flex: 1;
+    flex: 1;  /* Each card takes equal width */
     background-color: #111; 
     border: 2px dashed var(--accent-color);
     border-radius: 8px;
     padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Important for preventing overflow */
+    width: 50%;   /* Force equal width */
   }
   .left-card h2, .right-card h2 {
     margin-top: 0;
     color: var(--accent-color);
+  }
+  
+  /* Style for the orphaned test cases container */
+  #orphaned-test-cases {
+    max-height: 600px; /* Set a max height */
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+  }
+  
+  /* Style for the orphaned test cases list */
+  #orphaned-test-cases-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  #orphaned-test-cases-list li {
+    padding: 0.5rem;
+    border-bottom: 1px dashed var(--accent-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Add ellipsis for long text */
+  }
+  
+  #orphaned-test-cases-list li:hover {
+    background-color: rgba(255, 0, 170, 0.1); /* Light highlight on hover */
   }
   
   /* Results container (large container for test data) */
@@ -392,4 +422,3 @@
   .neon-box {
     box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color);
   }
-  
