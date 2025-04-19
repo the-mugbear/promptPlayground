@@ -1,13 +1,16 @@
 {% extends "base.html" %}
 
+{% block head %}
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/reports/report.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="content-card">
   <h1>Endpoint Report</h1>
   <div class="form-group">
     <label for="endpoint-select">Select an Endpoint:</label>
-    {# --- Add the data-base-url attribute here --- #}
-    <select id="endpoint-select" 
-            data-base-url="{{ url_for('report_bp.report_ajax', endpoint_id=0) }}"> 
+    <select id="endpoint-select" data-base-url="{{ url_for('report_bp.report_ajax', endpoint_id=0) }}"> 
       <option value="">-- Select an Endpoint --</option>
       {% for endpoint in endpoints %}
         <option value="{{ endpoint.id }}">
@@ -17,20 +20,16 @@
     </select>
   </div>
 
+  {# Main container for dynamically loaded content #}
   <div id="report-details" class="results-container">
-    <p>Please select an endpoint to view its report.</p> 
-  </div>
-
-  <div id="chart-container" class="content-card" style="margin-top: 2rem;">
-      <h3>Test Metrics Chart</h3>
-      <div style="position: relative; height:300px; width:100%"> 
-          <canvas id="metricsChart"></canvas>
-      </div>
+    <p class="report-loading">Awaiting endpoint selection...</p>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-  {# Ensure the path is correct relative to your 'static' folder #}
+  {# Make sure Chart.js is included (ideally in base.html or here) #}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script> 
   <script src="{{ url_for('static', filename='js/reports/report.js') }}"></script> 
+  <script src="{{ url_for('static', filename='js/reports/report_animation.js') }}"></script> 
 {% endblock %}

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Disposition for {{ status_filter | title }} Items - {{ context_name }}{% endblock %}
+
+{% block head %}
+  {# Include necessary CSS - adapt from view_test_run if needed, or theme #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}"> {# Include your theme #}
+  <style>
+    /* Add specific styles for this page if needed */
+    .suite-group {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background-color: #111; /* From theme */
+        border: 2px dashed var(--accent-color); /* From theme */
+        border-radius: 8px; /* From theme */
+    }
+    .suite-header {
+        color: var(--accent-color); /* From theme */
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--secondary-color);
+        padding-bottom: 0.5rem;
+    }
+    .execution-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .execution-table th, .execution-table td {
+        border: 1px solid var(--secondary-color); /* Theme border */
+        padding: 0.75rem;
+        text-align: left;
+        vertical-align: top;
+        color: var(--text-color); /* Theme text */
+        font-size: 0.9em; /* Slightly smaller */
+    }
+    .execution-table th {
+        background-color: #222; /* Darker background for header */
+        color: var(--accent-color);
+    }
+     .execution-table .code-block { /* Style code blocks within table */
+        margin: 0; /* Remove default margin */
+        max-height: 150px; /* Limit height */
+        font-size: 0.8em;
+    }
+    .execution-table select { /* Style select dropdown */
+         font-size: 0.9em; /* Match table text */
+         /* Inherit theme styles for select */
+    }
+
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="content-card"> {# Use theme card style #}
+  <h1>Disposition View</h1>
+  <p>Showing <strong>{{ status_filter | replace('_', ' ') | title }}</strong> executions for <strong>{{ context_name }}</strong>.</p>
+   {% if transformation_filter %}
+     <p>Filtered by transformation type: <strong>{{ transformation_filter }}</strong></p>
+   {% endif %}
+
+  {% if grouped_executions %}
+    {% for suite, executions_list in grouped_executions.items() %}
+      <div class="suite-group">
+        <h2 class="suite-header">
+            Test Suite: 
+            {% if suite %}
+                {{ suite.description or 'Unnamed Suite' }} 
+                {# (Objective: {{ suite.objective or 'N/A' }}) #}
+            {% else %}
+                Test Cases Not Associated with any Suite
+            {% endif %}
+        </h2>
+
+        <table class="execution-table">
+          <thead>
+            <tr>
+              <th>Test Case Prompt</th>
+              <th>Response</th>
+              <th style="width: 150px;">Disposition</th> {# Fixed width #}
+            </tr>
+          </thead>
+          <tbody>
+            {% for execution in executions_list %}
+            <tr>
+              <td>{{ execution.test_case.prompt if execution.test_case else 'N/A' }}</td>
+              <td>
+                {# Add basic JSON formatting/display logic if needed #}
+                 <div class="code-block">{{ execution.response_data | tojson(indent=2) if execution.response_data else 'No Response Data' }}</div>
+              </td>
+              <td>
+                 {# Re-use the form structure from view_test_run.html #}
+                 <form method="POST" 
+                       action="{{ url_for('test_runs_bp.update_execution_status', run_id=execution.attempt.test_run_id) }}" 
+                       class="update-status-form">
+                   <input type="hidden" name="execution_id" value="{{ execution.id }}">
+                   <select name="status" class="disposition-select"> {# Add class for easier selection #}
+                     <option value="passed" {% if execution.status == 'passed' %}selected{% endif %}>Passed</option>
+                     <option value="failed" {% if execution.status == 'failed' %}selected{% endif %}>Failed</option>
+                     <option value="skipped" {% if execution.status == 'skipped' %}selected{% endif %}>Skipped</option>
+                     <option value="pending_review" {% if execution.status == 'pending_review' %}selected{% endif %}>Pending Review</option>
+                     <option value="error" {% if execution.status == 'error' %}selected{% endif %}>Error</option> {# Add error if applicable #}
+                   </select>
+                   {# No submit button needed as JS handles on change #}
+                 </form>
+              </td>
+            </tr>
+            {% endfor %} {# End loop executions_list #}
+          </tbody>
+        </table>
+      </div>
+    {% endfor %} {# End loop grouped_executions #}
+  {% else %}
+    <p>No executions found matching the specified criteria.</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+  {# IMPORTANT: Include the JS that handles the AJAX status update #}
+  <script src="{{ url_for('static', filename='js/testRuns/updateDisposition.js') }}"></script>
+{% endblock %}

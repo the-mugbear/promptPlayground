@@ -1,9 +1,18 @@
+import os
+import sys
+import json
+
+# Ensure parent directory is on sys.path
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from extensions import db
 from datetime import datetime
 from models.model_TestSuite import TestSuite
 from services.common.http_request_service import replay_post_request
-import json, requests
+import requests
 
 # To guide organizations in identifying and managing GAI risks, a set of risks unique to or exacerbated by
 # the development and use of GAI are defined below.5 Each risk is labeled according to the outcome,

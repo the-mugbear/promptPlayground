@@ -13,6 +13,8 @@ from datasets import load_dataset
 from models.model_TestCase import TestCase
 from models.model_TestSuite import TestSuite
 from models.model_DatasetReference import DatasetReference
+from models.model_TestRun import TestRun  # <-- Add this
+from models.model_PromptFilter import PromptFilter # <-- Add this
 from classifier import nist_classify
 from extensions import db
 from hf_ingestor.services import create_test_case
@@ -80,6 +82,9 @@ def parse_datasets_and_create_suite(attack_type, dataset_name, prompt_field):
     # Set the suite behavior to be the attack type by default.
     suite_behavior = attack_type
 
+    # for final report, this stub was added and is purely for demonstration purposes
+    demoFile = open("Results.txt", 'a+')
+
     # Loop through each entry in the dataset
     for entry in prompt_ds:
         prompt = prompt = entry.get(prompt_field)
@@ -87,6 +92,15 @@ def parse_datasets_and_create_suite(attack_type, dataset_name, prompt_field):
             continue
 
         if attack_type.lower() == "jailbreak":
+
+            # DEMO STUB, REMOVE LATER!
+            response = nist_classify(prompt)
+            json_string = response['response_text']
+            data = json.loads(json_string)
+            content_value = data['choices'][0]['message']['content']
+            print("******")
+            print(content_value)
+
             # Create a TestCase for jailbreak entries.
             tc = create_test_case(
                 prompt=prompt,
@@ -97,7 +111,6 @@ def parse_datasets_and_create_suite(attack_type, dataset_name, prompt_field):
                 nist_risk=None
             )
             created_test_cases.append(tc)
-
             suite_behavior = 'jailbreak'
         else:
             # For non-jailbreak cases, perform classification.
@@ -126,8 +139,9 @@ def parse_datasets_and_create_suite(attack_type, dataset_name, prompt_field):
         )
         # Associate the created test cases with the new TestSuite
         new_suite.test_cases.extend(created_test_cases)
-        db.session.add(new_suite)
-        db.session.commit()
+        # Commented out FOR DEMO PURPOSES ON 4/18
+        # db.session.add(new_suite)
+        # db.session.commit()
         print(f"TestSuite created with id: {new_suite.id}")
 
     # Create a DatasetReference record.
@@ -138,8 +152,10 @@ def parse_datasets_and_create_suite(attack_type, dataset_name, prompt_field):
         url=dataset_url,
         added=True,
     )
-    db.session.add(dataset_ref)
-    db.session.commit()
+    # Commented out FOR DEMO PURPOSES ON 4/18
+    # db.session.add(dataset_ref)
+    # db.session.commit()
+    demoFile.close()
     print(f"DatasetReference created with id: {dataset_ref.id}")
 
 if __name__ == "__main__":
@@ -166,6 +182,7 @@ if __name__ == "__main__":
 
             "r1char9/prompt-2-prompt-injection": ("prompt_injection", "prompt_injection"),
             "Arthur-AI/arthur_prompt_injection_benchmark": ("text", "prompt_injection"),
+            "hackaprompt/hackaprompt-dataset": ("prompt", "jailbreak")
 
         }
 

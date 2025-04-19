@@ -28,15 +28,15 @@ def create_test_suite_form():
     GET /test_suites/create -> Display an HTML form to create a new test suite
     """
     # If you want to display existing test cases to add to the new suite, fetch them:
-    existing_test_cases = TestCase.query.all()
+    # orphaned_test_cases = TestCase.query.filter(~TestCase.test_suites.any()).all()
+    # existing_test_cases = TestCase.query.all()
     existing_test_suites = TestSuite.query.all()
-    orphaned_test_cases = TestCase.query.filter(~TestCase.test_suites.any()).all()
 
     return render_template(
         'test_suites/create_suite.html', 
-        existing_test_cases=existing_test_cases, 
+        # existing_test_cases=existing_test_cases, 
         existing_suites=existing_test_suites,
-        orphaned_test_cases=orphaned_test_cases
+        # orphaned_test_cases=orphaned_test_cases
     )
 
 @test_suites_bp.route('/<int:suite_id>/details', methods=["GET"])
@@ -69,6 +69,7 @@ def create_test_suite():
     """
     description = request.form.get('description')
     behavior = request.form.get('behavior')
+    objective = request.form.get('objective')
 
     # Process suite-level transformations (default for test cases that inherit)
     suite_transformations = process_transformations(request.form)
@@ -76,7 +77,8 @@ def create_test_suite():
     # Create the test suite.
     new_suite = TestSuite(
         description=description,
-        behavior=behavior
+        behavior=behavior,
+        objective=objective
     )
     db.session.add(new_suite)
     db.session.commit()

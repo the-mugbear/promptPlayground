@@ -167,13 +167,36 @@ def handle_create_test_run():
     endpoint_id         = request.form.get('endpoint_id')
     selected_suite_ids  = request.form.getlist('suite_ids')
     selected_filter_ids = request.form.getlist('filter_ids')
+    # Get the potential override payload from the textarea
+    payload_override = request.form.get('endpointPayload') 
 
-    # 2) Validate **before** creating anything
-    if not run_name or not endpoint_id or not selected_suite_ids:
-        flash("Missing required fields: run_name, endpoint_id, or suite_ids", 'error')
+    # 2) Validate required fields for TestRun creation
+    if not run_name: # Make run_name optional or required as needed
+        run_name = f"Run for Endpoint {endpoint_id} at {datetime.now()}" # Example default name
+    if not endpoint_id or not selected_suite_ids:
+        flash("Missing required fields: endpoint_id, or suite_ids", 'error')
         return redirect(url_for('test_runs_bp.create_test_run_form'))
 
     try:
+        # *** Find the selected Endpoint ***
+        endpoint_to_update = Endpoint.query.get(endpoint_id)
+        if not endpoint_to_update:
+            flash(f"Selected endpoint with ID {endpoint_id} not found.", 'error')
+            return redirect(url_for('test_runs_bp.create_test_run_form'))
+
+        # *** Overwrite the Endpoint's payload IF override text was provided ***
+        if payload_override and payload_override.strip(): # Check if override is not empty/whitespace
+             # Optional: Add validation, e.g., ensure "{{INJECT_PROMPT}}" is still present
+            if "{{INJECT_PROMPT}}" not in payload_override:
+                 flash("Error: The overridden payload must still contain '{{INJECT_PROMPT}}'. Endpoint not updated.", 'error')
+                 # Decide if you want to stop TestRun creation here too, or just skip the update
+                 # return redirect(url_for('test_runs_bp.create_test_run_form')) 
+            else:
+                print(f"Updating payload for Endpoint {endpoint_id}") # Optional logging
+                endpoint_to_update.http_payload = payload_override
+                # No need to db.session.add() explicitly when modifying a loaded object
+        # **************************************************************************
+
         # 3) Create the TestRun
         new_run = TestRun(
             name=run_name,
