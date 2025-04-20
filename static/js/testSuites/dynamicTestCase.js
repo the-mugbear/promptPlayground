@@ -1,4 +1,4 @@
-// dynamicTestCase.js
+// static/js/testSuites/dynamicTestCase.js
 
 document.addEventListener("DOMContentLoaded", function() {
   // --- GLOBAL STATE -------------------------------------------------------
@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", function() {
       timeout = setTimeout(() => func.apply(this, args), wait);
     };
   }
+
   function updateTestCasesData() {
     document.getElementById('test_cases_data').value = JSON.stringify(testCases);
   }
@@ -31,17 +32,22 @@ document.addEventListener("DOMContentLoaded", function() {
       return tr;
     });
   }
+
   function updateAllInheritedPreviews() {
     const defaults = getSuiteTransforms();
+    // re‑apply defaults to every inherited case
     testCases.forEach(tc => {
       if (tc.inheritSuiteTransformations) {
         tc.transformations = JSON.parse(JSON.stringify(defaults));
       }
     });
+
+    // re‑render each card’s preview/order
     document.querySelectorAll('.test-case-card').forEach(card => {
       const idx = parseInt(card.dataset.index, 10);
       const tc  = testCases[idx];
       const perCase = card.querySelector('.per-case-transformations');
+
       perCase.style.display = tc.inheritSuiteTransformations ? 'none' : 'block';
       renderTransformationOrder(card, tc);
       updatePreview(
@@ -51,8 +57,11 @@ document.addEventListener("DOMContentLoaded", function() {
         tc
       );
     });
+
     updateTestCasesData();
   }
+
+  // listen for changes in the suite‑level controls
   document.querySelectorAll(
     '.transformations-container input[type="checkbox"], ' +
     '.transformations-container input[type="text"]'
@@ -60,13 +69,14 @@ document.addEventListener("DOMContentLoaded", function() {
     ctrl.addEventListener('change', updateAllInheritedPreviews);
   });
 
+
   // --- RENDER & CARD CREATION ---------------------------------------------
   function createTestCaseCard(tc, index) {
     const card = document.createElement('div');
     card.className = 'test-case-card';
     card.dataset.index = index;
 
-    // Prompt
+    // Prompt textarea
     const promptInput = document.createElement('textarea');
     promptInput.className = 'form-control';
     promptInput.rows = 3;
@@ -74,7 +84,7 @@ document.addEventListener("DOMContentLoaded", function() {
     promptInput.value = tc.prompt || '';
     card.appendChild(promptInput);
 
-    // Preview
+    // Preview area
     const previewDiv = document.createElement('div');
     previewDiv.className = 'transformation-preview';
     previewDiv.innerHTML = '<strong>Preview:</strong> <span class="preview-output"></span>';
@@ -88,25 +98,27 @@ document.addEventListener("DOMContentLoaded", function() {
     inheritCheckbox.type = 'checkbox';
     inheritCheckbox.checked = tc.inheritSuiteTransformations !== false;
     inheritCheckbox.addEventListener('change', e => {
+      const i = parseInt(card.dataset.index, 10);
       tc.inheritSuiteTransformations = e.target.checked;
       const perCase = card.querySelector('.per-case-transformations');
       perCase.style.display = e.target.checked ? 'none' : 'block';
-      updateTestCasesData();
-      renderTransformationOrder(card, tc);
+
       if (e.target.checked) {
         tc.transformations = JSON.parse(JSON.stringify(getSuiteTransforms()));
-        updatePreview(
-          perCase,
-          promptInput,
-          card.querySelector('.preview-output'),
-          tc
-        );
       }
+      updateTestCasesData();
+      renderTransformationOrder(card, tc);
+      updatePreview(
+        perCase,
+        promptInput,
+        card.querySelector('.preview-output'),
+        tc
+      );
     });
     inheritLabel.insertBefore(inheritCheckbox, inheritLabel.firstChild);
     card.appendChild(inheritLabel);
 
-    // Per‑case transforms
+    // Per‑case transforms (cloned template)
     const transformationsContainer = document.createElement('div');
     transformationsContainer.className = 'per-case-transformations';
     transformationsContainer.innerHTML =
@@ -116,7 +128,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     card.appendChild(transformationsContainer);
 
-    // Sync cloned checkboxes & text inputs
+    // Sync any existing transformations into the cloned fields
     tc.transformations.forEach(tr => {
       const cb = transformationsContainer.querySelector(
         `input[name="transformations"][value="${tr.type}"]`
@@ -132,7 +144,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
 
-    // Error & order
+    // Error & order display
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
     card.appendChild(errorDiv);
@@ -151,7 +163,11 @@ document.addEventListener("DOMContentLoaded", function() {
     moveUpBtn.textContent = '↑';
     moveUpBtn.addEventListener('click', e => {
       e.preventDefault();
-      moveTestCase(card, -1);
+      const i = parseInt(card.dataset.index, 10);
+      if (i > 0) {
+        [testCases[i - 1], testCases[i]] = [testCases[i], testCases[i - 1]];
+        renderTestCases();
+      }
     });
     actionsDiv.appendChild(moveUpBtn);
 
@@ -162,7 +178,11 @@ document.addEventListener("DOMContentLoaded", function() {
     moveDownBtn.textContent = '↓';
     moveDownBtn.addEventListener('click', e => {
       e.preventDefault();
-      moveTestCase(card, 1);
+      const i = parseInt(card.dataset.index, 10);
+      if (i < testCases.length - 1) {
+        [testCases[i + 1], testCases[i]] = [testCases[i], testCases[i + 1]];
+        renderTestCases();
+      }
     });
     actionsDiv.appendChild(moveDownBtn);
 
@@ -173,7 +193,10 @@ document.addEventListener("DOMContentLoaded", function() {
     duplicateBtn.textContent = 'Duplicate';
     duplicateBtn.addEventListener('click', e => {
       e.preventDefault();
-      duplicateTestCase(card, index);
+      const i = parseInt(card.dataset.index, 10);
+      const clone = JSON.parse(JSON.stringify(testCases[i]));
+      testCases.splice(i + 1, 0, clone);
+      renderTestCases();
     });
     actionsDiv.appendChild(duplicateBtn);
 
@@ -184,7 +207,8 @@ document.addEventListener("DOMContentLoaded", function() {
     removeBtn.textContent = 'Remove';
     removeBtn.addEventListener('click', e => {
       e.preventDefault();
-      testCases.splice(index, 1);
+      const i = parseInt(card.dataset.index, 10);
+      testCases.splice(i, 1);
       renderTestCases();
     });
     actionsDiv.appendChild(removeBtn);
@@ -193,34 +217,44 @@ document.addEventListener("DOMContentLoaded", function() {
     return card;
   }
 
-  // --- EVENT BINDERS (NO DOUBLE-LISTENERS) -------------------------------
+  // --- INPUT & TRANSFORM LISTENERS ---------------------------------------
   function setupPromptInputListeners(card, tc) {
     const prompt = card.querySelector('textarea');
     const err    = card.querySelector('.error-message');
-    prompt.addEventListener('input', () => err.textContent = '');
+    prompt.addEventListener('input', () => {
+      err.textContent = '';
+      // write the new prompt back into the testCases data
+      tc.prompt = prompt.value;
+      updateTestCasesData();
+    });
   }
+
   function setupTransformationControlListeners(card, tc) {
     const container   = card.querySelector('.per-case-transformations');
     const promptInput = card.querySelector('textarea');
     const previewOut  = card.querySelector('.preview-output');
-    const debounced   = debounce(() => updatePreview(container, promptInput, previewOut, tc), 300);
+    const debounced   = debounce(() => {
+      updatePreview(container, promptInput, previewOut, tc);
+      updateTestCasesData();
+    }, 300);
 
+    // initial preview
     updatePreview(container, promptInput, previewOut, tc);
 
+    // checkbox toggles
     container.querySelectorAll('input[type="checkbox"][name="transformations"]')
       .forEach(cb => cb.addEventListener('change', () => {
+        const type = cb.value;
         if (cb.checked) {
-          if (!tc.transformations.some(t => t.type === cb.value)) {
-            tc.transformations.push({ type: cb.value, value: '' });
-          }
+          tc.transformations.push({ type, value: '' });
         } else {
-          tc.transformations = tc.transformations.filter(t => t.type !== cb.value);
+          tc.transformations = tc.transformations.filter(t => t.type !== type);
         }
-        updateTestCasesData();
         renderTransformationOrder(card, tc);
         debounced();
       }));
 
+    // text inputs (prepend/postpend)
     container.querySelectorAll('input[type="text"]').forEach(input => {
       input.addEventListener('input', () => {
         const type = input.closest('.transform-option')
@@ -228,21 +262,25 @@ document.addEventListener("DOMContentLoaded", function() {
         tc.transformations = tc.transformations.map(t =>
           t.type === type ? { type, value: input.value } : t
         );
-        updateTestCasesData();
         renderTransformationOrder(card, tc);
         debounced();
       });
     });
 
+    // prompt edits
     promptInput.addEventListener('input', debounced);
   }
 
   // --- PREVIEW -------------------------------------------------------------
   function updatePreview(container, promptInput, previewOut, tc) {
-    const lines = [promptInput.value];
+    const line = promptInput.value || '';
+    if (!line.trim()) {
+      previewOut.textContent = '';
+      return;
+    }
+
     const types = tc.transformations.map(t => t.type);
     const params = {};
-
     if (tc.inheritSuiteTransformations) {
       tc.transformations.forEach(t => {
         if (t.type === 'prepend_text')  params.text_to_prepend  = t.value;
@@ -255,18 +293,13 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     }
 
-    if (!lines[0].trim()) {
-      previewOut.textContent = '';
-      return;
-    }
-
     const formEl     = document.getElementById('create-suite-form');
     const previewUrl = formEl.getAttribute('data-preview-url') || '/test_suites/preview_transform';
 
     fetch(previewUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lines, transformations: types, params })
+      body: JSON.stringify({ lines: [line], transformations: types, params })
     })
     .then(r => r.ok ? r.json() : Promise.reject(r.status))
     .then(data => {
@@ -284,23 +317,10 @@ document.addEventListener("DOMContentLoaded", function() {
     if (tc.inheritSuiteTransformations) {
       out.textContent = 'Using suite-level transformations.';
     } else if (!tc.transformations.length) {
-      out.textContent = 'No custom transformations.';
+      out.textContent = 'No transformations selected.';
     } else {
       out.textContent = 'Custom: ' + tc.transformations.map(t => t.type).join(', ');
     }
-  }
-
-  // --- MOVE / DUP / REMOVE ------------------------------------------------
-  function moveTestCase(card, dir) {
-    const i  = parseInt(card.dataset.index, 10);
-    const ni = i + dir;
-    if (ni < 0 || ni >= testCases.length) return;
-    testCases.splice(ni, 0, testCases.splice(i, 1)[0]);
-    renderTestCases();
-  }
-  function duplicateTestCase(card, i) {
-    testCases.splice(i + 1, 0, JSON.parse(JSON.stringify(testCases[i])));
-    renderTestCases();
   }
 
   // --- RENDER ALL ---------------------------------------------------------
@@ -310,7 +330,7 @@ document.addEventListener("DOMContentLoaded", function() {
     testCases.forEach((tc, i) => {
       const card = createTestCaseCard(tc, i);
 
-      // Validate prompt
+      // validate prompt presence
       if (!card.querySelector('textarea').value.trim()) {
         card.querySelector('.error-message').textContent = 'Prompt is required.';
       }
@@ -326,10 +346,11 @@ document.addEventListener("DOMContentLoaded", function() {
   // --- IMPORT CASES -------------------------------------------------------
   document.getElementById('importTestCasesBtn').addEventListener('click', () => {
     const text  = document.getElementById('test_cases_import').value;
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const lines = text.split('\n').map(l => l.trim()); // keep even blank lines if you want
     const defaults = getSuiteTransforms();
 
-    lines.forEach(line => {
+    // push _all_ non‑empty lines as new cases
+    lines.filter(l => l).forEach(line => {
       testCases.push({
         prompt: line,
         inheritSuiteTransformations: true,
@@ -342,9 +363,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // --- FORM SUBMIT --------------------------------------------------------
   document.getElementById('create-suite-form').addEventListener('submit', () => {
-    const suiteTransforms = getSuiteTransforms();
     document.getElementById('suite_transformations').value =
-      JSON.stringify(suiteTransforms);
+      JSON.stringify(getSuiteTransforms());
     document.getElementById('test_cases_data').value =
       JSON.stringify(testCases);
   });
