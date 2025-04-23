@@ -86,7 +86,13 @@ $(document).ready(function(){
       // --- UI Feedback: End ---
 
       var formData = $(this).serialize();
-      var url = "{{ url_for('best_of_n_bp.best_of_n_index') }}?" + formData;
+      var actionUrl = $(this).data('action-url'); // Get URL from data attribute
+      if (!actionUrl) { // Add a check in case the attribute is missing
+          console.error("Form action URL is missing!");
+          alert("Configuration error: Cannot determine submission URL.");
+          return; 
+      }
+      var url = actionUrl + "?" + formData; 
 
       console.log("Connecting to EventSource:", url);
       eventSource = new EventSource(url); // Assign to the global variable

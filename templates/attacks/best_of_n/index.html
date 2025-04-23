@@ -17,7 +17,7 @@
 
   <div class="two-column-container">
     <div class="left-card cyberpunk-card"> <h2>Configuration</h2>
-      <form id="best-of-n-form" method="POST"> <div class="form-group">
+      <form id="best-of-n-form" method="POST" data-action-url="{{ url_for('best_of_n_bp.best_of_n_index') }}">  <div class="form-group">
           <label for="initial_prompt">Initial Prompt</label>
           <textarea name="initial_prompt" id="initial_prompt" rows="4" placeholder="Enter your prompt..."></textarea>
         </div>
