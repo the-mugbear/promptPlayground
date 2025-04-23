@@ -5,14 +5,10 @@
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/communication_log.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/attacks/best_of_n.css') }}">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <style>
-    /* Optionally style the input fields in the right card */
-    .endpoint-input {
-      width: 100%;
-      padding: 0.5rem;
-      margin-bottom: 0.5rem;
-    }
+    
   </style>
 {% endblock %}
 
@@ -20,17 +16,14 @@
 <div class="container">
 
   <div class="two-column-container">
-    <!-- LEFT: Form Card -->
-    <div class="left-card">
-      <h2>Configuration</h2>
-      <form id="best-of-n-form" action="{{ url_for('best_of_n_bp.best_of_n_index') }}" method="POST">
-        <div class="form-group">
+    <div class="left-card cyberpunk-card"> <h2>Configuration</h2>
+      <form id="best-of-n-form" method="POST"> <div class="form-group">
           <label for="initial_prompt">Initial Prompt</label>
           <textarea name="initial_prompt" id="initial_prompt" rows="4" placeholder="Enter your prompt..."></textarea>
         </div>
 
         <p>
-          Select an endpoint below or 
+          Select an endpoint below or
           <a href="{{ url_for('endpoints_bp.create_endpoint_form') }}">register a new endpoint</a>.
         </p>
         <div class="form-group">
@@ -43,150 +36,76 @@
           </select>
         </div>
 
-        <!-- Hidden inputs to store edited endpoint details -->
         <input type="hidden" name="ep_name" id="hidden_ep_name">
         <input type="hidden" name="ep_hostname" id="hidden_ep_hostname">
         <input type="hidden" name="ep_endpoint" id="hidden_ep_endpoint">
         <input type="hidden" name="ep_payload" id="hidden_ep_payload">
-        <!-- You could add one for headers if desired -->
-
         <div class="form-group">
           <label for="num_samples">Number of Permutations (N)</label>
           <input type="number" name="num_samples" id="num_samples" value="10" min="1">
         </div>
 
-        <!-- Permutation options -->
         <div class="form-group transformations-container">
           <label>Select Permutation Options:</label>
-          
+
           <div class="transform-option">
-            <label title="Randomly rearranges the middle letters of words (keeping the first and last letters intact) to introduce a subtle mix-up.">
-              <input type="checkbox" name="rearrange" value="on"> Rearrange Letters
+            <input type="checkbox" id="rearrange_cb" name="rearrange" value="on">
+            <label for="rearrange_cb" title="Randomly rearranges the middle letters of words (keeping the first and last letters intact) to introduce a subtle mix-up.">
+               Rearrange Letters
             </label>
           </div>
           <div class="transform-option">
-            <label title="Randomly toggles the case of letters to mix up uppercase and lowercase letters.">
-              <input type="checkbox" name="capitalization" value="on"> Random Capitalization
+            <input type="checkbox" id="capitalization_cb" name="capitalization" value="on">
+            <label for="capitalization_cb" title="Randomly toggles the case of letters to mix up uppercase and lowercase letters.">
+               Random Capitalization
             </label>
           </div>
           <div class="transform-option">
-            <label title="Substitutes a random letter with another random letter to create minor letter differences.">
-              <input type="checkbox" name="substitute" value="on"> Substitute Letter
-            </label>
+             <input type="checkbox" id="substitute_cb" name="substitute" value="on">
+             <label for="substitute_cb" title="Substitutes a random letter with another random letter to create minor letter differences.">
+                Substitute Letter
+             </label>
           </div>
           <div class="transform-option">
-            <label title="Simulates a common typing error by replacing a letter with one of its adjacent keys on a QWERTY keyboard.">
-              <input type="checkbox" name="typo" value="on"> Simulate Common Typo
-            </label>
+             <input type="checkbox" id="typo_cb" name="typo" value="on">
+             <label for="typo_cb" title="Simulates a common typing error by replacing a letter with one of its adjacent keys on a QWERTY keyboard.">
+                Simulate Common Typo
+             </label>
           </div>
         </div>
         <input type="hidden" name="ordered_transformations" id="ordered_transformations">
-        
+
         <button type="submit" class="neon-hover">🚀 Run Best of N</button>
       </form>
     </div>
 
-    <!-- RIGHT: Endpoint Details -->
-    <div class="right-card content-card">
-      <h2>Endpoint Details</h2>
+    <div class="right-card content-card cyberpunk-card"> <h2>Endpoint Details</h2>
       <div id="endpoint_details">
-        <!-- Editable fields to show endpoint details -->
-        <div class="form-group">
-          <label for="ep_name_input">Name:</label>
-          <input type="text" id="ep_name_input" class="endpoint-input">
-        </div>
-        <div class="form-group">
-          <label for="ep_hostname_input">Hostname:</label>
-          <input type="text" id="ep_hostname_input" class="endpoint-input">
-        </div>
-        <div class="form-group">
-          <label for="ep_endpoint_input">Endpoint Path:</label>
-          <input type="text" id="ep_endpoint_input" class="endpoint-input">
-        </div>
-        <div class="form-group">
-          <label for="ep_payload_input">Payload Template:</label>
-          <textarea id="ep_payload_input" class="endpoint-input" rows="19"></textarea>
-        </div>
+         <p class="blink">Select an endpoint to view details...</p>
+         <div class="form-group" style="display: none;"> <label for="ep_name_input">Name:</label>
+           <input type="text" id="ep_name_input" class="endpoint-input">
+         </div>
+         <div class="form-group" style="display: none;"> <label for="ep_hostname_input">Hostname:</label>
+           <input type="text" id="ep_hostname_input" class="endpoint-input">
+         </div>
+         <div class="form-group" style="display: none;"> <label for="ep_endpoint_input">Endpoint Path:</label>
+           <input type="text" id="ep_endpoint_input" class="endpoint-input">
+         </div>
+         <div class="form-group" style="display: none;"> <label for="ep_payload_input">Payload Template:</label>
+           <textarea id="ep_payload_input" class="endpoint-input" rows="10"></textarea> </div>
       </div>
     </div>
   </div>
 
-  <!-- Communication Log -->
   <h2>Communication Log</h2>
-  {% include 'partials/_comm_log.html' %}
+  {% include 'partials/_comm_log.html' %} <div id="loading-indicator">
+      <div id="loading-status-text">Processing...</div>
+      <div class="spinner"></div>
+  </div>
 
-  <!-- Optional Loading Bar -->
-  <div class="loading-bar" style="display:none;" id="loadingBar"></div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script>
-  $(document).ready(function(){
-    function fetchEndpointDetails(endpointId) {
-      if (endpointId) {
-        $.ajax({
-          url: "{{ url_for('best_of_n_bp.endpoint_details', endpoint_id=0) }}".replace('0', endpointId),
-          method: 'GET',
-          success: function(data) {
-            // Populate editable fields with fetched endpoint details.
-            $('#ep_name_input').val(data.name);
-            $('#ep_hostname_input').val(data.hostname);
-            $('#ep_endpoint_input').val(data.endpoint);
-            $('#ep_payload_input').val(data.http_payload);
-            // Optionally, update a headers container if needed.
-          },
-          error: function() {
-            $('#endpoint_details').html('<p>Error fetching endpoint details.</p>');
-          }
-        });
-      } else {
-        $('#endpoint_details').html('<p class="blink">Select an endpoint to view details...</p>');
-      }
-    }
-    
-    // When a new endpoint is selected from the dropdown, fetch its details.
-    $('#registered_endpoint').change(function(){
-      var epId = $(this).val();
-      fetchEndpointDetails(epId);
-    });
-    
-    // Before form submission, update the hidden inputs with the current values from the right card.
-    $('#best-of-n-form').on('submit', function(e){
-      // Copy the current values from the right-card inputs into the hidden fields.
-      $('#hidden_ep_name').val($('#ep_name_input').val());
-      $('#hidden_ep_hostname').val($('#ep_hostname_input').val());
-      $('#hidden_ep_endpoint').val($('#ep_endpoint_input').val());
-      $('#hidden_ep_payload').val($('#ep_payload_input').val());
-      
-      $('#loadingBar').fadeIn();
-      $('#chat_log').html('');
-      
-      var formData = $(this).serialize();
-      var url = "{{ url_for('best_of_n_bp.best_of_n_index') }}?" + formData;
-      
-      var source = new EventSource(url);
-      source.onmessage = function(event) {
-        var data = JSON.parse(event.data);
-        // If the final event, show a final message and do not append a prompt/response pair.
-        if (data.final) {
-          $('#chat_log').append('<div class="chat-row left"><div class="chat-bubble"><strong>Finished:</strong> Process completed after ' + data.attempts_log.length + ' attempts.</div></div>');
-          source.close();
-          return;
-        }
-        // Otherwise, append the sent and received pair.
-        var chatHtml = "";
-        chatHtml += '<div class="chat-row left"><div class="chat-bubble"><strong>Sent (Prompt):</strong><pre>' + data.prompt + '</pre></div></div>';
-        chatHtml += '<div class="chat-row right"><div class="chat-bubble"><strong>Received (Response):</strong><pre>' + data.response + '</pre></div></div>';
-        $('#chat_log').append(chatHtml);
-      };
-      source.onerror = function() {
-        $('#chat_log').append('<p>Error receiving stream.</p>');
-        source.close();
-      };
-      // Prevent the default form submission behavior.
-      return false;
-    });
-  });
-</script>
+  <script src="{{ url_for('static', filename='js/attacks/best_of_n.js') }}"></script>
 {% endblock %}

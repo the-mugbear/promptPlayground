@@ -7,26 +7,42 @@ from models.model_Endpoints import Endpoint
 from models.model_Dialogue import Dialogue
 from services.common.http_request_service import replay_post_request
 from services.common.header_parser_service import headers_from_apiheader_list
+from extensions import db 
 
 best_of_n_bp = Blueprint('best_of_n_bp', __name__, url_prefix='/best_of_n')
 
 @best_of_n_bp.route('/', methods=['GET', 'POST'])
 def best_of_n_index():
     endpoints = Endpoint.query.all()
+
+    # Handle POST requests by redirecting to GET with query parameters
     if request.method == 'POST':
         initial_prompt = request.form.get('initial_prompt')
         endpoint_id = request.form.get('registered_endpoint')
+        # Basic validation - more robust validation can be added
         if not initial_prompt or not endpoint_id:
             flash("Initial prompt and a registered endpoint are required.", "error")
-            return redirect(url_for('best_of_n_bp.best_of_n_index'))
+            # Pass existing endpoints back to the template on error redirect
+            return render_template('attacks/best_of_n/index.html', endpoints=endpoints) 
+        
+        # Check if at least one transformation is selected (assuming checkbox names match keys in 'options')
+        transformations_selected = any(request.form.get(key) == 'on' for key in ["rearrange", "capitalization", "substitute", "typo"])
+        if not transformations_selected:
+             flash("Please select at least one permutation option.", "error")
+             return render_template('attacks/best_of_n/index.html', endpoints=endpoints, form_data=request.form) # Pass form data back
+
         query_params = request.form.to_dict()
+        # Redirect to the same route using GET with parameters
         return redirect(url_for('best_of_n_bp.best_of_n_index', **query_params))
-    
+
+    # Handle GET requests - either initial page load or after POST redirect
     if request.args.get('initial_prompt') and request.args.get('registered_endpoint'):
+        # --- Parameters for SSE Stream ---
         initial_prompt = request.args.get('initial_prompt')
         endpoint_id = request.args.get('registered_endpoint')
         try:
             num_samples = int(request.args.get('num_samples', 10))
+            if num_samples < 1: num_samples = 1 # Ensure at least 1 sample
         except ValueError:
             num_samples = 10
 
@@ -36,12 +52,20 @@ def best_of_n_index():
             "substitute": request.args.get('substitute') == 'on',
             "typo": request.args.get('typo') == 'on'
         }
-        
+
+        # Check again if transformations selected (important if accessed via GET directly)
+        if not any(options.values()):
+             flash("Please select at least one permutation option.", "error")
+             # Need endpoints for the template render
+             return render_template('attacks/best_of_n/index.html', endpoints=Endpoint.query.all(), form_data=request.args)
+
+
         endpoint = Endpoint.query.get_or_404(endpoint_id)
         # Override endpoint values with values from query parameters, if provided.
+        # This allows using the edited values from the frontend form
         ep_name = request.args.get('ep_name')
         if ep_name:
-            endpoint.name = ep_name
+            endpoint.name = ep_name # Note: This doesn't save the change to DB, only uses for this request
         ep_hostname = request.args.get('ep_hostname')
         if ep_hostname:
             endpoint.hostname = ep_hostname
@@ -52,39 +76,118 @@ def best_of_n_index():
         if ep_payload:
             endpoint.http_payload = ep_payload
 
+        # Use potentially overridden values
         hostname = endpoint.hostname
         endpoint_path = endpoint.endpoint
         payload_template = endpoint.http_payload
-        
+
+        # Generate all permutations upfront (could be changed to generate on-the-fly if needed)
         permutations = generate_permutations(initial_prompt, options, num_samples)
-        attempts_log = []
-        
-        def prepare_raw_headers(endpoint):
-            headers_dict = headers_from_apiheader_list(endpoint.headers)
-            headers_dict.setdefault("Content-Type", "application/json")
+        attempts_log = [] # Log to store results
+
+        def prepare_raw_headers(ep):
+            headers_dict = headers_from_apiheader_list(ep.headers)
+            # Ensure Content-Type is set, default to application/json if not present
+            headers_dict.setdefault("Content-Type", "application/json") 
             return "\n".join([f"{k}: {v}" for k, v in headers_dict.items()])
-        
+
         def generate():
+            nonlocal attempts_log # Allow modification of the outer scope variable
             raw_headers = prepare_raw_headers(endpoint)
-            for perm in permutations:
-                payload = payload_template.replace("{{INJECT_PROMPT}}", perm)
-                response = replay_post_request(hostname, endpoint_path, payload, raw_headers=raw_headers)
+            
+            # --- Initial Status Update ---
+            yield f"data: {json.dumps({'status': 'Starting Best of N process...'})}\n\n"
+            time.sleep(0.2) # Small delay for frontend to show initial status
+
+            # --- Loop through permutations ---
+            for i, perm in enumerate(permutations):
+                
+                # --- Status Update: Before Request ---
+                status_message = f"Processing permutation {i + 1}/{num_samples}..."
+                yield f"data: {json.dumps({'status': status_message})}\n\n"
+                
+                # Prepare payload for this specific permutation
+                # Use try-except for robust replacement, handle potential errors
+                try:
+                    # Ensure payload is treated as a string for replacement
+                    payload = str(payload_template).replace("{{INJECT_PROMPT}}", json.dumps(perm)[1:-1]) # Escape prompt for JSON string
+                except Exception as e:
+                    # Handle error during payload creation (e.g., template issue)
+                    error_message = f"Error creating payload for permutation {i + 1}: {e}"
+                    yield f"data: {json.dumps({'status': error_message, 'error': True})}\n\n" 
+                    # Log the attempt with an error state
+                    attempts_log.append({"prompt": perm, "response": f"ERROR: {error_message}", "error": True})
+                    continue # Skip to the next permutation
+
+                # --- Make the HTTP request ---
+                try:
+                    # Add timeout to prevent hanging indefinitely
+                    response_data = replay_post_request(hostname, endpoint_path, payload, raw_headers=raw_headers, timeout=30) 
+                    response_text = response_data.get("response_text", "No response text received.")
+                    is_error = False
+
+                except Exception as e:
+                    # Handle network errors or errors from replay_post_request
+                    response_text = f"ERROR executing request for permutation {i + 1}: {e}"
+                    is_error = True
+                    # Yield an error status
+                    yield f"data: {json.dumps({'status': response_text, 'error': True})}\n\n"
+
+                # --- Store and Yield Result ---
                 attempt_data = {
                     "prompt": perm,
-                    "response": response.get("response_text")
+                    "response": response_text
                 }
+                if is_error:
+                     attempt_data["error"] = True # Mark if request failed
+
                 attempts_log.append(attempt_data)
+                # Yield the actual prompt/response pair
                 yield f"data: {json.dumps(attempt_data)}\n\n"
-                time.sleep(0.1)
-            final_message = {"final": True, "attempts_log": attempts_log}
-            dialogue_record = Dialogue(conversation=json.dumps(attempts_log), source="best_of_n", endpoint_id=endpoint.id)
-            from extensions import db  # ensure db is imported within this context
-            db.session.add(dialogue_record)
-            db.session.commit()
+
+                # Optional short delay between requests/yields
+                time.sleep(0.1) 
+
+            # --- Process finished ---
+            yield f"data: {json.dumps({'status': 'Processing complete. Finalizing...'})}\n\n"
+            
+            # --- Find Best Result (Placeholder - Implement your logic here) ---
+            # Example: find the shortest non-error response
+            best_prompt = None
+            best_response = None
+            # Add logic here to evaluate attempts_log and set best_prompt/best_response
+            # For now, we'll leave them as None
+
+            # --- Save to Database ---
+            try:
+                dialogue_record = Dialogue(
+                    conversation=json.dumps(attempts_log), 
+                    source="best_of_n", 
+                    endpoint_id=endpoint.id
+                )
+                db.session.add(dialogue_record)
+                db.session.commit()
+            except Exception as e:
+                 # Log DB save error, but don't necessarily stop the SSE stream
+                 print(f"Error saving dialogue to DB: {e}") 
+                 # Optionally yield a status update about the DB error
+                 yield f"data: {json.dumps({'status': 'Warning: Could not save results to database.', 'error': True})}\n\n"
+
+
+            # --- Final Message ---
+            final_message = {
+                "final": True, 
+                "attempts_log": attempts_log,
+                # Include best result if found, otherwise frontend handles absence
+                "best_prompt": best_prompt, 
+                "best_response": best_response 
+            }
             yield f"data: {json.dumps(final_message)}\n\n"
-        
+
+        # Return the SSE response
         return Response(stream_with_context(generate()), mimetype="text/event-stream")
-    
+
+    # Default GET request: Render the initial form page
     return render_template('attacks/best_of_n/index.html', endpoints=endpoints)
 
 
