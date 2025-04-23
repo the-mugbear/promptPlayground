@@ -28,11 +28,12 @@
         </p>
         <div class="form-group">
           <label for="registered_endpoint">Registered Endpoint</label>
-          <select name="registered_endpoint" id="registered_endpoint">
-            <option value="">--Select Endpoint--</option>
-            {% for ep in endpoints %}
-              <option value="{{ ep.id }}">{{ ep.name }} ({{ ep.hostname }}{{ ep.endpoint }})</option>
-            {% endfor %}
+          <select name="registered_endpoint" id="registered_endpoint" 
+                  data-details-url-base="{{ url_for('best_of_n_bp.endpoint_details', endpoint_id=999999) }}"> 
+                                                                                <option value="">--Select Endpoint--</option>
+              {% for ep in endpoints %}
+                <option value="{{ ep.id }}">{{ ep.name }} ({{ ep.hostname }}{{ ep.endpoint }})</option>
+              {% endfor %}
           </select>
         </div>
 

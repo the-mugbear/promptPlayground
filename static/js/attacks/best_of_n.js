@@ -6,10 +6,23 @@ $(document).ready(function(){
       const formGroups = detailsContainer.find('.form-group'); // Get the hidden form groups
       const placeholder = detailsContainer.find('.blink');
 
+      // Get the base URL from the select element's data attribute
+      const baseUrl = $('#registered_endpoint').data('details-url-base');
+
+      if (!baseUrl) { // Add a check
+          console.error("Endpoint details URL base is missing from the select element!");
+          alert("Configuration error: Cannot determine endpoint details URL.");
+          return;
+      }
+
       if (endpointId) {
         placeholder.hide(); // Hide placeholder text
+
+        // Replace the dummy integer string with the actual ID
+        const finalUrl = baseUrl.replace('999999', endpointId); 
+
         $.ajax({
-          url: "{{ url_for('best_of_n_bp.endpoint_details', endpoint_id=0) }}".replace('0', endpointId),
+          url: finalUrl, // Use the correctly constructed URL
           method: 'GET',
           success: function(data) {
             // Populate editable fields
