@@ -82,7 +82,20 @@
       <h2><a href="{{ url_for('help_bp.purge') }}">Debugging Commands: Purge Orphaned Test Cases</a></h2>
       <p>Remove test cases that are no longer associated with any test suite.</p>
     </div>
-    {# Add more developer/debugging cards as needed #}
+
+    <div class="help-topics"> {# Use your theme's card style #}
+      <div class="help-topic card">
+      <h2>Database Maintenance</h2>
+      <p>
+          Rebuild the database file, removing unused space and potentially shrinking the file size. 
+          This may take some time and will temporarily lock the database.
+      </p>
+      <form action="{{ url_for('help_bp.vacuum_database') }}" method="POST" onsubmit="return confirm('Are you sure you want to vacuum the database? This might take a while and block other operations.');">
+          <button type="submit">Vacuum Database</button>
+      </form>
+      </div>
+    </div>
+
   </div>
 </div>
 {% endblock %}
