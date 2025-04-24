@@ -1,0 +1,68 @@
+-- ============================================================
+-- Create User and Grant Permissions for fuzzy_prompts_db
+-- ============================================================
+-- !! IMPORTANT !!
+-- 1. Run this script connected as a PostgreSQL superuser (e.g., 'postgres').
+-- 2. Replace 'YOUR_SECURE_PASSWORD_HERE' with the actual password.
+-- 3. Ensure the database 'fuzzy_prompts_db' already exists.
+-- ============================================================
+
+-- Create the user (role) with login privilege and the specified password
+-- DO blocks allow checking if the user exists first to make the script re-runnable.
+DO
+$do$
+BEGIN
+   IF NOT EXISTS (
+      SELECT FROM pg_catalog.pg_roles
+      WHERE  rolname = 'fuzzy_user') THEN
+
+      CREATE ROLE fuzzy_user WITH LOGIN PASSWORD 'YOUR_SECURE_PASSWORD_HERE';
+      RAISE NOTICE 'Role "fuzzy_user" created.';
+   ELSE
+      -- Optionally update the password if the user already exists
+      ALTER ROLE fuzzy_user WITH PASSWORD 'YOUR_SECURE_PASSWORD_HERE';
+      RAISE NOTICE 'Role "fuzzy_user" already exists. Password updated.';
+   END IF;
+END
+$do$;
+
+-- Grant the ability for the user to connect to the specific database
+GRANT CONNECT ON DATABASE fuzzy_prompts_db TO fuzzy_user;
+
+-- ============================================================
+-- Permissions within the 'fuzzy_prompts_db' database
+-- ============================================================
+-- !! IMPORTANT !!
+-- If not already connected to 'fuzzy_prompts_db', connect now: \c fuzzy_prompts_db
+-- The following commands grant permissions *within* the connected database.
+-- ============================================================
+
+-- Grant the ability to USE the public schema (default schema)
+GRANT USAGE ON SCHEMA public TO fuzzy_user;
+
+-- Grant the ability to CREATE tables, sequences, etc., within the public schema
+-- This is essential for Flask-Migrate/Alembic to create the alembic_version table
+GRANT CREATE ON SCHEMA public TO fuzzy_user;
+
+-- Grant standard data manipulation privileges on FUTURE tables created in the public schema
+-- Ensures the app can use tables created by 'flask db upgrade' later
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO fuzzy_user;
+
+-- Grant standard privileges on FUTURE sequences (needed for auto-incrementing IDs)
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO fuzzy_user;
+
+-- Grant privileges on any EXISTING tables/sequences in the public schema (less critical for fresh setup)
+-- Note: Running these before tables exist won't hurt, but won't grant anything yet.
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO fuzzy_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO fuzzy_user;
+
+
+-- ============================================================
+-- Script Complete
+-- ============================================================
+
+
+-- ============================================================
+-- RESET PASSWORD
+-- ============================================================
+ALTER USER fuzzy_user WITH PASSWORD 'YOUR_CHOSEN_SECURE_PASSWORD';

@@ -1,3 +1,26 @@
-venv
+# .gitignore
+
+# Environment variables
+.env
 env.txt
-instance/
+
+# Python cache/compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+*/venv/
+.venv/
+ENV/
+*/ENV/
+env/
+*/env/
+
+# Instance folder 
+instance/ 
+
+# Other common ignores...
+.DS_Store
+*.log

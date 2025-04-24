@@ -9,8 +9,8 @@ class TestSuite(db.Model):
     description = db.Column(db.String(255), nullable=False)
     behavior = db.Column(db.String(255), nullable=True)
 
-    objective = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.now)
+    objective = db.Column(db.TEXT, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=datetime.now)
 
     # Relationships
     test_cases = db.relationship('TestCase', secondary=test_suite_cases, back_populates='test_suites')

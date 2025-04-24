@@ -10,7 +10,8 @@ class TestExecution(db.Model):
     test_run_attempt_id = db.Column(
         db.Integer, 
         db.ForeignKey('test_run_attempts.id', name='fk_test_execution_run_attempt_id'),
-        nullable=False
+        nullable=False,
+        index=True
     )
     test_case_id = db.Column(db.Integer, db.ForeignKey('test_cases.id'), nullable=False)
     
@@ -18,8 +19,8 @@ class TestExecution(db.Model):
     sequence = db.Column(db.Integer, nullable=False)
     response_data = db.Column(db.Text, nullable=True)
     
-    started_at = db.Column(db.DateTime, nullable=True)
-    finished_at = db.Column(db.DateTime, nullable=True)
+    started_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    finished_at = db.Column(db.DateTime(timezone=True), nullable=True)
     
     # Relationships
     attempt = db.relationship('TestRunAttempt', back_populates='executions')

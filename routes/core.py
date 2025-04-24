@@ -35,8 +35,7 @@ def index():
     else:
         dataset_refs = DatasetReference.query.order_by(DatasetReference.date_added.desc()).all()
 
-    return render_template('index.html', dataset_references=dataset_refs, search_query=search_query)
-    
+    return render_template('index.html', dataset_references=dataset_refs, search_query=search_query)    
 
 # ********************************
 # SERVICES

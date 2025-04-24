@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Not Found</title>
+    <style>
+        /* Define theme colors (adjust if your actual CSS variables differ) */
+        :root {
+            --background-color: #111;
+            --text-color: #eee;
+            --accent-color: #00FF41; /* Bright Green */
+            --secondary-color: #3a86ff; /* Example blue for variety if needed */
+            --border-color: rgba(0, 255, 65, 0.4);
+            --main-font: 'Consolas', 'Monaco', 'Courier New', monospace; /* Use a monospace font */
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: var(--main-font);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+            overflow: hidden; /* Prevent scrollbars from glitch effect */
+        }
+
+        .container {
+            max-width: 600px;
+            padding: 40px;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            background-color: rgba(0, 0, 0, 0.3); /* Slightly darker overlay */
+        }
+
+        .glitch-text {
+            font-size: 6rem; /* Large size for 404 */
+            font-weight: bold;
+            color: var(--accent-color);
+            position: relative;
+            animation: glitch 1.5s infinite linear alternate-reverse;
+            margin-bottom: 1rem;
+        }
+
+        /* Glitch Animation Keyframes */
+        @keyframes glitch {
+            0% { text-shadow: -2px -2px 0 var(--secondary-color, #ff00c1), 2px 2px 0 var(--accent-color); transform: translate(0, 0); }
+            25% { text-shadow: 2px 2px 0 var(--secondary-color, #ff00c1), -2px -2px 0 var(--accent-color); transform: translate(-1px, 1px); }
+            50% { text-shadow: -2px 2px 0 var(--secondary-color, #ff00c1), 2px -2px 0 var(--accent-color); transform: translate(1px, -1px); }
+            75% { text-shadow: 2px -2px 0 var(--secondary-color, #ff00c1), -2px 2px 0 var(--accent-color); transform: translate(-1px, 1px); }
+            100% { text-shadow: -2px -2px 0 var(--secondary-color, #ff00c1), 2px 2px 0 var(--accent-color); transform: translate(0, 0); }
+        }
+
+
+        h1 {
+            font-size: 2rem;
+            color: var(--text-color);
+            margin-top: 0;
+            margin-bottom: 1rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .home-link {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .home-link:hover {
+            background-color: var(--accent-color);
+            color: var(--background-color);
+            text-shadow: none; /* Remove shadow on hover if applied elsewhere */
+        }
+
+        /* Optional: Add a subtle blinking cursor simulation */
+        .message::after {
+            content: '_';
+            opacity: 1;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="glitch-text" data-text="404">404</div>
+        <h1>SYSTEM ERROR // Resource Not Found</h1>
+        <p class="message">The requested endpoint does not exist in this sector. Recalibrating navigational matrix... Recommend return to designated safe zone.</p>
+        {# Make sure 'core_bp.index' matches the endpoint name for your homepage route #}
+        <a href="{{ url_for('core_bp.index') }}" class="home-link">&gt; Return to Base</a>
+    </div>
+</body>
+</html>

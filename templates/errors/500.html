@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>500 - Internal Server Error</title>
+    <style>
+        /* Define theme colors (consistent with 404 page) */
+        :root {
+            --background-color: #111;
+            --text-color: #eee;
+            --accent-color: #00FF41; /* Bright Green */
+            --secondary-color: #ff4f4f; /* Use a red/orange for server error */
+            --border-color: rgba(0, 255, 65, 0.4);
+            --error-border-color: rgba(255, 79, 79, 0.6); /* Reddish border for debug */
+            --main-font: 'Consolas', 'Monaco', 'Courier New', monospace; /* Monospace font */
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: var(--main-font);
+            margin: 0;
+            padding: 20px; /* Add some padding for scrollbars if debug info is long */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 700px; /* Slightly wider for potential debug info */
+            width: 100%;
+            padding: 40px;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            background-color: rgba(0, 0, 0, 0.3);
+        }
+
+        .glitch-text {
+            font-size: 6rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            position: relative;
+            animation: glitch 1.5s infinite linear alternate-reverse;
+            margin-bottom: 1rem;
+        }
+
+        /* Glitch Animation Keyframes (using red secondary color) */
+        @keyframes glitch {
+            0% { text-shadow: -2px -2px 0 var(--secondary-color), 2px 2px 0 var(--accent-color); transform: translate(0, 0); }
+            25% { text-shadow: 2px 2px 0 var(--secondary-color), -2px -2px 0 var(--accent-color); transform: translate(-1px, 1px); }
+            50% { text-shadow: -2px 2px 0 var(--secondary-color), 2px -2px 0 var(--accent-color); transform: translate(1px, -1px); }
+            75% { text-shadow: 2px -2px 0 var(--secondary-color), -2px 2px 0 var(--accent-color); transform: translate(-1px, 1px); }
+            100% { text-shadow: -2px -2px 0 var(--secondary-color), 2px 2px 0 var(--accent-color); transform: translate(0, 0); }
+        }
+
+
+        h1 {
+            font-size: 2rem;
+            color: var(--text-color);
+            margin-top: 0;
+            margin-bottom: 1rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .home-link {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            border-radius: 4px;
+            margin-top: 1rem; /* Add space above button */
+        }
+
+        .home-link:hover {
+            background-color: var(--accent-color);
+            color: var(--background-color);
+            text-shadow: none;
+        }
+
+        /* Optional: Blinking cursor simulation */
+        .message::after {
+            content: '_';
+            opacity: 1;
+            animation: blink 1s infinite;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Styles for Debug Info (Only shown if config.DEBUG is True) */
+        .debug-info {
+            margin-top: 3rem;
+            padding: 1.5rem;
+            border: 1px dashed var(--error-border-color);
+            background-color: rgba(40, 0, 0, 0.3); /* Dark red background */
+            border-radius: 4px;
+            text-align: left; /* Align debug text left */
+        }
+
+        .debug-info h2 {
+            color: var(--secondary-color);
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .debug-info pre {
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 1rem;
+            border-radius: 4px;
+            color: #ccc; /* Lighter grey for debug text */
+            white-space: pre-wrap;       /* Wrap long lines */
+            word-wrap: break-word;       /* Break words if necessary */
+            overflow-x: auto;          /* Add horizontal scroll if still needed */
+            max-height: 300px;         /* Limit height and add scroll if very long */
+            overflow-y: auto;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="glitch-text" data-text="500">500</div>
+        <h1>CRITICAL SYSTEM FAILURE // Internal Error</h1>
+        <p class="message">An unexpected fluctuation in the core logic has occurred. Our diagnostic systems have logged the anomaly. Recommend retrying operation at a later time sequence.</p>
+
+        {# Link back to the homepage #}
+        <a href="{{ url_for('core_bp.index') }}" class="home-link">&gt; Attempt Safe Return</a>
+
+        {# --- DEBUG INFORMATION --- #}
+        {# This block only renders if Flask is in debug mode AND the error object is passed #}
+        {% if config.DEBUG and error %}
+            <div class="debug-info">
+                <h2>Debug Information (DEBUG MODE ACTIVE):</h2>
+                <pre>{{ error }}</pre>
+                {# You could potentially pass and display traceback here too if needed #}
+                {# Example: <pre>{{ traceback_info }}</pre> #}
+            </div>
+        {% endif %}
+        {# --- END DEBUG INFO --- #}
+
+    </div>
+</body>
+</html>

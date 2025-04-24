@@ -1,93 +1,191 @@
 {% extends "base.html" %}
 
 {% block head %}
-  <!-- New list test suite styles -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/attacks/best_of_n.css') }}">
+  <style>
+    /* Override any conflicting base table styles */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    #suitesTable {
+      margin-top: 1rem;
+      border: none; /* Remove default table border */
+    }
+
+    #suitesTable thead {
+      background-color: transparent; /* No header background */
+      color: var(--accent-color);
+      border-bottom: 2px dashed var(--accent-color);
+    }
+
+    #suitesTable th,
+    #suitesTable td {
+      padding: 0.75rem;
+      text-align: left;
+      border: none; /* Remove default cell borders */
+      border-bottom: 1px solid rgba(0, 255, 65, 0.2); /* Subtle cell dividers */
+    }
+
+    .test-cases-container {
+      background-color: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--secondary-color);
+      padding: 1rem;
+      border-radius: 4px;
+      margin-top: 0.5rem;
+    }
+
+    .test-cases-container li {
+      /* Allows the browser to break long words/strings to prevent overflow */
+      overflow-wrap: break-word;
+      word-wrap: break-word; /* Legacy fallback for older browsers */
+
+      /* You might also want to ensure default white-space handling is active */
+      white-space: normal; /* Default, but good to be explicit if issues persist */
+
+      /* Optional: Improve readability for very long wrapped lines */
+      line-height: 1.4;
+    }
+
+    .view-test-cases-btn {
+      background: transparent;
+      border: 1px solid var(--accent-color);
+      color: var(--text-color);
+      padding: 0.25rem 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .view-test-cases-btn:hover {
+      background: var(--accent-color);
+      color: #000;
+    }
+
+    .delete-btn {
+      background: transparent;
+      border: 1px solid #FF0000;
+      color: #FF0000;
+      padding: 0.25rem 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .delete-btn:hover {
+      background: #FF0000;
+      color: #000;
+    }
+
+    /* Style the search bar */
+    .search-bar {
+      background-color: #111;
+      color: var(--text-color);
+      border: 2px dashed var(--accent-color);
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      font-family: var(--main-font);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 50%; /* Set a fixed width, or use a percentage */
+    }
+
+    .search-bar:focus {
+      border-color: var(--secondary-color);
+      box-shadow: 0 0 5px var(--secondary-color);
+    }
+
+    .search-bar::placeholder {
+        color: rgba(255, 255, 255, 0.6);
+        opacity: 1;
+    }
+
+    /* Hide built-in clear button on WebKit */
+    input[type="search"]::-webkit-search-cancel-button {
+        -webkit-appearance: none;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
-<h1>All Test Suites</h1>
+<div class="content-card">
+  <h1>All Test Suites</h1>
 
-<!-- Optional: a search bar to filter suites by description, etc. -->
-<input 
-  type="text" 
-  id="searchSuite" 
-  placeholder="Filter..."
-  class="search-bar"
->
+  <input 
+    type="search" 
+    id="searchSuite" 
+    placeholder="Filter test suites..."
+    class="search-bar"
+  >
 
-<table id="suitesTable">
-  <thead>
-    <tr>
-      <th>Description</th>
-      <th>Behavior</th>
-      <!-- <th>Attack</th> -->
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for suite in test_suites %}
+  <table id="suitesTable">
+    <thead>
       <tr>
-        <td>
-          <a href="{{ url_for('test_suites_bp.test_suite_details', suite_id=suite.id) }}">
-            {{ suite.description }}
-          </a>
-        </td>
-        <td>{{ suite.behavior }}</td>
-        <!-- <td>{{ suite.attack }}</td> -->
-        <td>
-          <!-- Button to toggle the row below that displays test cases -->
-          <button 
-            type="button" 
-            class="view-test-cases-btn" 
-            data-suite-id="{{ suite.id }}"
-          >
-            View Test Cases
-          </button>
-
-          <!-- Delete form -->
-          <form action="{{ url_for('test_suites_bp.delete_test_suite', suite_id=suite.id) }}" method="POST" style="display:inline;">
+        <th>Description</th>
+        <th>Behavior</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for suite in test_suites %}
+        <tr>
+          <td>
+            <a href="{{ url_for('test_suites_bp.test_suite_details', suite_id=suite.id) }}">
+              {{ suite.description }}
+            </a>
+          </td>
+          <td>{{ suite.behavior }}</td>
+          <td>
             <button 
-              type="submit" 
-              onclick="return confirm('Are you sure you want to delete Test Suite #{{ suite.id }}?');"
+              type="button" 
+              class="view-test-cases-btn" 
+              data-suite-id="{{ suite.id }}"
             >
-              Delete
+              View Test Cases
             </button>
-          </form>
-        </td>
-      </tr>
 
-      <!-- Hidden row for test cases (initially) -->
-      <tr class="test-cases-row" style="display: none;">
-        <td colspan="5">
-          <div class="test-cases-container">
-            {% if suite.test_cases %}
-              <ul>
-                {% for tc in suite.test_cases %}
-                  <li>{{ tc.prompt }}</li>
-                {% endfor %}
-              </ul>
-            {% else %}
-              <p>No test cases associated with this suite.</p>
-            {% endif %}
-          </div>
-        </td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
+            <form action="{{ url_for('test_suites_bp.delete_test_suite', suite_id=suite.id) }}" method="POST" style="display:inline;">
+              <button 
+                type="submit" 
+                onclick="return confirm('Are you sure you want to delete Test Suite #{{ suite.id }}?');"
+                class="delete-btn"
+              >
+                Delete
+              </button>
+            </form>
+          </td>
+        </tr>
 
-<!-- Page-Specific JavaScript for filtering or toggling details -->
+        <tr class="test-cases-row" style="display: none;">
+          <td colspan="5">
+            <div class="test-cases-container">
+              {% if suite.test_cases %}
+                <ul>
+                  {% for tc in suite.test_cases %}
+                    <li>{{ tc.prompt }}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p>No test cases associated with this suite.</p>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
 <script src="{{ url_for('static', filename='js/filterCommon.js') }}"></script>
 <script>
   window.filterConfigs = [
     {
-      searchInputId: "searchSuite",             // ID of the search input element
-      tableId: "suitesTable",                   // ID of the table to filter
+      searchInputId: "searchSuite",         // ID of the search input element
+      tableId: "suitesTable",              // ID of the table to filter
       toggleButtonSelector: ".view-test-cases-btn", // Selector for toggle buttons
-      rowGroupSize: 2,                         // Grouping of rows (e.g., main row and details row)
-      viewDetailsText: "View Details",         // Text when details are hidden
-      hideDetailsText: "Hide Details"          // Text when details are visible
+      rowGroupSize: 2,                     // Grouping of rows (e.g., main row and details row)
+      viewDetailsText: "View Test Cases",   // Text when details are hidden
+      hideDetailsText: "Hide Test Cases"    // Text when details are visible
     }
   ];
 </script>

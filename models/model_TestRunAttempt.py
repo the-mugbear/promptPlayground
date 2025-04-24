@@ -9,13 +9,14 @@ class TestRunAttempt(db.Model):
     test_run_id = db.Column(
         db.Integer, 
         db.ForeignKey('test_runs.id', name='fk_test_run_attempt_test_run_id'),
-        nullable=False
+        nullable=False,
+        index=True
     )
     attempt_number = db.Column(db.Integer, nullable=False)
     
     # Timestamps for this attempt
-    started_at = db.Column(db.DateTime, default=datetime.now)
-    finished_at = db.Column(db.DateTime, nullable=True)
+    started_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    finished_at = db.Column(db.DateTime(timezone=True), nullable=True)
     
     status = db.Column(db.String(50), default="pending")
     

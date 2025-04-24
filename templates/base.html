@@ -1,145 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>{% block title %}Fuzzy Prompts{% endblock %}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Fuzzy Prompts{% endblock %}</title>
 
-  <!-- Global CSS (all site pages) -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+    <link id="theme-original" rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <link id="theme-inspired" rel="stylesheet" href="{{ url_for('static', filename='css/theme_inspired.css') }}" disabled>
 
-  {% block head %}{% endblock %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+
+    <style>
+        /* Style for the button in the footer acting as theme toggle */
+        .footer-theme-toggle {
+            background: none;       /* No background */
+            border: none;         /* No border */
+            padding: 0;           /* No padding */
+            margin: 0;            /* No margin */
+            color: inherit;       /* Inherit text color from footer */
+            font: inherit;        /* Inherit font styles from footer */
+            cursor: pointer;      /* Pointer cursor to indicate clickability */
+            text-align: inherit;  /* Inherit text alignment */
+            display: inline;      /* Display inline like text */
+            text-decoration: none; /* No underline by default */
+        }
+        .footer-theme-toggle:hover,
+        .footer-theme-toggle:focus {
+            /* Add a subtle hover/focus effect, e.g., underline or color change */
+            text-decoration: underline;
+            color: var(--accent-color, #00FF41); /* Example: change color on hover */
+            outline: none; /* Remove default focus outline if needed */
+        }
+    </style>
+
+    {% block head %}{% endblock %}
 </head>
 <body>
-  <header>
-    <nav class="navbar navbar-fixed">
-      <div class="nav-brand glitch">
-        <a href="{{ url_for('core_bp.index') }}">Fuzzy Prompts</a>
-      </div>
-      <button class="nav-toggle" aria-label="Toggle navigation">
-        <span class="hamburger"></span>
-      </button>
-      <ul class="nav-links">
 
-        <!-- Dropdown for Reports -->
-        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
-          <a href="#">Reports</a>
-          <ul class="dropdown-menu">
-            <li><a href="{{ url_for('report_bp.report') }}">Endpoint Reports</a></li>
-          </ul>
-        </li>
-
-        <!-- Dropdown for Test Runs -->
-        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_runs_bp') %}active{% endif %}">
-          <a href="#">Run</a>
-          <ul class="dropdown-menu">
-            <li><a href="{{ url_for('test_runs_bp.create_test_run_form') }}">Design a new Test</a></li>
-            <li><a href="{{ url_for('test_runs_bp.list_test_runs') }}">List Existing Tests</a></li>
-          </ul>
-        </li>
-
-      <!-- Dropdown for Endpoints -->
-      <li class="dropdown {% if request.endpoint and request.endpoint.startswith('endpoints_bp') %}active{% endif %}">
-        <a href="#">Endpoints</a>
-        <ul class="dropdown-menu">
-          <li><a href="{{ url_for('endpoints_bp.create_endpoint_form') }}">Register Endpoint</a></li>
-          <li><a href="{{ url_for('endpoints_bp.list_endpoints') }}">View Existing Endpoints</a></li>
-          <li><a href="{{ url_for('endpoints_bp.manual_test') }}">Manual Tester</a></li>
-        </ul>
-      </li>
-
-        
-        <!-- Dropdown for Test Suites -->
-        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_suites_bp') %}active{% endif %}">
-          <a href="#">Test Suites</a>
-          <ul class="dropdown-menu">
-            <li><a href="{{ url_for('test_suites_bp.create_test_suite_form') }}">Create Suite</a></li>
-            <li><a href="{{ url_for('test_suites_bp.list_test_suites') }}">View Suites</a></li>
-          </ul>
-        </li>
-
-        <!-- Dropdown for Test Cases -->
-        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_cases_bp') %}active{% endif %}">
-          <a href="#">Test Cases</a>
-          <ul class="dropdown-menu">
-            <li><a href="{{ url_for('test_cases_bp.create_test_case_form') }}">Create Case</a></li>
-            <li><a href="{{ url_for('test_cases_bp.list_test_cases') }}">View Cases</a></li>
-          </ul>
-        </li>
-
-        <!-- Dropdown for Best of N -->
-        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
-          <a href="#">Attacks</a>
-          <ul class="dropdown-menu">
-            <li><a href="{{ url_for('evil_agent_bp.evil_agent_index') }}">Evil Agent</a></li>
-            <li><a href="{{ url_for('best_of_n_bp.best_of_n_index') }}">Best of N</a></li>
-          </ul>
-        </li>
-
-        <!-- Dropdown for Utilities -->
-        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('prompt_filter') %}active{% endif %}">
-          <a href="#">Utilities</a>
-          <ul class="dropdown-menu">
-            <li><a href="{{ url_for('prompt_filter_bp.create_prompt_filter') }}">Create Prompt Filter</a></li>
-            <li><a href="{{ url_for('prompt_filter_bp.list_prompt_filters') }}">View Prompt Filters</a></li>
-          </ul>
-        </li>
-
-        <!-- Help (single link, no dropdown) -->
-        <li class="dropdown {% if request.endpoint and request.endpoint.startswith('help_bp') %}active{% endif %}">
-          <a href="{{ url_for('help_bp.index') }}">Help</a>
-        </li>
-      </ul>
-    </nav>
-  </header>
-
-  <main>
-    {# Flash Messages Section #}
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="flash-messages">
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category }}">
-              {{ message }}
-              <button class="close-alert">&times;</button>
+    <header>
+        <nav class="navbar navbar-fixed">
+            <div class="nav-brand glitch">
+                <a href="{{ url_for('core_bp.index') }}">Fuzzy Prompts</a>
             </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <span class="hamburger"></span>
+            </button>
+            <ul class="nav-links">
+                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
+                    <a href="#">Reports</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('report_bp.report') }}">Endpoint Reports</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_runs_bp') %}active{% endif %}">
+                    <a href="#">Run</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('test_runs_bp.create_test_run_form') }}">Design a new Test</a></li>
+                        <li><a href="{{ url_for('test_runs_bp.list_test_runs') }}">List Existing Tests</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('endpoints_bp') %}active{% endif %}">
+                    <a href="#">Endpoints</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('endpoints_bp.create_endpoint_form') }}">Register Endpoint</a></li>
+                        <li><a href="{{ url_for('endpoints_bp.list_endpoints') }}">View Existing Endpoints</a></li>
+                        <li><a href="{{ url_for('endpoints_bp.manual_test') }}">Manual Tester</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_suites_bp') %}active{% endif %}">
+                    <a href="#">Test Suites</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('test_suites_bp.create_test_suite_form') }}">Create Suite</a></li>
+                        <li><a href="{{ url_for('test_suites_bp.list_test_suites') }}">View Suites</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_cases_bp') %}active{% endif %}">
+                    <a href="#">Test Cases</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('test_cases_bp.create_test_case_form') }}">Create Case</a></li>
+                        <li><a href="{{ url_for('test_cases_bp.list_test_cases') }}">View Cases</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown {% if request.endpoint and (request.endpoint.startswith('evil_agent_bp') or request.endpoint.startswith('best_of_n_bp')) %}active{% endif %}">
+                    <a href="#">Attacks</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('evil_agent_bp.evil_agent_index') }}">Evil Agent</a></li>
+                        <li><a href="{{ url_for('best_of_n_bp.best_of_n_index') }}">Best of N</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('prompt_filter_bp') %}active{% endif %}">
+                    <a href="#">Utilities</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('prompt_filter_bp.create_prompt_filter') }}">Create Prompt Filter</a></li>
+                        <li><a href="{{ url_for('prompt_filter_bp.list_prompt_filters') }}">View Prompt Filters</a></li>
+                    </ul>
+                </li>
+                <li class="{% if request.endpoint and request.endpoint.startswith('help_bp') %}active{% endif %}">
+                    <a href="{{ url_for('help_bp.index') }}">Help</a>
+                </li>
+                </ul>
+        </nav>
+    </header>
 
-    {% block content %}{% endblock %}
-  </main>
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages" role="alert" aria-live="polite">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} flash-message {{ category }}">
+                            {{ message }}
+                            <button type="button" class="close-alert flash-close" aria-label="Close message">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
 
-  <footer>
-    <p>Kevin McMurdie - 2025</p>
-  </footer>
+        {% block content %}{% endblock %}
+    </main>
 
-  <!-- Global JS (scripts for the navbar, etc.) -->
-  <script src="{{ url_for('static', filename='js/base.js') }}"></script>
-  {# Add JavaScript for handling flash messages #}
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const closeButtons = document.querySelectorAll('.close-alert');
-      
-      closeButtons.forEach(button => {
-        button.addEventListener('click', function() {
-          this.closest('.alert').style.display = 'none';
+    <footer>
+        <button id="theme-toggle" class="footer-theme-toggle" title="Toggle Theme">
+            &copy; Kevin McMurdie - 2025
+        </button>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/base.js') }}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const closeButtons = document.querySelectorAll('.close-alert');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    this.closest('.alert').style.display = 'none';
+                });
+            });
+
+            const flashMessages = document.querySelectorAll('.flash-messages .alert');
+            const dismissDelay = 5000;
+            const fadeDuration = 500;
+            flashMessages.forEach(message => {
+                setTimeout(() => {
+                    message.style.transition = `opacity ${fadeDuration}ms ease`;
+                    message.style.opacity = '0';
+                    setTimeout(() => {
+                        message.style.display = 'none';
+                    }, fadeDuration);
+                }, dismissDelay);
+            });
         });
-      });
+    </script>
 
-      // Optional: Auto-dismiss flash messages after 5 seconds
-      const flashMessages = document.querySelectorAll('.alert');
-      flashMessages.forEach(message => {
-        setTimeout(() => {
-          message.style.transition = 'opacity 0.5s ease';
-          message.style.opacity = '0';
-          setTimeout(() => message.style.display = 'none', 500);
-        }, 5000);
-      });
-    });
-  </script>
+    <script>
+        (function() {
+            const themeOriginalLink = document.getElementById('theme-original');
+            const themeInspiredLink = document.getElementById('theme-inspired');
+            const toggleButton = document.getElementById('theme-toggle'); // Still finds the button by ID
+            const localStorageKey = 'selectedTheme';
 
-  {% block scripts %}{% endblock %}
+            if (!themeOriginalLink || !themeInspiredLink) {
+                console.error("Theme CSS link tags not found. Theme toggling disabled.");
+                return;
+            }
+            if (!toggleButton) {
+                 console.warn("Theme toggle button not found in footer. Toggling disabled.");
+                 // Still apply saved theme even if button is missing
+            }
+
+            function applyTheme(themeName) {
+                console.log(`Attempting to apply theme: ${themeName}`);
+                try {
+                    if (themeName === 'inspired') {
+                        themeOriginalLink.disabled = true;
+                        themeInspiredLink.disabled = false;
+                        // Removed text content update for the footer button
+                        console.log("Applied Inspired Theme");
+                    } else { // Default to original theme
+                        themeOriginalLink.disabled = false;
+                        themeInspiredLink.disabled = true;
+                        // Removed text content update for the footer button
+                        console.log("Applied Original Theme");
+                    }
+                    localStorage.setItem(localStorageKey, themeName);
+                } catch (error) {
+                    console.error("Error applying theme:", error);
+                    themeOriginalLink.disabled = false;
+                    themeInspiredLink.disabled = true;
+                }
+            }
+
+            function toggleTheme() {
+                const isOriginalActive = !themeOriginalLink.disabled;
+                const nextTheme = isOriginalActive ? 'inspired' : 'original';
+                applyTheme(nextTheme);
+            }
+
+            const savedTheme = localStorage.getItem(localStorageKey) || 'original';
+            applyTheme(savedTheme); // Apply saved theme on load
+
+            // Add listener only if button exists
+            if (toggleButton) {
+                toggleButton.addEventListener('click', toggleTheme);
+            }
+
+        })();
+    </script>
+
+    {% block scripts %}{% endblock %}
+
 </body>
 </html>

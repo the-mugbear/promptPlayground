@@ -3,13 +3,44 @@
 {% block title %}Best of N Engine{% endblock %}
 
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/communication_log.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/attacks/best_of_n.css') }}">
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <style>
-    
-  </style>
+    <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/communication_log.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/attacks/best_of_n.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* --- Styles for Checkbox Alignment --- */
+        .transformations-container .transform-option {
+            display: flex;         /* Use flexbox to align items horizontally */
+            align-items: center;   /* Vertically center items in the line */
+            margin-bottom: var(--spacing-sm, 0.5rem); /* Add space between options */
+        }
+
+        .transformations-container .transform-option input[type="checkbox"] {
+            margin-right: var(--spacing-sm, 0.5rem); /* Add space between checkbox and label */
+            /* Optional: Adjust vertical alignment if needed */
+            /* vertical-align: middle; */
+            /* Reset width if it was set to 100% elsewhere */
+            width: auto;
+            margin-bottom: 0; /* Override default form element margin-bottom if present */
+        }
+
+        .transformations-container .transform-option label {
+            margin-bottom: 0; /* Remove default bottom margin from labels here */
+            display: inline;  /* Ensure label is inline */
+            cursor: pointer;  /* Make label clickable */
+            font-weight: normal; /* Override bold if set globally for labels */
+        }
+        /* --- End Checkbox Alignment Styles --- */
+
+        /* Optional: Style for hidden endpoint detail fields */
+        #endpoint_details .form-group.hidden-detail {
+            display: none;
+        }
+         #endpoint_details .form-group.visible-detail {
+            display: block; /* Or flex, grid, etc., depending on desired layout */
+        }
+
+    </style>
 {% endblock %}
 
 {% block content %}

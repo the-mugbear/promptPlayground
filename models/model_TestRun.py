@@ -8,16 +8,16 @@ class TestRun(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now)
+    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
     status = db.Column(db.String(50), default="pending")
     
     endpoint_id = db.Column(
         db.Integer,
         db.ForeignKey("endpoints.id", ondelete="SET NULL"),
-        nullable=True
+        nullable=True,
+        index=True
     )
     endpoint = db.relationship("Endpoint", back_populates="test_runs", passive_deletes=True)
-    
     test_suites = db.relationship('TestSuite', secondary=test_run_suites, back_populates='test_runs')
     
     # Relationship to execution attempts

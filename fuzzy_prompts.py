@@ -1,6 +1,10 @@
-from flask import Flask
+from flask import Flask, render_template
+from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+
 from extensions import db
+from dotenv import load_dotenv
+
 from routes.test_suites import test_suites_bp
 from routes.test_cases import test_cases_bp
 from routes.endpoints import endpoints_bp
@@ -13,13 +17,21 @@ from routes.best_of_n import best_of_n_bp
 from routes.testing_grounds import testing_grounds_bp
 from routes.dialogues import dialogue_bp
 from routes.prompt_filter import prompt_filter_bp
+
 import json
+import os
+
+# --- Load environment variables from .env file ---
+load_dotenv() 
+# -------------------------------------------------
 
 migrate = Migrate()  # Instantiate the Migrate object outside create_app
 
 def create_app():
+
     app = Flask(__name__)
 
+    # TODO: refactor this out later
     def prettyjson_filter(value):
         try:
             parsed = json.loads(value)
@@ -30,13 +42,34 @@ def create_app():
     # Register the prettyjson filter with Jinja
     app.add_template_filter(prettyjson_filter, 'prettyjson')
     
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fuzzy.db'
+    # --- Load Configuration from Environment Variables ---
+    # Use os.getenv('VARIABLE_NAME', 'optional_default_value')
+    db_user = os.getenv('DB_USER', 'fuzzy_user') 
+    db_pass = os.getenv('DB_PASSWORD') # No default for password is safer
+    db_host = os.getenv('DB_HOST', 'localhost')
+    db_port = os.getenv('DB_PORT', '5432')
+    db_name = os.getenv('DB_NAME', 'fuzzy_prompts_db')
+
+    # ---- TEMPORARY DEBUG ----
+    print(f"DEBUG: Connecting with User='{db_user}', Password='{db_pass}'") 
+    # -------------------------
+
+    # Check if password was loaded
+    if not db_pass:
+        raise ValueError("DB_PASSWORD environment variable not set.")
+        
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SECRET_KEY'] = 'a_very_secret_key'  # Needed if using session/flash
+    # Load Secret Key (provide a default ONLY for development if necessary, error out otherwise)
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') 
+    if not app.config['SECRET_KEY']:
+         raise ValueError("SECRET_KEY environment variable not set.")
+    # Optional: Load Flask debug status
+    app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'False').lower() in ['true', '1', 't']
+    # -----------------------------------------------------
 
     # Initialize SQLAlchemy
     db.init_app(app)
-
     # Initialize Flask-Migrate
     migrate.init_app(app, db)
 
@@ -54,14 +87,31 @@ def create_app():
     app.register_blueprint(dialogue_bp)
     app.register_blueprint(prompt_filter_bp)
 
+    # --- Define APPLICATION-LEVEL Error Handlers ---
+    @app.errorhandler(500)
+    def internal_server_error(error):
+        # You *should* log the error in a real app! (no!)
+        app.logger.error(f'Server Error: {error}', exc_info=True)
+        return render_template('errors/500.html', error=error), 500
+
+    @app.errorhandler(404)
+    def page_not_found(error):
+        return render_template('errors/404.html', error=error), 404
+
     # The below is meant to be executed in a terminal/cmd window as is for my awful memory on performing a flask migration
     # flask db init         # creates a migrations folder
     # flask db migrate -m "Initial migration"
     # flask db upgrade      # applies the migration, creating the tables & database file
-
     # flask db stamp head when you modify the database manually and create an ouroboros of suck
+
     return app
+
+    # when troubleshooting flask 
+    # PS
+    # Get-ChildItem Env:FLASK_APP
+    # $env:FLASK_APP = "fuzzy_prompts:create_app";
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True)
+    # Use the loaded config value for debug mode
+    app.run(debug=app.config.get('DEBUG', True)) 

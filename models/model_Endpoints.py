@@ -19,11 +19,11 @@ class Endpoint(db.Model):
     __tablename__ = 'endpoints'
     
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)  # New name attribute
-    hostname = db.Column(db.String, nullable=False)
-    endpoint = db.Column(db.String, nullable=False)
+    name = db.Column(db.String(50), nullable=False)  # New name attribute
+    hostname = db.Column(db.String(255), nullable=False)
+    endpoint = db.Column(db.String(255), nullable=False)
     http_payload = db.Column(db.Text, nullable=True)   # HTTP payload sent with the request, should handle and store as JSON
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)  # <--- ADDED TIMESTAMP
+    timestamp = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)  # <--- ADDED TIMESTAMP
     
     # Relationships
     headers = db.relationship('APIHeader', back_populates='endpoint', cascade='all, delete-orphan')
@@ -61,8 +61,8 @@ class APIHeader(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     endpoint_id = db.Column(db.Integer, db.ForeignKey('endpoints.id'), nullable=False)
-    key = db.Column(db.String, nullable=False)
-    value = db.Column(db.String, nullable=False)
+    key = db.Column(db.String(255), nullable=False)
+    value = db.Column(db.TEXT, nullable=False)
 
     # Relationship
     endpoint = db.relationship('Endpoint', back_populates='headers')

@@ -1,0 +1,672 @@
+/* ==================================================
+   THEME CSS (Inspired Version)
+   - Combines structure from original theme.css
+   - Applies styling from the suggested base theme
+   ================================================== */
+
+/* --------------------------------------------- */
+/* CSS Custom Properties (Variables) - From Suggestion */
+/* --------------------------------------------- */
+:root {
+    /* Color Palette */
+    --background-color: #0f0f0f;       /* Darker base */
+    --surface-color: #1a1a1a;        /* Background for cards, inputs */
+    --text-color: #e0e0e0;           /* Off-white */
+    --text-muted-color: #888;        /* Muted grey */
+    --accent-color: #00FF41;         /* Bright Green (Primary Accent) */
+    --secondary-color: #3a86ff;      /* Blue (Secondary Accent / Links) */
+    --original-accent-color: #FF00AA; /* Magenta/pink (Kept for reference or specific uses) */
+    --original-secondary-color: #00FFFF;/* Cyan (Kept for reference or specific uses) */
+    --error-color: #ff4f4f;           /* Red */
+    --warning-color: #ffcc00;        /* Yellow */
+    --success-color: var(--accent-color); /* Green */
+
+    /* Borders */
+    --border-color: rgba(0, 255, 65, 0.3); /* Greenish, subtle */
+    --border-color-strong: rgba(0, 255, 65, 0.6);
+    --border-radius-sm: 4px;
+    --border-radius-md: 8px;
+
+    /* Fonts */
+    --main-font: 'Consolas', 'Monaco', 'Courier New', monospace; /* Changed from Press Start 2P */
+    --heading-font: 'Orbitron', var(--main-font), sans-serif; /* Example heading font */
+    --original-main-font: 'Press Start 2P', monospace; /* Keep original font variable if needed */
+    --base-font-size: 16px;
+
+    /* Spacing */
+    --spacing-xs: 0.25rem; /* 4px */
+    --spacing-sm: 0.5rem;  /* 8px */
+    --spacing-md: 1rem;    /* 16px */
+    --spacing-lg: 1.5rem;  /* 24px */
+    --spacing-xl: 2rem;    /* 32px */
+
+    /* Transitions */
+    --transition-fast: all 0.2s ease-in-out;
+    --transition-medium: all 0.3s ease-in-out;
+}
+
+/* ==================================================
+   RESET / BASELINE - From Suggestion
+   ================================================== */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: var(--base-font-size);
+    scroll-behavior: smooth;
+}
+
+/* ==================================================
+   GLOBAL STYLES - Adapted
+   ================================================== */
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-family: var(--main-font); /* Using new main font */
+    font-size: var(--base-font-size);
+    line-height: 1.6; /* Slightly more line height */
+    padding-top: 70px; /* Keep offset if navbar is fixed */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main { /* Added main element styling */
+    flex-grow: 1;
+    width: 100%; /* Ensure main takes full width */
+}
+
+a {
+    color: var(--secondary-color); /* Use blue for links */
+    text-decoration: none;
+    transition: var(--transition-fast);
+}
+a:hover, a:focus {
+    color: var(--accent-color); /* Green hover */
+    text-decoration: underline;
+    outline: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--heading-font); /* Using new heading font */
+    color: var(--accent-color); /* Green headings */
+    margin: var(--spacing-lg) 0 var(--spacing-md); /* Adjusted margins */
+    line-height: 1.3;
+}
+/* Adjust heading sizes if needed */
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.75rem; }
+
+/* Base button style - recommend using .btn classes from suggestion */
+button {
+    font-family: var(--main-font); /* Use new main font */
+    color: var(--accent-color); /* Green text */
+    background: transparent;
+    border: 1px solid var(--accent-color); /* Green border */
+    padding: var(--spacing-sm) var(--spacing-lg); /* Use spacing variables */
+    cursor: pointer;
+    transition: var(--transition-fast);
+    border-radius: var(--border-radius-sm); /* Added border radius */
+    font-weight: bold;
+    font-size: 1rem;
+}
+button:hover, button:focus {
+    background: var(--accent-color);
+    color: var(--background-color); /* Dark text on hover */
+    box-shadow: 0 0 8px var(--accent-color); /* Add glow on hover */
+    outline: none;
+}
+
+hr {
+    border: none;
+    border-top: 1px dashed var(--border-color); /* Use subtle green dashed border */
+    margin: var(--spacing-lg) 0; /* Use spacing variables */
+}
+
+::selection {
+    background-color: var(--accent-color);
+    color: var(--background-color); /* Dark text on green selection */
+}
+
+/* Code & pre elements - Adapted */
+code, pre {
+    font-family: var(--main-font); /* Use new main font */
+    background-color: rgba(0, 0, 0, 0.3); /* Darker transparent background */
+    border: 1px solid var(--border-color); /* Subtle green border */
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.9em;
+    color: var(--text-color); /* Use standard text color */
+}
+
+pre {
+    padding: var(--spacing-md);
+    overflow-x: auto;
+    white-space: pre; /* Keep pre formatting */
+    margin: var(--spacing-md) 0; /* Use spacing variables */
+    background-color: var(--surface-color); /* Use surface color for blocks */
+    color: #ccc; /* Lighter grey for pre blocks */
+}
+
+/* ==================================================
+   LAYOUT / CONTAINERS - Adapted
+   ================================================== */
+.container {
+    width: 95%; /* Slightly wider */
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-md) 0; /* Use spacing variables */
+}
+
+/* Example container for images (no style change needed) */
+.image-container {
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+}
+.image-container img {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    height: auto;
+}
+
+/* Column containers - Kept structure, added spacing */
+.one-column-container,
+.two-column-container {
+    display: flex;
+    gap: var(--spacing-lg); /* Use spacing variable for gap */
+    max-width: 1200px;
+    margin: var(--spacing-xl) auto; /* Use spacing variables */
+}
+/* Ensure two-column takes full width if needed */
+.two-column-container {
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+
+/* ==================================================
+   CARDS / COMPONENTS - Adapted
+   ================================================== */
+
+/* Base card style (apply this concept to left/right/content cards) */
+.base-card {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color); /* Changed border */
+    border-radius: var(--border-radius-md); /* Use md radius */
+    padding: var(--spacing-lg); /* Use lg padding */
+    margin-bottom: var(--spacing-lg);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Add subtle shadow */
+}
+
+/* Applying base style to existing cards */
+.left-card,
+.right-card {
+    flex: 1;
+    min-width: 300px; /* Adjust min-width as needed, allow flex-basis */
+    /* Inherit styles from .base-card */
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+/* Specific width override if needed, but flexbox usually handles this */
+/* .left-card, .right-card { width: calc(50% - (var(--spacing-lg) / 2)); } */
+
+.left-card h2, .right-card h2 {
+    margin-top: 0;
+    color: var(--accent-color); /* Keep heading color */
+}
+
+/* Style for the orphaned test cases container - Adapted */
+#orphaned-test-cases {
+    max-height: 600px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid var(--border-color); /* Add subtle border */
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-sm);
+    background-color: rgba(0,0,0,0.2); /* Slightly darker background */
+}
+
+#orphaned-test-cases-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+#orphaned-test-cases-list li {
+    padding: var(--spacing-sm) var(--spacing-md); /* Use spacing variables */
+    border-bottom: 1px dashed var(--border-color); /* Subtle dashed border */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color var(--transition-fast); /* Add transition */
+}
+
+#orphaned-test-cases-list li:last-child {
+    border-bottom: none; /* Remove border from last item */
+}
+
+#orphaned-test-cases-list li:hover {
+    background-color: rgba(0, 255, 65, 0.08); /* Use green highlight */
+    cursor: pointer; /* Indicate interactivity */
+}
+
+/* Results container - Adapted */
+.results-container {
+    max-width: 1200px;
+    margin: 0 auto var(--spacing-xl); /* Use spacing variables */
+    /* Inherit from base-card styling */
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-lg);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Results box - Adapted */
+.results-box {
+    background-color: var(--background-color); /* Use main background */
+    border: 1px solid var(--border-color-strong); /* Stronger border */
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-md); /* Use spacing variable */
+    min-height: 6em; /* Increased min-height slightly */
+    overflow-y: auto;
+    overflow-x: hidden;
+    color: var(--text-color); /* Ensure text color */
+    /* Word wrapping from suggestion */
+    overflow-wrap: break-word;
+    word-wrap: break-word; /* Fallback */
+    white-space: normal; /* Allow normal wrapping */
+}
+
+.results-box > * + * {
+    margin-top: var(--spacing-md); /* Use spacing variable */
+}
+
+/* Specific pre style within results-box */
+.results-box pre {
+    white-space: pre-wrap; /* Ensure wrapping */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+    display: block;
+    background-color: rgba(0,0,0,0.4); /* Specific background for pre */
+    border: none; /* Remove double border */
+    padding: var(--spacing-md);
+    color: #ccc;
+}
+
+/* content-card - Apply base-card style */
+.content-card {
+    /* Inherit styles from .base-card */
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    color: var(--text-color); /* Ensure text color */
+}
+
+/* code-block - specialized code container - Adapted */
+.code-block {
+    background-color: var(--background-color); /* Use main background */
+    color: #ccc; /* Lighter grey for code */
+    border: 1px solid var(--border-color-strong); /* Stronger border */
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-md);
+    margin: var(--spacing-md) 0;
+    max-height: 350px; /* Increased max-height */
+    overflow: auto; /* Auto scrollbars */
+    white-space: pre; /* Keep pre formatting */
+    font-family: var(--main-font);
+    font-size: 0.9em;
+}
+
+/* For collapsible sections - Basic structure kept, subtle styling */
+.collapsible-section {
+    border-bottom: 1px solid var(--border-color); /* Subtle divider */
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+}
+.collapsible-header {
+    cursor: pointer;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: rgba(0, 255, 65, 0.05); /* Very subtle green background */
+    border-radius: var(--border-radius-sm);
+    transition: background-color var(--transition-fast);
+    margin-bottom: var(--spacing-sm); /* Space before content */
+}
+.collapsible-header:hover {
+    background-color: rgba(0, 255, 65, 0.1);
+}
+.collapsible-content {
+    /* Content shown/hidden via JS */
+    padding-left: var(--spacing-md);
+}
+
+
+/* ==================================================
+   FORMS / INPUTS - Adapted from Suggestion
+   ================================================== */
+.form-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.form-group label,
+.endpoint-field label, /* Apply consistent label style */
+.test-section label {
+    display: block;
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-color);
+    font-weight: bold;
+    font-size: 0.9rem; /* Slightly smaller label */
+    text-transform: uppercase; /* Uppercase labels */
+    letter-spacing: 0.5px;
+}
+
+/* Consistent input/textarea styling */
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="search"],
+.form-group input[type="number"],
+.form-group input[type="url"],
+.form-group textarea,
+textarea, /* Global textarea style */
+select /* Global select style */
+{
+    display: block;
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-family: var(--main-font);
+    font-size: 1rem;
+    color: var(--text-color);
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    transition: var(--transition-fast);
+    margin-bottom: var(--spacing-sm); /* Smaller margin below inputs */
+}
+
+.form-group input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 5px var(--accent-color);
+    background-color: #222;
+}
+
+textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+/* Suggestion list - Adapted */
+#suggestion-list {
+    list-style: none; /* Remove default list style */
+    padding-left: 0;
+    margin-top: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--surface-color);
+}
+#suggestion-list li {
+    margin-bottom: 0; /* Remove bottom margin */
+    padding: var(--spacing-sm) var(--spacing-md);
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color var(--transition-fast);
+}
+#suggestion-list li:last-child {
+    border-bottom: none;
+}
+#suggestion-list li:hover {
+    background-color: rgba(0, 255, 65, 0.1); /* Green highlight */
+}
+
+/* Search bar style - Adapted */
+.search-bar {
+    background-color: var(--surface-color); /* Use surface color */
+    color: var(--text-color);
+    border: 1px solid var(--border-color); /* Use standard border */
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-family: var(--main-font);
+    font-size: 1rem;
+    outline: none;
+    transition: var(--transition-fast);
+    width: 100%; /* Default to full width, control with container */
+    max-width: 400px; /* Example max width */
+    margin-bottom: var(--spacing-lg); /* Add margin below */
+}
+.search-bar:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 5px var(--accent-color);
+    background-color: #222;
+}
+.search-bar::placeholder {
+    color: var(--text-muted-color); /* Use muted color */
+    opacity: 1;
+}
+input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+}
+
+/* Select elements (dropdowns) - Adapted */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2300FF41'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.03a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 1 0-1.06-1.06L8 8.94 4.22 6.03Z' clip-rule='evenodd'/%3E%3C/svg%3E"); /* Green arrow */
+    background-repeat: no-repeat;
+    background-position: right var(--spacing-md) center;
+    background-size: 1em;
+    padding-right: calc(var(--spacing-md) * 2.5); /* Make space for arrow */
+    /* Inherits other styles from general input styling */
+}
+select option {
+    background-color: var(--surface-color); /* Match select background */
+    color: var(--text-color);
+}
+
+/* ==================================================
+   DONUT / CHART STYLING - Basic container styling
+   ================================================== */
+#cumulativeStatusChart {
+    background-color: var(--surface-color); /* Use surface color */
+    border: 1px solid var(--border-color); /* Standard border */
+    border-radius: var(--border-radius-md);
+    display: block;
+    margin: var(--spacing-lg) auto; /* Center with margin */
+    padding: var(--spacing-md); /* Add some padding */
+    max-width: 400px; /* Example max width */
+    height: auto; /* Let chart control height */
+}
+
+/* ==================================================
+   BADGES / MISC - Adapted
+   ================================================== */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-xs) var(--spacing-sm); /* Adjusted padding */
+    border-radius: var(--border-radius-sm); /* Standard radius */
+    background-color: var(--surface-color); /* Use surface color */
+    color: var(--accent-color); /* Green text */
+    border: 1px solid var(--border-color); /* Subtle border */
+    font-size: 0.8rem; /* Smaller font */
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+/* Add variations for different statuses */
+.status-badge.error {
+    color: var(--error-color);
+    border-color: rgba(255, 79, 79, 0.4);
+}
+.status-badge.success {
+    color: var(--success-color);
+    border-color: var(--border-color); /* Already green */
+}
+.status-badge.warning {
+    color: var(--warning-color);
+    border-color: rgba(255, 204, 0, 0.4);
+}
+
+
+.card-header { /* Kept structure */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md); /* Add space below header */
+    padding-bottom: var(--spacing-md); /* Add padding below */
+    border-bottom: 1px dashed var(--border-color); /* Add separator */
+}
+.card-header h2, .card-header h3 { /* Ensure no top margin for header titles */
+    margin-top: 0;
+    margin-bottom: 0; /* Remove bottom margin if needed */
+}
+
+.action-buttons { /* Kept structure */
+    display: flex;
+    gap: var(--spacing-sm); /* Use sm gap */
+    margin-bottom: var(--spacing-md);
+    flex-wrap: wrap; /* Allow wrapping */
+}
+
+/* ==================================================
+   GRID UTILS - Kept structure, adapted styles
+   ================================================== */
+.grid-cols-auto { /* Kept */
+    display: grid; /* Ensure display:grid is set */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-lg); /* Add gap */
+}
+
+.prompt-response-grid { /* Adapted */
+    display: grid;
+    grid-template-columns: minmax(200px, 30%) 1fr; /* Adjusted column ratio */
+    gap: var(--spacing-lg); /* Use lg gap */
+    color: var(--text-color);
+    background-color: transparent; /* Remove background, rely on container */
+    margin-bottom: var(--spacing-lg);
+}
+/* Style children if needed */
+.prompt-response-grid > div {
+    /* Example: add padding to grid children */
+    /* padding: var(--spacing-md); */
+}
+
+
+/* ==================================================
+   ANIMATIONS / EFFECTS - Kept, adjusted colors potentially
+   ================================================== */
+.blink { /* Kept */
+    animation: blink 1s infinite alternate;
+}
+@keyframes blink {
+    from { opacity: 1; }
+    to   { opacity: 0.3; } /* Less harsh blink */
+}
+
+.glitch { /* Kept */
+    position: relative;
+    color: var(--accent-color); /* Ensure uses green */
+    animation: glitch 2s infinite steps(2, end); /* Use steps for sharper glitch */
+}
+/* Simplified glitch effect */
+@keyframes glitch {
+  0%, 100% {
+    text-shadow: -1px -1px 0 var(--secondary-color), 1px 1px 0 var(--original-accent-color);
+    transform: translate(0,0);
+    clip-path: inset(10% 0 80% 0);
+  }
+  50% {
+    text-shadow: 1px 1px 0 var(--secondary-color), -1px -1px 0 var(--original-accent-color);
+    transform: translate(2px, -1px);
+    clip-path: inset(40% 0 30% 0);
+  }
+}
+
+.neon-hover:hover { /* Kept, using accent color */
+    box-shadow: 0 0 5px var(--accent-color), 0 0 15px var(--accent-color);
+    /* Ensure transition is applied to element for smoothness */
+    /* e.g., transition: box-shadow var(--transition-fast); */
+}
+.neon-box { /* Kept, using accent color */
+    box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color);
+}
+
+/* Add Flash Message Styling from Suggestion */
+/* ============================================= */
+/* Flash Messages (Example Styling)              */
+/* ============================================= */
+.flash-messages {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--spacing-lg) 0; /* Position below potential fixed header */
+    position: sticky; /* Make flashes stick below header */
+    top: 75px; /* Adjust based on header height */
+    z-index: 1000;
+}
+
+.flash-message {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid;
+    position: relative;
+    background-color: var(--surface-color); /* Use surface color */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+}
+
+.flash-message.success {
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+.flash-message.error {
+    border-color: var(--error-color);
+    color: var(--error-color);
+}
+
+.flash-message.info {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+}
+
+.flash-message.warning {
+    border-color: var(--warning-color);
+    color: var(--warning-color);
+}
+
+.flash-close {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: var(--transition-fast);
+    line-height: 1; /* Ensure proper alignment */
+}
+.flash-close:hover {
+    opacity: 1;
+}
