@@ -1,0 +1,691 @@
+{% extends "base.html" %} {# Assuming you have a base template #}
+
+{% block head %}
+  <title>Test Suites 3D View - 80s Neon Hacker Theme</title>
+  {# Add any other base head content from your base.html if needed #}
+  <style>
+    /* Base theme variables */
+    :root {
+      --background-color: #0f0f0f;
+      --surface-color: #1a1a1a;
+      --text-color: #e0e0e0;
+      --accent-color: #00FF41;
+      --secondary-color: #3a86ff; /* Used for grid center */
+      --border-color: rgba(0, 255, 65, 0.3);
+      --border-radius-sm: 4px;
+      --border-radius-md: 8px;
+      --spacing-sm: 0.5rem;
+      --spacing-md: 1rem;
+      --spacing-lg: 1.5rem;
+      /* Using VT323 font as suggested */
+      --main-font: 'VT323', 'Courier New', monospace; 
+    }
+
+    /* Base styling */
+    html, body {
+      height: 100%;
+      margin: 0;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      font-family: var(--main-font);
+      /* Link the VT323 font - needs to be hosted or use Google Fonts etc. */
+      /* Example using Google Fonts (add this link in base.html or here) */
+      /* <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet"> */
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Use 'container' class if your base.html uses it, or adjust */
+    main.container { 
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      padding: var(--spacing-md);
+      width: 100%; /* Ensure it takes full width */
+      box-sizing: border-box; /* Include padding in width */
+    }
+
+    .content-card {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-md);
+      box-shadow: 0 0 20px rgba(0, 255, 65, 0.15);
+      position: relative; /* For potential absolute positioning inside */
+      overflow: hidden; /* Hide potential overflow from effects */
+    }
+
+    h1 {
+      color: var(--accent-color);
+      text-shadow: 0 0 10px var(--accent-color);
+      text-align: center;
+      letter-spacing: 2px;
+      margin-top: 0;
+      margin-bottom: var(--spacing-md);
+      font-size: 2.5rem; /* Example size for VT323 */
+    }
+
+    /* 3D container styling */
+    #threejs-container {
+      width: 100%;
+      height: 65vh; /* Relative height */
+      min-height: 500px; /* Minimum pixel height */
+      /* background-color: var(--surface-color); */ /* Scene background handles this */
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      margin-top: var(--spacing-md);
+      position: relative; /* Necessary for overlaying renderers */
+      overflow: hidden;
+      box-shadow: inset 0 0 30px rgba(0, 255, 65, 0.2);
+      flex-grow: 1; /* Allow it to take available space */
+    }
+
+    /* Label styling */
+    .suite-label {
+      color: var(--text-color);
+      background-color: rgba(0,0,0,0.7); /* Slightly darker */
+      padding: 3px 6px;
+      border-radius: var(--border-radius-sm);
+      font-size: 14px; /* Slightly larger for VT323 */
+      font-family: var(--main-font);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      text-shadow: 0 0 5px var(--accent-color);
+      letter-spacing: 1px;
+      /* pointer-events: none; is set on labelRenderer */
+    }
+
+    /* Search bar styling */
+    .search-bar {
+      margin-bottom: var(--spacing-lg);
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      max-width: 500px;
+      width: 90%; /* Responsive width */
+      background-color: rgba(0,0,0,0.7);
+      border: 1px solid var(--accent-color);
+      border-radius: var(--border-radius-sm);
+      padding: var(--spacing-sm);
+      color: var(--text-color);
+      font-family: var(--main-font);
+      font-size: 1.1rem; /* Adjust for font */
+      outline: none;
+      box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+      text-align: center;
+    }
+
+    .search-bar::placeholder {
+      color: rgba(224, 224, 224, 0.6);
+    }
+
+    /* Details panel styling */
+    #suite-details-panel {
+      margin-top: var(--spacing-lg);
+      padding: var(--spacing-md);
+      background-color: rgba(0, 0, 0, 0.8);
+      border: 2px solid var(--accent-color);
+      border-radius: var(--border-radius-md);
+      display: none; /* Hidden by default */
+      color: var(--text-color);
+      box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+      position: relative; /* For pseudo-element */
+      overflow: hidden; /* Contain scan line */
+      font-size: 1.1rem; /* Increase base size */
+    }
+
+    #suite-details-panel::before {
+      content: "";
+      position: absolute;
+      top: 0; /* Position at the very top */
+      left: 0;
+      width: 100%;
+      height: 3px; /* Make it slightly thicker */
+      background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+      animation: scan-line 3s linear infinite; /* Slower animation */
+      opacity: 0.6;
+    }
+
+    @keyframes scan-line {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    #suite-details-panel h3 {
+      margin-top: 0;
+      margin-bottom: var(--spacing-md);
+      color: var(--accent-color);
+      text-shadow: 0 0 5px var(--accent-color);
+      letter-spacing: 1px;
+      font-size: 1.5rem;
+    }
+
+    #suite-details-panel p {
+      margin-bottom: var(--spacing-sm);
+      line-height: 1.5;
+      font-family: var(--main-font);
+    }
+
+    #suite-details-panel strong {
+      color: var(--accent-color);
+      text-shadow: 0 0 3px var(--accent-color); /* Subtle glow for strong text */
+    }
+
+    /* Visual feedback for loading */
+    .loading-screen {
+      position: fixed; /* Cover entire viewport */
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--background-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      opacity: 1;
+      transition: opacity 0.5s ease-out; /* Fade out */
+    }
+
+    .loading-text {
+      color: var(--accent-color);
+      font-size: 28px; /* Larger text */
+      margin-bottom: 25px;
+      text-shadow: 0 0 10px var(--accent-color);
+      animation: blink 1.2s infinite alternate; /* Slower blink */
+      letter-spacing: 2px;
+    }
+
+    @keyframes blink {
+      0% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
+
+    .progress-bar {
+      width: 300px;
+      height: 20px;
+      background-color: rgba(0,0,0,0.5);
+      border: 1px solid var(--accent-color);
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--border-radius-sm);
+      box-shadow: inset 0 0 5px rgba(0, 255, 65, 0.4);
+    }
+
+    .progress-fill {
+      height: 100%;
+      background-color: var(--accent-color);
+      width: 0%;
+      transition: width 0.2s linear; /* Linear progress */
+      box-shadow: 0 0 10px var(--accent-color);
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {# Loading screen - stays outside main content flow initially #}
+  <div class="loading-screen" id="loading-screen">
+    <div class="loading-text">INITIALIZING SYSTEM</div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <main class="container"> {# Assumes base.html provides this structure #}
+    <div class="content-card">
+      <h1>Test Suites 3D View</h1>
+
+      <input
+        type="search"
+        id="searchSuite"
+        placeholder="Filter test suites (filtering not implemented)"
+        class="search-bar"
+        disabled
+      >
+
+      <div id="threejs-container">
+         {# Canvas will be added here by Three.js #}
+      </div>
+
+      <div id="suite-details-panel">
+        <h3>Suite Details</h3>
+        <p>Click on a cube in the view above to see details.</p>
+      </div>
+    </div>
+  </main>
+
+  {# *** Use REAL data passed from Flask *** #}
+  <script id="test-suites-data" type="application/json">
+    {% set suite_dicts = [] %}
+    {% for suite in test_suites %}
+      {% set _ = suite_dicts.append(suite.to_dict()) %}
+    {% endfor %}
+    {{ suite_dicts | tojson | safe }}
+  </script>
+
+  {# Three.js imports #}
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.163.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  {# Main Three.js Application Logic from Suggestion #}
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+    // --- Loading screen logic ---
+    const loadingScreen = document.getElementById('loading-screen');
+    const progressFill = document.getElementById('progress-fill');
+    let progress = 0;
+    let initCalled = false; // Flag to prevent multiple init calls
+
+    function updateProgress() {
+        if (progress >= 100) return; // Stop if already 100
+
+        progress += Math.random() * 8 + 2; // Make progress a bit faster/chunkier
+        progress = Math.min(progress, 100); // Cap at 100
+        progressFill.style.width = `${progress}%`;
+
+        if (progress >= 100) {
+            // Only initialize Three.js etc. AFTER loading bar hits 100
+            if (!initCalled) {
+                init();
+                animate();
+                initCalled = true;
+            }
+            // Start fade out animation
+            setTimeout(() => {
+                loadingScreen.style.opacity = 0;
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none'; // Remove from layout
+                }, 500); // Corresponds to transition duration
+            }, 300); // Short delay after hitting 100
+        } else {
+            setTimeout(updateProgress, 80 + Math.random() * 100); // Continue progress update
+        }
+    }
+    updateProgress(); // Start the loading progress simulation
+
+    // --- Global variables ---
+    let camera, scene, renderer, labelRenderer, composer;
+    let controls;
+    const objects = [];
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let selectedObject = null;
+    let stars;
+    let grid;
+    
+    // Mouse trail (simplified - particle effect removed for clarity, focus on other features)
+    // let trails = [];
+    // const MAX_TRAIL_POINTS = 20;
+    // let mousePosition = new THREE.Vector3();
+    // let trailParticles;
+
+    // Parse data from JSON - moved inside init to ensure it runs after progress
+    let suitesData = [];
+    const container = document.getElementById('threejs-container');
+
+
+    function init() {
+      // Parse data now that DOM is ready
+      try {
+        suitesData = JSON.parse(document.getElementById('test-suites-data').textContent);
+      } catch (e) {
+        console.error("Error parsing suites data:", e);
+        // Handle error - maybe show a message
+        suitesData = []; // Use empty array if parsing fails
+      }
+
+      // --- Scene setup ---
+      scene = new THREE.Scene();
+      const themeBgColor = getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim() || '#0f0f0f';
+      scene.background = new THREE.Color(themeBgColor);
+      scene.fog = new THREE.FogExp2(themeBgColor, 0.0005);
+
+      // --- Camera setup ---
+      camera = new THREE.PerspectiveCamera(
+        50,
+        container.clientWidth / container.clientHeight,
+        1,
+        10000
+      );
+      camera.position.set(0, 100, 1900); // Adjusted start position
+
+      // --- WebGL Renderer ---
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
+
+      // --- CSS2D Renderer for labels ---
+      labelRenderer = new CSS2DRenderer();
+      labelRenderer.setSize(container.clientWidth, container.clientHeight);
+      labelRenderer.domElement.style.position = 'absolute';
+      labelRenderer.domElement.style.top = '0px';
+      labelRenderer.domElement.style.pointerEvents = 'none';
+      container.appendChild(labelRenderer.domElement);
+
+      // --- Lighting ---
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+      const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight1.position.set(1, 1, 1).normalize();
+      scene.add(directionalLight1);
+      const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
+      directionalLight2.position.set(-1, -0.5, -1).normalize();
+      scene.add(directionalLight2);
+
+      // --- Create test suite cubes ---
+      createTestSuiteCubes();
+
+      // --- Add starfield background ---
+      createStarfield();
+
+      // --- Add grid floor ---
+      addGridFloor();
+
+      // --- Initialize mouse trails (Simplified - removed particle system) ---
+      // initMouseTrails(); // Removed
+
+      // --- Setup post-processing effects ---
+      setupPostProcessing();
+
+      // --- OrbitControls ---
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 300;
+      controls.maxDistance = 5000;
+      controls.target.set(0, 0, 0); // Adjust if needed based on cube layout center
+      controls.update();
+
+      // --- Event listeners ---
+      window.addEventListener('resize', onWindowResize);
+      container.addEventListener('pointerdown', onPointerDown);
+      // container.addEventListener('pointermove', onPointerMove); // Removed listener as trail system is simplified
+    }
+
+    function createTestSuiteCubes() {
+      const gridCols = Math.ceil(Math.sqrt(suitesData.length));
+      const spacing = 220;
+      const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || '#00FF41';
+      const baseColor = new THREE.Color(accentColor);
+
+      suitesData.forEach((suite, index) => {
+        const geometry = new THREE.BoxGeometry(100, 100, 100);
+        const material = new THREE.MeshLambertMaterial({
+          color: baseColor,
+          emissive: baseColor,
+          emissiveIntensity: 0.2 // Slightly stronger emissive
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+
+        const col = index % gridCols;
+        const row = Math.floor(index / gridCols);
+        const cubeBaseY = - ( (Math.ceil(suitesData.length / gridCols) - 1) / 2) * spacing; // Recalculate base Y
+
+        mesh.position.x = (col - (gridCols - 1) / 2) * spacing;
+        mesh.position.y = cubeBaseY + (row * spacing) + 50; // Adjust Y relative to base
+        mesh.position.z = Math.random() * 200 - 100;
+
+        mesh.userData = suite;
+        mesh.userData.originalColorHex = material.color.getHex();
+        // Add slight random constant rotation
+        mesh.userData.initialRotation = {
+            x: Math.random() * 0.001 - 0.0005,
+            y: Math.random() * 0.001 - 0.0005,
+            z: Math.random() * 0.0005 - 0.00025
+        };
+
+        scene.add(mesh);
+        objects.push(mesh);
+
+        // --- Create label ---
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'suite-label';
+        labelDiv.textContent = suite.description || `Suite ${suite.id}`;
+        const suiteLabel = new CSS2DObject(labelDiv);
+        suiteLabel.position.copy(mesh.position);
+        suiteLabel.position.y += 75; // Adjust label offset
+        mesh.add(suiteLabel); // Attach label to cube
+
+        // --- Add wireframe edges ---
+        const edgesGeometry = new THREE.EdgesGeometry(geometry);
+        const edgesMaterial = new THREE.LineBasicMaterial({
+            color: baseColor,
+            linewidth: 1, // Note: might not be supported on all platforms
+            transparent: true,
+            opacity: 0.5 // Make edges slightly subtler
+        });
+        const wireframe = new THREE.LineSegments(edgesGeometry, edgesMaterial);
+        mesh.add(wireframe);
+      });
+    }
+
+    function createStarfield() {
+      const starQty = 15000;
+      const starPositions = [];
+      const starColors = [];
+      const geometry = new THREE.BufferGeometry();
+      const color = new THREE.Color();
+      const accentColor = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || '#00FF41');
+      const secondaryColor = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--secondary-color').trim() || '#3a86ff');
+
+      for (let i = 0; i < starQty; i++) {
+          const vertex = new THREE.Vector3();
+          vertex.x = THREE.MathUtils.randFloatSpread(6000);
+          vertex.y = THREE.MathUtils.randFloatSpread(6000);
+          vertex.z = THREE.MathUtils.randFloatSpread(6000);
+          starPositions.push(vertex.x, vertex.y, vertex.z);
+
+          if (Math.random() > 0.95) color.set(accentColor);
+          else if (Math.random() > 0.9) color.set(secondaryColor);
+          else color.setHSL(0, 0, Math.random() * 0.5 + 0.4);
+          starColors.push(color.r, color.g, color.b);
+      }
+
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(starColors, 3));
+
+      const material = new THREE.PointsMaterial({
+          size: 3, sizeAttenuation: true, vertexColors: true,
+          blending: THREE.AdditiveBlending, transparent: true,
+          opacity: 0.8, depthWrite: false
+      });
+      stars = new THREE.Points(geometry, material);
+      scene.add(stars);
+    }
+
+    function addGridFloor() {
+      const gridSize = 5000;
+      const gridDivisions = 100;
+      const gridColor = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || '#00FF41');
+      const gridCenterColor = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--secondary-color').trim() || '#3a86ff');
+
+      grid = new THREE.GridHelper(gridSize, gridDivisions, gridCenterColor, gridColor);
+      grid.position.y = -300; // Position grid floor below lowest cubes
+      grid.material.opacity = 0.15; // Make grid more subtle
+      grid.material.transparent = true;
+      scene.add(grid);
+    }
+
+    // Removed initMouseTrails() and updateMouseTrails()
+
+    function setupPostProcessing() {
+      composer = new EffectComposer(renderer);
+      const renderPass = new RenderPass(scene, camera);
+      composer.addPass(renderPass);
+
+      const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(container.clientWidth, container.clientHeight),
+        0.6, // strength - slightly lower
+        0.4, // radius
+        0.6 // threshold - lower threshold means more glows
+      );
+      composer.addPass(bloomPass);
+
+      const scanlineShader = { /* ... Keep shader code same as suggestion ... */
+        uniforms: {
+            tDiffuse: { value: null },
+            resolution: { value: new THREE.Vector2(container.clientWidth, container.clientHeight) },
+            scanLineOpacity: { value: 0.9 }, // Control scanline intensity
+            scanLineSize: { value: 3.0 } // Control scanline thickness
+        },
+        vertexShader: `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }`,
+        fragmentShader: `
+            uniform sampler2D tDiffuse;
+            uniform vec2 resolution;
+            uniform float scanLineOpacity;
+            uniform float scanLineSize;
+            varying vec2 vUv;
+            
+            void main() {
+                vec2 uv = vUv;
+                vec4 color = texture2D(tDiffuse, uv);
+                //float scanline = sin(uv.y * resolution.y / scanLineSize) * 0.5 + 0.5;
+                // A slightly different scanline effect:
+                float scanline = mod(gl_FragCoord.y * scanLineSize / resolution.y, 1.0);
+                float intensity = sin(scanline * 3.14159); // Smoother sine wave falloff
+                color.rgb -= intensity * scanLineOpacity * color.rgb; // Darken based on scanline
+                
+                // Add subtle vignetting
+                float vignette = smoothstep(0.8, 0.3, length(uv - 0.5));
+                color.rgb *= vignette;
+
+                gl_FragColor = color;
+            }`
+      };
+      const scanlinePass = new ShaderPass(scanlineShader);
+      composer.addPass(scanlinePass);
+    }
+
+    function onWindowResize() {
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      
+      renderer.setSize(width, height);
+      labelRenderer.setSize(width, height);
+      composer.setSize(width, height);
+
+      // Update scanline shader resolution uniform
+      const scanlinePass = composer.passes.find(pass => pass instanceof ShaderPass && pass.uniforms.resolution);
+      if (scanlinePass) {
+        scanlinePass.uniforms.resolution.value.set(width, height);
+      }
+    }
+
+    function onPointerDown(event) {
+      const rect = container.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+      raycaster.setFromCamera(pointer, camera);
+      const intersects = raycaster.intersectObjects(objects);
+
+      if (selectedObject) {
+        selectedObject.material.color.setHex(selectedObject.userData.originalColorHex);
+        // Reset scale if you added scaling on select
+        // selectedObject.scale.set(1, 1, 1);
+        selectedObject = null;
+      }
+
+      if (intersects.length > 0) {
+        selectedObject = intersects[0].object;
+        console.log("Clicked on Suite:", selectedObject.userData);
+        selectedObject.material.color.set(0xffaa00); // Highlight color
+
+        // Optional: Add a subtle scale pulse on selection
+        // selectedObject.scale.set(1.1, 1.1, 1.1);
+
+        // Removed createDataTransferEffect() call as it was complex and partial
+        displaySuiteDetails(selectedObject.userData);
+      } else {
+        const detailsPanel = document.getElementById('suite-details-panel');
+        if (detailsPanel) {
+          detailsPanel.style.display = 'none';
+        }
+      }
+    }
+
+    // Removed onPointerMove() as mouse trail effect was removed/simplified
+
+    function displaySuiteDetails(suiteData) {
+        // ... Keep exact same detail display logic ...
+        const detailsPanel = document.getElementById('suite-details-panel');
+        if (detailsPanel) {
+            const createdDate = suiteData.created_at ? new Date(suiteData.created_at).toLocaleString() : 'N/A';
+            detailsPanel.innerHTML = `
+                <h3>Suite Details</h3>
+                <p><strong>ID:</strong> ${suiteData.id}</p>
+                <p><strong>Description:</strong> ${suiteData.description || 'N/A'}</p>
+                <p><strong>Behavior:</strong> ${suiteData.behavior || 'N/A'}</p>
+                <p><strong>Objective:</strong> ${suiteData.objective || 'N/A'}</p>
+                <p><strong>Created:</strong> ${createdDate}</p>
+            `;
+            detailsPanel.style.display = 'block';
+        }
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = 0.01; // Assume a somewhat constant delta for simplicity
+
+      // Apply slight constant rotation to each cube
+      objects.forEach(obj => {
+          if (obj.userData.initialRotation) {
+              obj.rotation.x += obj.userData.initialRotation.x;
+              obj.rotation.y += obj.userData.initialRotation.y;
+              obj.rotation.z += obj.userData.initialRotation.z;
+          }
+      });
+      
+      // Rotate starfield
+      if (stars) {
+        stars.rotation.y += 0.0001;
+      }
+      
+      // Removed updateMouseTrails() call
+      // Removed updateDataTransferEffect() call
+
+      controls.update(); // Update controls
+
+      // Use composer if available, else regular renderer
+      if (composer) {
+          composer.render(delta);
+      } else {
+          renderer.render(scene, camera);
+      }
+      
+      // Always render labels on top
+      labelRenderer.render(scene, camera);
+    }
+
+  </script>
+{% endblock %}

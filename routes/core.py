@@ -7,7 +7,6 @@ core_bp = Blueprint('core_bp', __name__)
 # ********************************
 # ROUTES
 # ********************************
-
 @core_bp.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':

@@ -22,6 +22,16 @@ def list_test_suites():
     test_suites = TestSuite.query.all()
     return render_template('test_suites/list_test_suites.html', test_suites=test_suites)
 
+#  three.js experiment
+@test_suites_bp.route('/list3', methods=['GET'])
+def list_three():
+    """
+    GET /test_suites/list -> Display a page with all existing test suites
+    """
+    # Query the DB for all test suites
+    test_suites = TestSuite.query.all()
+    return render_template('test_suites/list_test_suites_three.html', test_suites=test_suites)
+
 @test_suites_bp.route('/create', methods=['GET'])
 def create_test_suite_form():
     """
