@@ -13,6 +13,10 @@ from services.transformers.registry import apply_transformation, TRANSFORM_PARAM
 from services.common.http_request_service import replay_post_request
 from services.common.header_parser_service import headers_from_apiheader_list
 
+# Import Celery primitives and the task signature method '.s()'
+from celery import group, chain 
+from workers.celery_tasks import execute_single_test_case_task
+
 import json, requests
 
 test_runs_bp = Blueprint('test_runs_bp', __name__, url_prefix='/test_runs')
@@ -258,9 +262,14 @@ def execute_test_run(run_id):
     """
     Execute or resume a test run using the latest attempt.
     """
-    run = TestRun.query.get_or_404(run_id)
+    # Eager load data needed for dispatching
+    run = TestRun.query.options(
+        selectinload(TestRun.endpoint).selectinload(Endpoint.headers),
+        selectinload(TestRun.filters), 
+        selectinload(TestRun.attempts).selectinload(TestRunAttempt.executions).selectinload(TestExecution.test_case) 
+    ).get_or_404(run_id)
 
-    # Determine the latest attempt; if none exists, create one.
+    # --- Logic to find/create latest attempt & pending executions ---
     if run.attempts:
         latest_attempt = max(run.attempts, key=lambda a: a.attempt_number)
     else:
@@ -305,76 +314,53 @@ def execute_test_run(run_id):
 
     # Mark the current attempt as running.
     latest_attempt.status = 'running'
-    db.session.commit()
+    db.session.commit() # Commit status change before dispatching
 
+    # --- Prepare common data ---
     endpoint_obj = run.endpoint
-    original_payload_str = endpoint_obj.http_payload or ""
+    original_payload_str = endpoint_obj.http_payload if endpoint_obj else ""
+    stored_headers = headers_from_apiheader_list(endpoint_obj.headers) if endpoint_obj else {}
+    raw_headers_str = "\n".join([f"{k}: {v}" for k, v in stored_headers.items()])
+    run_filter_ids_data = [f.id for f in run.filters]
 
-    # Build raw headers string from the stored headers, if any
-    stored_headers = headers_from_apiheader_list(endpoint_obj.headers)  # returns a dict
-    # Create a raw header string: "Key1: Value1; Key2: Value2"
-    # test_temporary endpoint expects (and the headers.js parser assumes) that each header is on its own line
-    raw_headers = "\n".join([f"{k}: {v}" for k, v in stored_headers.items()])
-
-    # Process each pending execution in the current attempt.
+    # --- Create Task Signatures ---
+    task_signatures = []
     for execution in pending_executions:
-        # Apply transformations to the test case prompt.
-        prompt = execution.test_case.prompt
-        for tinfo in (execution.test_case.transformations or []):
-            t_type = tinfo.get("type")
-            params = {}
-            if "value" in tinfo:
-                params["value"] = tinfo["value"]
-            prompt = apply_transformation(t_type, prompt, params)
-
-        # Remove any invalid characters specified in the endpoint's configuration.
-        # New filter functionality under test
-        for prompt_filter in run.filters:
-            if prompt_filter.invalid_characters:
-                for char in prompt_filter.invalid_characters:
-                    prompt = prompt.replace(char, '')
-            if prompt_filter.words_to_replace:
-                # Assume words_to_replace is a dict mapping word to replacement.
-                # apply word‑by‑word replacements
-                for target, replacement in (prompt_filter.words_to_replace or {}).items():
-                    prompt = prompt.replace(target, replacement)
-
-        # Replace the placeholder in the payload with the transformed prompt.
-        replaced_payload_str = original_payload_str.replace("{{INJECT_PROMPT}}", prompt)
-        execution.started_at = execution.started_at or datetime.now()
-
-        # Use the shared service to replay the POST request
-        result = replay_post_request(endpoint_obj.hostname, endpoint_obj.endpoint, replaced_payload_str, raw_headers)
-        execution.finished_at = datetime.now()
-
-        # Use the shared service to replay the POST request
-        result = replay_post_request(endpoint_obj.hostname, endpoint_obj.endpoint, replaced_payload_str, raw_headers)
-        execution.finished_at = datetime.now()
-
-        # Check if the status code indicates success (200-299)
-        status_code = result.get("status_code")
-        if status_code is not None and 200 <= status_code < 300:
-            execution.status = 'pending_review'
-            # For a successful response, assume result.get("response_text") is already a JSON response.
-            execution.response_data = result.get("response_text")
+        if execution.test_case and endpoint_obj:
+            test_case_transformations_data = execution.test_case.transformations 
+            # Create a signature for the task with its arguments
+            # Use .s() instead of .delay()
+            sig = execute_single_test_case_task.s(
+                execution_id=execution.id,
+                endpoint_id=endpoint_obj.id,
+                test_case_prompt=execution.test_case.prompt,
+                test_case_transformations_data=test_case_transformations_data, 
+                run_filter_ids_data=run_filter_ids_data, 
+                original_payload_str=original_payload_str,
+                raw_headers_str=raw_headers_str
+            )
+            task_signatures.append(sig)
         else:
-            execution.status = 'error'
-            # Build a composite debug dictionary.
-            debug_response = {
-                "response_text": result.get("response_text"),
-                "replaced_payload": replaced_payload_str,
-                "raw_headers": raw_headers
-            }
-            execution.response_data = json.dumps(debug_response)
-        db.session.commit()
+            print(f"Skipping execution {execution.id}: Missing test case or endpoint link.")
+            # Consider marking as skipped directly in DB here
+            execution.status = 'skipped'
+            db.session.add(execution) 
 
-    # If all executions are finished, mark the attempt as completed.
-    # TODO: Remove other states, all cases should be 'pending review' after execution
-    if all(ex.status in ['pending review', 'failed', 'skipped'] for ex in latest_attempt.executions):
-        latest_attempt.status = 'completed'
-        latest_attempt.finished_at = datetime.now()
-        run.status = 'completed' # sets the test run record as complete if all test cases were completed
-        db.session.commit()
+    # --- Conditionally Dispatch Tasks using chain (serial) or group (parallel) ---
+    if not task_signatures:
+         flash("No valid tasks could be prepared for execution.", "warning")
+    elif run.run_serially:
+        print(f"Executing Test Run {run.id} serially (chaining {len(task_signatures)} tasks).")
+        # Create a chain - tasks run one after another
+        task_workflow = chain(task_signatures) 
+        task_workflow.apply_async() # Execute the chain
+        flash(f"Test run {run.id} queued for serial execution.", "success")
+    else: # Default is parallel
+        print(f"Executing Test Run {run.id} in parallel (grouping {len(task_signatures)} tasks).")
+        # Create a group - tasks run in parallel (distributed to workers)
+        task_workflow = group(task_signatures)
+        task_workflow.apply_async() # Execute the group
+        flash(f"Test run {run.id} queued for parallel execution.", "success")
 
     flash("Test run executed with the custom {{INJECT_PROMPT}} variable replaced in http_payload.", "success")
     return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))

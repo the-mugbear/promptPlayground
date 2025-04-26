@@ -1,7 +1,7 @@
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-
+from celery_app import celery
 from extensions import db
 from dotenv import load_dotenv
 
@@ -17,6 +17,8 @@ from routes.best_of_n import best_of_n_bp
 from routes.testing_grounds import testing_grounds_bp
 from routes.dialogues import dialogue_bp
 from routes.prompt_filter import prompt_filter_bp
+
+from workers import celery_tasks
 
 import json
 import os
@@ -66,6 +68,18 @@ def create_app():
          raise ValueError("SECRET_KEY environment variable not set.")
     # Optional: Load Flask debug status
     app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'False').lower() in ['true', '1', 't']
+    # -----------------------------------------------------
+
+    # --- Load Celery Config from Flask Config ---
+    # Ensure these are set in your .env or environment
+    app.config['CELERY_BROKER_URL'] = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+    app.config['CELERY_RESULT_BACKEND'] = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+    # Optional: Add other Celery settings to Flask config
+
+    # --- Update the IMPORTED celery instance's config ---
+    celery.conf.update(broker_url=app.config['CELERY_BROKER_URL'],
+                       result_backend=app.config['CELERY_RESULT_BACKEND'])
+    celery.conf.update(app.config) # Also apply other Flask config settings if needed
     # -----------------------------------------------------
 
     # Initialize SQLAlchemy
