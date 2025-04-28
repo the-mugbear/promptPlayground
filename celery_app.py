@@ -5,17 +5,34 @@ import os
 # Define Celery instance here
 # Use environment variables for broker/backend defaults if possible
 celery = Celery(
-    'fuzzy_prompts', # Or keep using __name__ if preferred, but main app name is common
-    broker=os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0'),
-    backend=os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'),
-    include=['workers.celery_tasks'] # Tell Celery where to auto-discover tasks
+    'fuzzy_prompts',
+    broker=os.getenv('CELERY_BROKER_URL', 'amqp://guest:guest@localhost:5672//'), # Default to AMQP
+    backend=os.getenv('CELERY_RESULT_BACKEND'), # Default to None - rely on .env
+    include=['workers.celery_tasks']
 )
 
-# Optional: Set some default configurations directly if needed
-# celery.conf.update(
-#     task_track_started=True,
-#     # Add other default Celery settings here
-# )
+# Create a custom Task base class that pushes app context
+class ContextTask(celery.Task):
+    abstract = True # Prevent this from being registered as an independent task
+    _flask_app = None # Optional: Cache the app instance per worker process
 
-# Note: We don't configure it with Flask app config here.
-# That happens inside create_app using this imported instance.
+    # Use a property to create the app on first access within a worker process
+    @property
+    def flask_app(self):
+        if self._flask_app is None:
+            print("Flask app not cached in worker, creating context...")
+            # Import the factory function *here* to avoid circular imports at module level
+            from fuzzy_prompts import create_app
+            self._flask_app = create_app()
+            print("Flask app created for Celery context.")
+        return self._flask_app
+
+    # Override __call__ to wrap task execution in app context
+    def __call__(self, *args, **kwargs):
+        with self.flask_app.app_context():
+            # print(f"Executing task {self.name} within Flask app context") # Optional debug print
+            return self.run(*args, **kwargs)
+
+# Set the custom class as the default Task base for this Celery instance
+celery.Task = ContextTask
+# -----------------------------------

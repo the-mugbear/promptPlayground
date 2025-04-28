@@ -72,8 +72,8 @@ def create_app():
 
     # --- Load Celery Config from Flask Config ---
     # Ensure these are set in your .env or environment
-    app.config['CELERY_BROKER_URL'] = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-    app.config['CELERY_RESULT_BACKEND'] = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+    app.config['CELERY_BROKER_URL'] = os.getenv('CELERY_BROKER_URL', 'amqp://guest:guest@localhost:5672//') # Default to AMQP
+    app.config['CELERY_RESULT_BACKEND'] = os.getenv('CELERY_RESULT_BACKEND') # Default to None
     # Optional: Add other Celery settings to Flask config
 
     # --- Update the IMPORTED celery instance's config ---

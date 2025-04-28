@@ -5,6 +5,10 @@ Write-Host "Starting development environment..."
 
 # --- Configuration ---
 
+# Add this before the flask run command in start_dev.ps1
+Write-Host "Enabling Celery Eager Mode for local task debugging..."
+$env:CELERY_TASK_ALWAYS_EAGER = "0" # set to 0 to disable
+
 # Get the directory where this script is located
 $ProjectDirectory = $PSScriptRoot
 Write-Host "Detected project directory: $ProjectDirectory"
@@ -46,6 +50,13 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "& flask run"
 
 # Wait a few seconds (optional)
 Start-Sleep -Seconds 3
+
+# --- Add Project Directory to PYTHONPATH for Celery Worker ---
+Write-Host "Adding $ProjectDirectory to PYTHONPATH for Celery worker..."
+# Prepend project dir to existing PYTHONPATH (if any) using semicolon separator for Windows
+$env:PYTHONPATH = "$ProjectDirectory;" + $env:PYTHONPATH
+Write-Host "PYTHONPATH is now: $env:PYTHONPATH" # Optional: Verify path in output
+# -------------------------------------------------------------
 
 # Start Celery Worker in a new window
 # 'celery -A ...' should also find the app now due to the working directory
