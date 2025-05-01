@@ -1,9 +1,13 @@
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_login import LoginManager
+
 from celery_app import celery
 from extensions import db
 from dotenv import load_dotenv
+
+from models.model_User import User
 
 from routes.test_suites import test_suites_bp
 from routes.test_cases import test_cases_bp
@@ -17,9 +21,10 @@ from routes.best_of_n import best_of_n_bp
 from routes.testing_grounds import testing_grounds_bp
 from routes.dialogues import dialogue_bp
 from routes.prompt_filter import prompt_filter_bp
+from routes.auth import auth_bp
+from routes.admin import admin_bp
 
 from workers import celery_tasks
-
 import json
 import os
 
@@ -28,6 +33,24 @@ load_dotenv()
 # -------------------------------------------------
 
 migrate = Migrate()  # Instantiate the Migrate object outside create_app
+
+# --- Instantiate LoginManager outside create_app ---
+login_manager = LoginManager()
+login_manager.login_view = 'auth_bp.login'
+login_manager.login_message_category = 'info'
+# --------------------------------------------------
+
+# --- Define the user loader callback ---
+@login_manager.user_loader
+def load_user(user_id):
+    """Loads the user object from the user ID stored in the session."""
+    try:
+        return User.query.get(int(user_id))
+    except Exception as e:
+        # Log the error in a real app
+        print(f"Error loading user {user_id}: {e}")
+        return None
+# --------------------------------------
 
 def create_app():
 
@@ -86,6 +109,8 @@ def create_app():
     db.init_app(app)
     # Initialize Flask-Migrate
     migrate.init_app(app, db)
+    # *** CRITICAL STEP: Initialize login_manager ***
+    login_manager.init_app(app)
 
     # Register your blueprint(s)
     app.register_blueprint(core_bp)
@@ -100,6 +125,8 @@ def create_app():
     app.register_blueprint(testing_grounds_bp)
     app.register_blueprint(dialogue_bp)
     app.register_blueprint(prompt_filter_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(admin_bp)
 
     # --- Define APPLICATION-LEVEL Error Handlers ---
     @app.errorhandler(500)

@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}Register - {{ super() }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth/login.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="login-card"> <!-- Reuse login-card for consistent styling -->
+                <h2 class="mb-4">[ New User Registration ]<span class="terminal-prompt"></span></h2>
+                
+                {# --- Registration Form --- #}
+                <form action="{{ url_for('auth_bp.register') }}" method="post" novalidate>
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.username.label(class="form-label") }}
+                        {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), size=32, placeholder="Create user identifier") }}
+                        {% if form.username.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.username.errors %}
+                                    <span>{{ error }}</span><br>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.email.label(class="form-label") }}
+                        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), size=64, placeholder="Enter comms channel") }}
+                        {% if form.email.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.email.errors %}
+                                    <span>{{ error }}</span><br>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.password.label(class="form-label") }}
+                        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), size=32, placeholder="Create security key") }}
+                        {% if form.password.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.password.errors %}
+                                    <span>{{ error }}</span><br>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.password2.label(class="form-label") }}
+                        {{ form.password2(class="form-control" + (" is-invalid" if form.password2.errors else ""), size=32, placeholder="Verify security key") }}
+                        {% if form.password2.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.password2.errors %}
+                                    <span>{{ error }}</span><br>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary", value="INITIALIZE USER PROFILE") }}
+                    </div>
+                </form>
+                
+                <hr>
+                
+                <p class="text-center">
+                    Already have access? <a href="{{ url_for('auth_bp.login') }}">Return to Access Portal</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add JavaScript for terminal/typewriter effects -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add body class for the theme
+    document.body.classList.add('hacker-theme');
+    
+    // Optional: Add typing/terminal effect
+    setTimeout(function() {
+        const terminalEffect = document.querySelector('.terminal-prompt');
+        if (terminalEffect) {
+            setInterval(() => {
+                terminalEffect.style.visibility = 
+                    terminalEffect.style.visibility === 'hidden' ? 'visible' : 'hidden';
+            }, 500);
+        }
+    }, 1000);
+    
+    // Optional: Add "datastream" animation to form fields when focused
+    const formInputs = document.querySelectorAll('.form-control');
+    formInputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            this.classList.add('active-input');
+        });
+        input.addEventListener('blur', function() {
+            this.classList.remove('active-input');
+        });
+    });
+});
+</script>
+{% endblock %}

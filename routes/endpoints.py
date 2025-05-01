@@ -1,4 +1,5 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
+from flask_login import login_required
 from extensions import db
 from models.model_Endpoints import Endpoint, APIHeader
 from models.model_ManualTestRecord import ManualTestRecord
@@ -23,6 +24,7 @@ def list_endpoints():
     return render_template('endpoints/list_endpoints.html', endpoints=endpoints)
 
 @endpoints_bp.route('/create', methods=['GET'])
+@login_required
 def create_endpoint_form():
     """
     GET /endpoints/create -> Renders a form to create a new endpoint & headers
@@ -30,6 +32,7 @@ def create_endpoint_form():
     return render_template('endpoints/create_endpoint.html', payload_templates=PAYLOAD_TEMPLATES)
 
 @endpoints_bp.route('/<int:endpoint_id>', methods=['GET'])
+@login_required
 def view_endpoint_details(endpoint_id):
     """
     GET /endpoints/<id> -> Shows the details of a single endpoint, including headers
@@ -106,6 +109,7 @@ def manual_test():
 # SERVICES
 # ********************************
 @endpoints_bp.route('/create', methods=['POST'])
+@login_required
 def handle_create_endpoint():
     try:
         data = get_endpoint_form_data(default_payload=(
@@ -151,6 +155,7 @@ def handle_create_endpoint():
 
 
 @endpoints_bp.route('/get_suggestions', methods=['GET'])
+@login_required
 def get_endpoint_suggestions():
     """
     Return distinct hostnames, paths, and payloads from existing Endpoint records.
@@ -166,6 +171,7 @@ def get_endpoint_suggestions():
     })
 
 @endpoints_bp.route('/<int:endpoint_id>/delete', methods=['POST'])
+@login_required
 def delete_endpoint(endpoint_id):
     """
     POST /endpoints/<id>/delete -> Deletes the specified endpoint
@@ -177,6 +183,7 @@ def delete_endpoint(endpoint_id):
     return redirect(url_for('endpoints_bp.list_endpoints'))
 
 @endpoints_bp.route('/<int:endpoint_id>/update', methods=['POST'])
+@login_required
 def update_endpoint(endpoint_id):
     endpoint_obj = Endpoint.query.get_or_404(endpoint_id)
     data = get_endpoint_form_data()
@@ -208,6 +215,7 @@ def update_endpoint(endpoint_id):
 
 
 @endpoints_bp.route('/<int:endpoint_id>/json', methods=['GET'])
+@login_required
 def get_endpoint_json(endpoint_id):
     """
     GET /endpoints/<id>/json -> Returns the JSON representation of the endpoint.
@@ -216,6 +224,7 @@ def get_endpoint_json(endpoint_id):
     return jsonify(endpoint_obj.to_dict())
 
 @endpoints_bp.route('/test', methods=['POST'])
+@login_required
 def test_endpoint():
     """
     Unified endpoint that tests an API.

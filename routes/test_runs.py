@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import login_required
 from extensions import db
 from sqlalchemy.orm import selectinload
 from sqlalchemy import func
@@ -128,6 +129,7 @@ def view_test_run(run_id):
 
 
 @test_runs_bp.route('/create', methods=['GET'])
+@login_required
 def create_test_run_form():
     # 1. Get page & search from query params
     page = request.args.get('page', 1, type=int)
@@ -165,6 +167,7 @@ def create_test_run_form():
 # SERVICES
 # ********************************
 @test_runs_bp.route('/create', methods=['POST'])
+@login_required
 def handle_create_test_run():
     # 1) Pull form data
     run_name            = request.form.get('run_name')
@@ -258,6 +261,7 @@ def handle_create_test_run():
         return redirect(url_for('test_runs_bp.create_test_run_form'))
 
 @test_runs_bp.route('/<int:run_id>/execute', methods=['POST'])
+@login_required
 def execute_test_run(run_id):
     """
     Execute or resume a test run using the latest attempt.
@@ -367,6 +371,7 @@ def execute_test_run(run_id):
 
 
 @test_runs_bp.route('/<int:run_id>/update_execution_status', methods=['POST'])
+@login_required
 def update_execution_status(run_id):
     # Retrieve form data
     execution_id = request.form.get('execution_id')
@@ -401,6 +406,7 @@ def update_execution_status(run_id):
 # These in turn cascade to TestExecution records
 # TestRun has a 1-to-many relationship with TestSuite through the association table
 @test_runs_bp.route('/<int:run_id>/delete', methods=['POST'])
+@login_required
 def delete_test_run(run_id):
     # Retrieve the test run or return a 404 if not found
     test_run = TestRun.query.get_or_404(run_id)
@@ -417,6 +423,7 @@ def delete_test_run(run_id):
 
 
 @test_runs_bp.route('/<int:run_id>/add_filter', methods=['POST'])
+@login_required
 def add_filter(run_id):
     run = TestRun.query.get_or_404(run_id)
     filter_id = request.form.get('filter_id')
@@ -428,6 +435,7 @@ def add_filter(run_id):
     return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
 
 @test_runs_bp.route('/<int:run_id>/remove_filter/<int:filter_id>', methods=['POST'])
+@login_required
 def remove_filter(run_id, filter_id):
     run = TestRun.query.get_or_404(run_id)
     pf = PromptFilter.query.get_or_404(filter_id)

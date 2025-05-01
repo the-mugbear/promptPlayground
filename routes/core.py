@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, abort, request, redirect, flash, url_for
+from flask_login import login_required
 from extensions import db
 from models.model_DatasetReference import DatasetReference  # Import the new model
 
@@ -10,6 +11,13 @@ core_bp = Blueprint('core_bp', __name__)
 @core_bp.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
+
+        # --- PROTECT POST REQUEST ---
+        if not current_user.is_authenticated: # Manual check as decorator applies to whole function
+             flash('You must be logged in to add dataset references.', 'warning')
+             return redirect(url_for('auth_bp.login', next=request.url))
+        # --- END PROTECTION ---
+
         # This POST form will be used for adding a new dataset reference.
         name = request.form.get('dataset_name', '').strip()
         url_value = request.form.get('dataset_url', '').strip()
@@ -49,6 +57,7 @@ def visual(effect):
     return render_template(f"testing_grounds/{effect}.html")
 
 @core_bp.route('/dataset/create', methods=['GET', 'POST'])
+@login_required
 def create_dataset_reference():
     if request.method == 'POST':
         name = request.form.get('name')

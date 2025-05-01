@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, send_from_directory, flash, redirect, url_for
+from flask_login import login_required
 from models.model_TestCase import TestCase
 from extensions import db
 from sqlalchemy import text 
@@ -72,6 +73,7 @@ def download_extension():
     return send_from_directory('static', 'POSTInspector.xpi', as_attachment=True)
 
 @help_bp.route('/purge')
+@login_required
 def purge():
     orphaned_test_cases = TestCase.query.filter(~TestCase.test_suites.any()).all()
     count = len(orphaned_test_cases)
@@ -86,6 +88,7 @@ def purge():
 
 # --- NEW ROUTE for VACUUM ---
 @help_bp.route('/vacuum', methods=['POST']) # Use POST to prevent accidental execution
+@login_required
 def vacuum_database():
     """
     Executes the VACUUM command on the SQLite database.

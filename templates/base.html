@@ -98,6 +98,22 @@
                 <li class="{% if request.endpoint and request.endpoint.startswith('help_bp') %}active{% endif %}">
                     <a href="{{ url_for('help_bp.index') }}">Help</a>
                 </li>
+                {% if current_user.is_authenticated and current_user.is_admin %}
+                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('admin_bp') %}active{% endif %}">
+                    <a href="#">Admin</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('admin_bp.list_invitations') }}">Manage Invitations</a></li>
+                        {# Add other admin links here #}
+                    </ul>
+                </li>
+                {% endif %}
+                {# Add Login/Logout links based on auth status #}
+                {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('auth_bp.logout') }}">Logout ({{ current_user.username }})</a></li>
+                {% else %}
+                <li class="{% if request.endpoint == 'auth_bp.login' %}active{% endif %}"><a href="{{ url_for('auth_bp.login') }}">Login</a></li>
+                {# No public register link anymore #}
+                {% endif %}
                 </ul>
         </nav>
     </header>

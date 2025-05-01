@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Invitation - Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Create New Invitation</h1>
+    <p>
+        <a href="{{ url_for('admin_bp.list_invitations') }}">&laquo; Back to Invitations List</a>
+    </p>
+    <hr>
+
+    <div class="row">
+        <div class="col-md-8">
+            <form action="{{ url_for('admin_bp.create_invitation') }}" method="post">
+                {# Note: Standard HTML form, no automatic CSRF like Flask-WTF #}
+                {# Consider adding Flask-WTF later if CSRF needed here #}
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Restrict to Email (Optional):</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="user@example.com">
+                    <div class="form-text">If left blank, anyone with the code can use it.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="role" class="form-label">Assign Role to New User:</label>
+                    <select id="role" name="role" class="form-select">
+                        {% for role in available_roles %}
+                           {# Select 'user' by default if available #}
+                           <option value="{{ role }}" {% if role == 'user' %}selected{% endif %}>
+                               {{ role.capitalize() }}
+                           </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="expires_days" class="form-label">Expires In (Days - Optional):</label>
+                    <input type="number" id="expires_days" name="expires_days" class="form-control" min="1" style="width: 100px;">
+                     <div class="form-text">Leave blank for no expiry.</div>
+               </div>
+
+                <div class="mb-3">
+                    <label for="notes" class="form-label">Notes (Optional):</label>
+                    <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="E.g., For marketing team access"></textarea>
+                    <div class="form-text">Internal notes for admin reference.</div>
+                 </div>
+
+                <button type="submit" class="btn btn-primary">Generate Invitation</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

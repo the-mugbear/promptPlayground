@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, flash, url_for
+from flask_login import login_required
 from extensions import db
 from models.model_PromptFilter import PromptFilter 
 import json
@@ -9,6 +10,7 @@ prompt_filter_bp = Blueprint('prompt_filter_bp', __name__, url_prefix='/prompt_f
 # ROUTES
 # ********************************
 @prompt_filter_bp.route('/prompt-filter/new', methods=['GET', 'POST'])
+@login_required # <-- PROTECT
 def create_prompt_filter():
     if request.method == 'POST':
         name = request.form.get('name')
@@ -43,12 +45,14 @@ def create_prompt_filter():
 
 
 @prompt_filter_bp.route('/prompt-filter/list', methods=['GET'])
+@login_required # <-- PROTECT
 def list_prompt_filters():
     prompt_filters = PromptFilter.query.order_by(PromptFilter.created_at.desc()).all()
     return render_template('prompt_filters/list_prompt_filters.html', prompt_filters=prompt_filters)
 
 
 @prompt_filter_bp.route('/prompt-filter/<int:filter_id>', methods=['GET'])
+@login_required # <-- PROTECT
 def view_prompt_filter(filter_id):
     prompt_filter = PromptFilter.query.get_or_404(filter_id)
     return render_template('prompt_filters/filter_details.html', prompt_filter=prompt_filter)
@@ -58,6 +62,7 @@ def view_prompt_filter(filter_id):
 # SERVICES
 # ********************************
 @prompt_filter_bp.route('/<int:filter_id>/delete', methods=['POST'])
+@login_required # <-- PROTECT
 def delete_prompt_filter(filter_id):
     pf = PromptFilter.query.get_or_404(filter_id)
     db.session.delete(pf)
