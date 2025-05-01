@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from extensions import db
 from models.model_Invitation import Invitation
 from models.model_User import ROLE_ADMIN, ROLE_USER # Import roles
-from utils.decorators import admin_required # Import our decorator
+from utils.decorators import admin_required 
 import datetime
 
 admin_bp = Blueprint(

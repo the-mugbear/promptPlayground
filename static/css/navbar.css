@@ -82,7 +82,9 @@
     border: 2px dashed var(--accent-color);
     border-radius: 4px;
     z-index: 999;          /* Ensure it appears above other elements */
-    width: 180px;
+
+    min-width: 180px;
+    max-width: calc(100vw - 2rem);  
   }
   
   /* Dropdown menu items */
@@ -108,6 +110,12 @@
     display: block;
   }
   
+  /* Align the right‐most dropdown so it opens leftwards instead of offscreen */
+  .nav-links li.dropdown:nth-last-child(-n+2) .dropdown-menu {
+    left:auto;
+    right:0;
+  }
+
   /* -----------------------
      HAMBURGER MENU (RESPONSIVE)
      ----------------------- */

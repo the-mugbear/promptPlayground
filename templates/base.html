@@ -31,6 +31,7 @@
             color: var(--accent-color, #00FF41); /* Example: change color on hover */
             outline: none; /* Remove default focus outline if needed */
         }
+        
     </style>
 
     {% block head %}{% endblock %}
@@ -95,9 +96,7 @@
                         <li><a href="{{ url_for('prompt_filter_bp.list_prompt_filters') }}">View Prompt Filters</a></li>
                     </ul>
                 </li>
-                <li class="{% if request.endpoint and request.endpoint.startswith('help_bp') %}active{% endif %}">
-                    <a href="{{ url_for('help_bp.index') }}">Help</a>
-                </li>
+
                 {% if current_user.is_authenticated and current_user.is_admin %}
                 <li class="dropdown {% if request.endpoint and request.endpoint.startswith('admin_bp') %}active{% endif %}">
                     <a href="#">Admin</a>
@@ -107,14 +106,24 @@
                     </ul>
                 </li>
                 {% endif %}
-                {# Add Login/Logout links based on auth status #}
+
                 {% if current_user.is_authenticated %}
-                <li><a href="{{ url_for('auth_bp.logout') }}">Logout ({{ current_user.username }})</a></li>
+                <li class="dropdown user-menu">
+                    <a href="#">{{ current_user.username }}</a>
+                    <ul class="dropdown-menu">
+                    <li><a href="{{ url_for('auth_bp.logout') }}">Logout</a></li>
+                    <li><a href="{{ url_for('help_bp.index') }}">Help</a></li>
+                    </ul>
+                </li>
                 {% else %}
-                <li class="{% if request.endpoint == 'auth_bp.login' %}active{% endif %}"><a href="{{ url_for('auth_bp.login') }}">Login</a></li>
-                {# No public register link anymore #}
+                <li class="{% if request.endpoint == 'auth_bp.login' %}active{% endif %}">
+                    <a href="{{ url_for('auth_bp.login') }}">Login</a>
+                </li>
+                <li class="{% if request.endpoint and request.endpoint.startswith('help_bp') %}active{% endif %}">
+                    <a href="{{ url_for('help_bp.index') }}">Help</a>
+                </li>
                 {% endif %}
-                </ul>
+            </ul>
         </nav>
     </header>
 
