@@ -1,7 +1,7 @@
 # .gitignore
 
 # Environment variables
-.env
+# .env
 env.txt
 
 # Python cache/compiled files
