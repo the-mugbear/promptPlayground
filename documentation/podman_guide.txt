@@ -1,0 +1,213 @@
+Assumptions:
+
+    You are running these commands from the directory containing your docker-compose.yml file (e.g., C:\Users\charles\Documents\Projects\promptPlayground).
+    You have Podman and podman-compose installed and configured.
+    You have a Podman machine running (as handled by your start_fuzzy_podman.ps1 script).
+
+     Coding partner
+
+Okay, here's a guide with helpful Podman and Podman Compose commands tailored to managing your Flask application (fuzzy_prompts) based on your docker-compose.yml.
+
+Assumptions:
+
+    You are running these commands from the directory containing your docker-compose.yml file (e.g., C:\Users\charles\Documents\Projects\promptPlayground).
+    You have Podman and podman-compose installed and configured.
+    You have a Podman machine running (as handled by your start_fuzzy_podman.ps1 script).
+
+Podman & Podman Compose Guide for Your Flask App
+
+This guide covers common actions for starting, stopping, updating, and troubleshooting your containerized application.
+
+Core Concepts:
+
+    podman: Manages individual containers, images, volumes, networks, etc.
+    podman-compose: Reads your docker-compose.yml file to manage the entire application stack (web, worker, db, broker) as a single unit. It uses podman commands under the hood.
+    -f docker-compose.yml: You'll use this flag frequently because your compose file isn't named the default podman-compose.yml.
+
+1. Starting Your Application
+
+    Recommended (Safe Start & Update): This command starts all services defined in your compose file in the background (-d) and rebuilds the images for your web and worker services if their build context (Dockerfile, code, requirements.txt) has changed (--build). This is the command used in your start_fuzzy_podman.ps1 script.
+    Bash
+
+podman-compose -f docker-compose.yml up --build -d
+
+Just Starting (No Rebuild): If you know no code or dependencies affecting the image have changed, you can omit --build. Runs in the background.
+Bash
+
+podman-compose -f docker-compose.yml up -d
+
+Starting in Foreground (for Debugging): Starts services and attaches your terminal to see all logs in real-time. Press Ctrl+C to stop everything. Useful for initial debugging.
+Bash
+
+podman-compose -f docker-compose.yml up --build
+
+Using Your Script: Simply running your PowerShell script automates the recommended start, including checks.
+PowerShell
+
+    .\start_fuzzy_podman.ps1
+
+2. Stopping Your Application
+
+    Stop and Remove (Recommended Cleanup): This stops and removes the containers and the network created by compose. Your persistent data in the postgres_data volume is kept by default. This is the standard way to fully stop and clean up the running application environment between sessions.
+    Bash
+
+podman-compose -f docker-compose.yml down
+
+Stop, Remove, and Delete Data (Use with Caution!): To stop, remove containers/network, AND delete the data in named volumes (postgres_data, rabbitmq_data), add the --volumes flag. Warning: This deletes all your database and RabbitMQ data.
+Bash
+
+podman-compose -f docker-compose.yml down --volumes
+
+Just Stop (Temporary Pause): This only stops the containers, leaving them, the network, and volumes intact. The containers will show as "Exited" in podman ps -a. You can restart them later with podman-compose start. Generally, down is preferred for a clean state unless you specifically need to pause and resume.
+Bash
+
+podman-compose -f docker-compose.yml stop
+
+Restart Stopped Containers: If you used stop, you can restart them without recreating them:
+Bash
+
+    podman-compose -f docker-compose.yml start
+
+3. Checking Status and Viewing Logs
+
+    List Running Compose Services: Shows the status of containers managed by your compose file.
+    Bash
+
+podman-compose -f docker-compose.yml ps
+
+List All Podman Containers: Shows all containers Podman knows about, including stopped ones (if you used podman-compose stop instead of down).
+Bash
+
+podman ps -a
+
+View Logs (All Services, Follow): Shows the combined logs from all services and follows new output (-f). Press Ctrl+C to stop following.
+Bash
+
+podman-compose -f docker-compose.yml logs -f
+
+View Logs (Specific Service): View logs for only one service (e.g., web or db).
+Bash
+
+    podman-compose -f docker-compose.yml logs web
+    podman-compose -f docker-compose.yml logs -f db # Follow db logs
+
+4. Handling Web Application Code Changes
+
+    How it Works: Your docker-compose.yml mounts your project directory into /app inside the web and worker containers (volumes: - .:/app).
+    Template/Static File Changes: Changes to HTML, CSS, JS files within your mounted volume (templates/, static/) should be reflected immediately on browser refresh, as Flask typically serves these directly.
+    Python Code Changes (.py files):
+        Your web service runs using gunicorn. Gunicorn might automatically reload workers when Python code changes if run in development mode with specific flags, but this isn't always reliable, especially inside containers or with certain Gunicorn worker types. Your FLASK_DEBUG=1 might trigger Flask's reloader, which works with the basic Flask dev server but can be tricky with Gunicorn.
+        Safest Approach: To ensure changes to .py files (routes, models, services, etc.) are picked up, explicitly restart the relevant service(s):
+        Bash
+
+    # Restart only the web service
+    podman-compose -f docker-compose.yml restart web
+
+    # Restart web and worker if worker code also changed
+    podman-compose -f docker-compose.yml restart web worker
+
+Dependency Changes (requirements.txt): If you add/change Python packages:
+
+    You must rebuild the image:
+    Bash
+
+        podman-compose -f docker-compose.yml up --build -d web worker
+
+        (This rebuilds and restarts the specified services). Or just run podman-compose -f docker-compose.yml up --build -d to rebuild/restart everything necessary.
+
+5. Handling Database Schema Changes (Migrations)
+
+    The Workflow: You use Flask-Migrate to manage changes to your database tables based on your SQLAlchemy models (models/*.py).
+    Steps:
+        Make Model Changes: Modify your Python model files (e.g., add a column to models/model_TestCase.py).
+        Generate Migration Script: Run flask db migrate inside the web container to auto-generate a new migration script in your local migrations/versions/ directory. Give it a descriptive message.
+        Bash
+
+podman-compose -f docker-compose.yml exec web flask db migrate -m "Add new_column to TestCase model"
+
+Review the generated script in migrations/versions/ to ensure it looks correct.
+Apply Migration to Database: Run flask db upgrade inside the web container to apply the newly generated (and any other pending) migration to the actual database running in the db container.
+Bash
+
+    podman-compose -f docker-compose.yml exec web flask db upgrade
+
+Checking Database Status: See the current migration version known by the database:
+Bash
+
+    podman-compose -f docker-compose.yml exec web flask db current
+
+6. Executing Commands Inside Containers
+
+    General Format: podman-compose -f docker-compose.yml exec <service_name> <command>
+    Run a Shell (Interactive Access): Get an interactive shell inside a running container (useful for debugging). Use bash or sh depending on the container's image.
+    Bash
+
+podman-compose -f docker-compose.yml exec web bash
+# (Inside the container now)
+# ls -l /app
+# exit
+
+Bash
+
+podman-compose -f docker-compose.yml exec db bash
+# (Inside the container now)
+# ps aux
+# exit
+
+Connect to PostgreSQL: Access the psql command-line client inside the db container.
+Bash
+
+    podman-compose -f docker-compose.yml exec db psql -U ${DB_USER} -d ${DB_NAME}
+    # (Replace with your actual DB_USER/DB_NAME from .env or defaults)
+    # Example: podman-compose -f docker-compose.yml exec db psql -U fuzzy_user -d fuzzy_prompts_db
+    # (Inside psql)
+    # \dt              # List tables
+    # SELECT * FROM test_cases LIMIT 10;
+    # \q              # Quit psql
+
+7. Managing Data (Volumes)
+
+    Persistence: Your postgres_data volume ensures your database data survives container stops/starts and podman-compose down.
+    List Volumes: See volumes managed by Podman.
+    Bash
+
+podman volume ls
+
+Inspect a Volume: Get details about a volume (like where it's stored on your host). Replace promptplayground_postgres_data with the actual name from podman volume ls.
+Bash
+
+podman volume inspect promptplayground_postgres_data
+
+Remove a Volume (Data Loss!): Only do this if you want to start with a fresh database. Make sure the container using it is stopped/removed (podman-compose down).
+Bash
+
+    podman volume rm promptplayground_postgres_data
+
+8. Cleaning Up Resources
+
+    Stop and Remove Containers/Network: (Keeps volumes and images)
+    Bash
+
+podman-compose -f docker-compose.yml down
+
+Stop and Remove Containers/Network/Volumes (Data Loss!):
+Bash
+
+podman-compose -f docker-compose.yml down --volumes
+
+Remove Unused Images: (Optional, cleans up images not used by any container)
+Bash
+
+podman image prune
+
+Remove Unused Volumes: (Optional, cleans up volumes not used by any container)
+Bash
+
+podman volume prune
+
+Full Prune (Caution): Removes all stopped containers, unused networks, images, and build cache.
+Bash
+
+    podman system prune -a --volumes
+
+This guide should cover most of your common development tasks using Podman Compose with your Flask application. Remember to adapt service names (web, db) and volume names if they differ slightly in your setup.

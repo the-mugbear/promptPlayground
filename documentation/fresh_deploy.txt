@@ -1,0 +1,84 @@
+Fresh Deployment Guide (GitHub Clone to Running App)
+
+This guide assumes you are starting on a machine with the prerequisites installed but without the application code or running containers.
+
+Prerequisites:
+
+    Git: To clone the repository.
+    Podman: The container engine.
+    podman-compose: The compose tool (pip install podman-compose).
+    Podman Machine (if needed): Ensure a Podman machine is running (e.g., via podman machine start). Your start_fuzzy_podman.ps1 script handles this, but for manual setup, ensure it's running.
+
+Deployment Steps:
+
+    Clone the Repository:
+        Get the application code from GitHub. Replace <repository_url> with the actual URL.
+        Bash
+
+    git clone <repository_url>
+    cd <repository_directory> # Navigate into the cloned project folder
+
+Configure Environment Variables:
+
+    Your application uses a .env file to manage sensitive settings and configuration that shouldn't be hardcoded or committed to Git.
+    Create a .env file in the project's root directory (the same directory as docker-compose.yml).
+    Add necessary variables to the .env file. Check if the repository includes a .env.example file to use as a template. At a minimum, you'll likely need:
+    Code snippet
+
+    # .env file contents
+
+    # Database Credentials (MUST match POSTGRES_* vars for the 'db' service in docker-compose.yml)
+    DB_USER=fuzzy_user
+    DB_PASSWORD=your_secure_database_password # Choose a strong password
+    DB_NAME=fuzzy_prompts_db
+    DB_HOST=db # Important: Use the service name from docker-compose.yml
+
+    # Flask Secret Key (Generate a strong, random key for security)
+    SECRET_KEY=your_strong_random_flask_secret_key
+
+    # Optional: RabbitMQ Credentials (if different from default guest/guest)
+    # RABBITMQ_DEFAULT_USER=guest
+    # RABBITMQ_DEFAULT_PASS=guest
+
+    # Optional: Set Flask debug mode (0 for production, 1 for development)
+    FLASK_DEBUG=1
+
+    Important: Ensure DB_HOST is set to db. Generate a strong, unique SECRET_KEY.
+
+Build Images and Start Services:
+
+    This command reads your docker-compose.yml, builds the images for your web and worker services using the Dockerfile in the current directory, and starts all defined services (web, worker, db, broker) in the background.
+    The database service (db) will start, but the database inside the container will be empty or in its initial state.
+    Bash
+
+    podman-compose -f docker-compose.yml up --build -d
+
+    Wait a moment for the db container to initialize fully. You can check logs (podman-compose -f docker-compose.yml logs db) or status (podman-compose -f docker-compose.yml ps).
+
+Initialize the Database Schema (Manual Step):
+
+    podman-compose up does not automatically create the database tables required by your Flask application. You need to run the Flask-Migrate upgrade command inside the running web container.
+    Assuming the migrations folder is included in your Git repository: Run the following command to apply all the migration scripts found in the migrations directory to the database:
+    Bash
+
+podman-compose -f docker-compose.yml exec web flask db upgrade
+
+If the migrations folder is NOT included in your Git repository (less common): You would need to initialize it first, then generate the initial migration based on your models:
+Bash
+
+        # Only if migrations/ folder is missing after cloning:
+        podman-compose -f docker-compose.yml exec web flask db init
+        podman-compose -f docker-compose.yml exec web flask db migrate -m "Initial database schema"
+        podman-compose -f docker-compose.yml exec web flask db upgrade
+
+        Check Output: Watch the output of the flask db upgrade command for success messages or errors. If it completes without errors, your database tables should now be created.
+
+    Access Your Application:
+        Your docker-compose.yml maps host port 8021 to the web container's port 8000.
+        Open your web browser and navigate to: http://localhost:8021
+
+Summary of Manual Steps Post-Clone:
+
+    Create and populate the .env file.
+    Run podman-compose -f docker-compose.yml up --build -d.
+    Run podman-compose -f docker-compose.yml exec web flask db upgrade (after db service is ready).

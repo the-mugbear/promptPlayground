@@ -24,6 +24,7 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
+      - DB_HOST=db
       # Include RabbitMQ credentials if needed, defaults are often sufficient
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-guest} # Use guest if not set in .env
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-guest} # Use guest if not set in .env
