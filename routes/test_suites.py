@@ -1,8 +1,13 @@
 import json
-from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
+import yaml
+import os
+
+from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, current_app
+from flask_login import login_required
 from extensions import db
 from models.model_TestCase import TestCase
 from models.model_TestSuite import TestSuite
+from celery_app import celery
 from services.transformers.registry import apply_transformations_to_lines, TRANSFORM_PARAM_CONFIG, apply_transformation
 from services.transformers.helpers import process_transformations
 from models.associations import test_suite_cases
@@ -33,6 +38,7 @@ def list_three():
     return render_template('test_suites/list_test_suites_three.html', test_suites=test_suites)
 
 @test_suites_bp.route('/create', methods=['GET'])
+@login_required 
 def create_test_suite_form():
     """
     GET /test_suites/create -> Display an HTML form to create a new test suite
@@ -50,6 +56,7 @@ def create_test_suite_form():
     )
 
 @test_suites_bp.route('/<int:suite_id>/details', methods=["GET"])
+@login_required 
 def test_suite_details(suite_id):
     # Retrieve the test suite by its ID, or return a 404 error if not found.
     test_suite = TestSuite.query.get_or_404(suite_id)
@@ -73,6 +80,7 @@ def test_suite_details(suite_id):
 # SERVICES
 # ********************************
 @test_suites_bp.route('/create', methods=['POST'])
+@login_required 
 def create_test_suite():
     """
     POST /test_suites/create -> Handle the form submission to create a new test suite.
@@ -149,6 +157,7 @@ def create_test_suite():
 
 # If the suite has already been used in a test run we block deletion, we could cascade and backfill entries but not today
 @test_suites_bp.route("/<int:suite_id>/delete", methods=["POST"])
+@login_required 
 def delete_test_suite(suite_id):
     """
     POST /test_suites/<suite_id>/delete -> Deletes a test suite if allowed.
@@ -224,6 +233,7 @@ def preview_transform():
     return jsonify({"transformed_lines": transformed_lines})
 
 @test_suites_bp.route('/<int:suite_id>/update', methods=['PUT'])
+@login_required 
 def update_test_suite(suite_id):
     suite = TestSuite.query.get_or_404(suite_id)
     data = request.get_json(force=True)
@@ -245,6 +255,7 @@ def update_test_suite(suite_id):
     return jsonify({"message": "Updated fields: " + ", ".join(updated_fields)}), 200
 
 @test_suites_bp.route('/<int:suite_id>/remove_test_case/<int:case_id>', methods=['POST'])
+@login_required 
 def remove_test_case_from_suite(suite_id, case_id):
     from models.model_TestCase import TestCase  # Ensure import if not already present
     from models.model_TestSuite import TestSuite
@@ -259,6 +270,7 @@ def remove_test_case_from_suite(suite_id, case_id):
 
 # let users create new test cases and add them to a test suite when viewing the details of said suite
 @test_suites_bp.route('/<int:suite_id>/add_test_case', methods=['POST'])
+@login_required 
 def add_test_case_to_suite(suite_id):
     data = request.get_json(force=True) or {}
     prompt = data.get('prompt', '').strip()
@@ -291,3 +303,86 @@ def add_test_case_to_suite(suite_id):
         "transformations": new_tc.transformations or []
       }
     })
+
+
+# Helper function to load datasets from YAML (same as discussed before)
+def load_available_datasets():
+    config_path = os.path.join(current_app.instance_path, 'importable_datasets.yaml')
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            datasets_list = yaml.safe_load(f)
+            # Convert list to dict for easier lookup by name
+            return {ds['name']: ds for ds in datasets_list if ds and 'name' in ds}
+    except FileNotFoundError:
+        current_app.logger.error(f"Dataset config file not found: {config_path}")
+        return {}
+    except yaml.YAMLError as e:
+        current_app.logger.error(f"Error parsing dataset config {config_path}: {e}")
+        return {}
+    except Exception as e:
+         current_app.logger.error(f"Unexpected error loading dataset config {config_path}: {e}")
+         return {}
+
+@test_suites_bp.route('/import', methods=['GET', 'POST'])
+@login_required
+def import_hf_datasets():
+    # Load dataset configuration ONCE at the start of the request
+    available_datasets_dict = load_available_datasets()
+
+    if request.method == 'POST':
+        selected_names = request.form.getlist('selected_datasets')
+        hf_token = request.form.get('hf_token', None)
+        if not hf_token: hf_token = None # Ensure empty string becomes None
+
+        tasks_started_count = 0
+        tasks_failed_to_start_count = 0
+
+        if not selected_names:
+            flash("Please select at least one dataset to import.", "warning")
+        else:
+            current_app.logger.info(f"Received request to import datasets: {selected_names}")
+            for name in selected_names:
+                # Use the loaded dictionary
+                dataset_details = available_datasets_dict.get(name)
+
+                # --- IMPROVEMENT: Validate details ---
+                if not dataset_details:
+                    flash(f"Configuration details not found for dataset: '{name}'. Skipping.", "warning")
+                    current_app.logger.warning(f"Attempted import for '{name}' but details not found in config.")
+                    tasks_failed_to_start_count += 1
+                    continue # Skip to the next selected dataset
+
+                prompt_field = dataset_details.get('prompt_field')
+                attack_type = dataset_details.get('attack_type')
+
+                if not prompt_field or not attack_type:
+                    flash(f"Configuration incomplete (missing prompt_field or attack_type) for dataset: '{name}'. Skipping.", "error")
+                    current_app.logger.error(f"Missing prompt_field or attack_type for {name} in config.")
+                    tasks_failed_to_start_count += 1
+                    continue # Skip to the next selected dataset
+                # --- End Validation ---
+
+                try:
+                    # Ensure task name matches your structure (workers or tasks) and celery_app.py include
+                    task_name = 'workers.import_tasks.import_dataset_task'
+                    celery.send_task(task_name, args=[name, prompt_field, attack_type, hf_token])
+                    current_app.logger.info(f"Dispatched Celery task '{task_name}' for dataset '{name}'")
+                    tasks_started_count += 1
+                except Exception as e:
+                    # Catch potential errors during task dispatch itself
+                    current_app.logger.error(f"Failed to dispatch Celery task for dataset '{name}': {e}", exc_info=True)
+                    flash(f"Error starting import task for dataset: '{name}'. Check logs.", "danger")
+                    tasks_failed_to_start_count += 1
+
+            # Flash summary message
+            if tasks_started_count > 0:
+                flash(f"Successfully started import tasks for {tasks_started_count} dataset(s). Check Celery worker logs for progress.", "success")
+            if tasks_failed_to_start_count > 0:
+                 flash(f"Failed to start import tasks for {tasks_failed_to_start_count} dataset(s) due to configuration issues.", "warning")
+
+
+        return redirect(url_for('test_suites_bp.import_hf_datasets')) # Redirect back to the import page
+
+    # GET request: Pass the loaded dictionary to the template
+    return render_template('test_suites/import_datasets.html',
+                           available_datasets=available_datasets_dict)

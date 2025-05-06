@@ -73,6 +73,8 @@
                     <ul class="dropdown-menu">
                         <li><a href="{{ url_for('test_suites_bp.create_test_suite_form') }}">Create Suite</a></li>
                         <li><a href="{{ url_for('test_suites_bp.list_test_suites') }}">View Suites</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a href="{{ url_for('test_suites_bp.import_hf_datasets') }}">Import Suites</a></li>
                     </ul>
                 </li>
                 <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_cases_bp') %}active{% endif %}">

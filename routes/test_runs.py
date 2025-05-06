@@ -1,6 +1,10 @@
+import json
+import requests
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required
 from extensions import db
+from celery_app import celery
 from sqlalchemy.orm import selectinload
 from sqlalchemy import func
 from datetime import datetime
@@ -15,16 +19,15 @@ from services.common.http_request_service import replay_post_request
 from services.common.header_parser_service import headers_from_apiheader_list
 
 # Import Celery primitives and the task signature method '.s()'
-from celery import group, chain 
-from workers.celery_tasks import execute_single_test_case_task
-
-import json, requests
+from celery import group, chain
 
 test_runs_bp = Blueprint('test_runs_bp', __name__, url_prefix='/test_runs')
 
 # ********************************
 # ROUTES
 # ********************************
+
+
 @test_runs_bp.route('/', methods=['GET'])
 def list_test_runs():
     """
@@ -32,21 +35,25 @@ def list_test_runs():
     """
     # Optional: handle pagination
     page = request.args.get('page', 1, type=int)
-    pagination = TestRun.query.order_by(TestRun.id.desc()).paginate(page=page, per_page=10, error_out=False)
+    pagination = TestRun.query.order_by(TestRun.id.desc()).paginate(
+        page=page, per_page=10, error_out=False)
     runs = pagination.items
 
     return render_template('test_runs/list_test_runs.html', test_runs=runs, pagination=pagination)
+
 
 @test_runs_bp.route('/<int:run_id>', methods=['GET'])
 def view_test_run(run_id):
 
     run = (TestRun.query
-        .options(
-            selectinload(TestRun.endpoint),
-            selectinload(TestRun.test_suites).selectinload(TestSuite.test_cases),
-            selectinload(TestRun.attempts).selectinload(TestRunAttempt.executions).selectinload(TestExecution.test_case)
-        )
-        .get_or_404(run_id))
+           .options(
+               selectinload(TestRun.endpoint),
+               selectinload(TestRun.test_suites).selectinload(
+                   TestSuite.test_cases),
+               selectinload(TestRun.attempts).selectinload(
+                   TestRunAttempt.executions).selectinload(TestExecution.test_case)
+           )
+           .get_or_404(run_id))
 
     # Build a dictionary keyed by test_case.id with responses from each attempt.
     test_case_map = {}
@@ -108,7 +115,8 @@ def view_test_run(run_id):
     attempt_counts = {}
     for attempt_number, status, count in per_attempt_counts:
         if attempt_number not in attempt_counts:
-            attempt_counts[attempt_number] = {"passed": 0, "failed": 0, "skipped": 0, "pending_review": 0}
+            attempt_counts[attempt_number] = {
+                "passed": 0, "failed": 0, "skipped": 0, "pending_review": 0}
         attempt_counts[attempt_number][status] = count
 
     # Load ALL prompt filters so we can offer “add” choices
@@ -124,7 +132,7 @@ def view_test_run(run_id):
         skipped_count=skipped_count,
         pending_review_count=pending_review_count,
         attempt_counts=attempt_counts,
-        prompt_filters=all_filters 
+        prompt_filters=all_filters
     )
 
 
@@ -134,22 +142,23 @@ def create_test_run_form():
     # 1. Get page & search from query params
     page = request.args.get('page', 1, type=int)
     search = request.args.get('search', '', type=str)
-    
+
     # 2. Base query for test suites
     suites_query = TestSuite.query
-    
+
     # 3. If there's a search term, filter by description
     if search:
         # e.g. case-insensitive match
-        suites_query = suites_query.filter(TestSuite.description.ilike(f'%{search}%'))
-    
+        suites_query = suites_query.filter(
+            TestSuite.description.ilike(f'%{search}%'))
+
     # 4. Paginate, 10 per page
     pagination = suites_query.paginate(page=page, per_page=10, error_out=False)
     test_suites = pagination.items  # the current page’s suite objects
-    
+
     # 5. Fetch endpoints for the dropdown
     endpoints = Endpoint.query.all()
-    
+
     # 6. Fetch existing prompt filter configurations
     prompt_filters = PromptFilter.query.order_by(PromptFilter.name).all()
 
@@ -170,16 +179,17 @@ def create_test_run_form():
 @login_required
 def handle_create_test_run():
     # 1) Pull form data
-    run_name            = request.form.get('run_name')
-    endpoint_id         = request.form.get('endpoint_id')
-    selected_suite_ids  = request.form.getlist('suite_ids')
+    run_name = request.form.get('run_name')
+    endpoint_id = request.form.get('endpoint_id')
+    selected_suite_ids = request.form.getlist('suite_ids')
     selected_filter_ids = request.form.getlist('filter_ids')
     # Get the potential override payload from the textarea
-    payload_override = request.form.get('endpointPayload') 
+    payload_override = request.form.get('endpointPayload')
 
     # 2) Validate required fields for TestRun creation
-    if not run_name: # Make run_name optional or required as needed
-        run_name = f"Run for Endpoint {endpoint_id} at {datetime.now()}" # Example default name
+    if not run_name:  # Make run_name optional or required as needed
+        # Example default name
+        run_name = f"Run for Endpoint {endpoint_id} at {datetime.now()}"
     if not endpoint_id or not selected_suite_ids:
         flash("Missing required fields: endpoint_id, or suite_ids", 'error')
         return redirect(url_for('test_runs_bp.create_test_run_form'))
@@ -188,18 +198,21 @@ def handle_create_test_run():
         # *** Find the selected Endpoint ***
         endpoint_to_update = Endpoint.query.get(endpoint_id)
         if not endpoint_to_update:
-            flash(f"Selected endpoint with ID {endpoint_id} not found.", 'error')
+            flash(
+                f"Selected endpoint with ID {endpoint_id} not found.", 'error')
             return redirect(url_for('test_runs_bp.create_test_run_form'))
 
         # *** Overwrite the Endpoint's payload IF override text was provided ***
-        if payload_override and payload_override.strip(): # Check if override is not empty/whitespace
-             # Optional: Add validation, e.g., ensure "{{INJECT_PROMPT}}" is still present
+        if payload_override and payload_override.strip():  # Check if override is not empty/whitespace
+            # Optional: Add validation, e.g., ensure "{{INJECT_PROMPT}}" is still present
             if "{{INJECT_PROMPT}}" not in payload_override:
-                 flash("Error: The overridden payload must still contain '{{INJECT_PROMPT}}'. Endpoint not updated.", 'error')
-                 # Decide if you want to stop TestRun creation here too, or just skip the update
-                 # return redirect(url_for('test_runs_bp.create_test_run_form')) 
+                flash(
+                    "Error: The overridden payload must still contain '{{INJECT_PROMPT}}'. Endpoint not updated.", 'error')
+                # Decide if you want to stop TestRun creation here too, or just skip the update
+                # return redirect(url_for('test_runs_bp.create_test_run_form'))
             else:
-                print(f"Updating payload for Endpoint {endpoint_id}") # Optional logging
+                # Optional logging
+                print(f"Updating payload for Endpoint {endpoint_id}")
                 endpoint_to_update.http_payload = payload_override
                 # No need to db.session.add() explicitly when modifying a loaded object
         # **************************************************************************
@@ -260,6 +273,7 @@ def handle_create_test_run():
         flash(f"Failed to create test run: {e}", 'error')
         return redirect(url_for('test_runs_bp.create_test_run_form'))
 
+
 @test_runs_bp.route('/<int:run_id>/execute', methods=['POST'])
 @login_required
 def execute_test_run(run_id):
@@ -269,15 +283,17 @@ def execute_test_run(run_id):
     # Eager load data needed for dispatching
     run = TestRun.query.options(
         selectinload(TestRun.endpoint).selectinload(Endpoint.headers),
-        selectinload(TestRun.filters), 
-        selectinload(TestRun.attempts).selectinload(TestRunAttempt.executions).selectinload(TestExecution.test_case) 
+        selectinload(TestRun.filters),
+        selectinload(TestRun.attempts).selectinload(
+            TestRunAttempt.executions).selectinload(TestExecution.test_case)
     ).get_or_404(run_id)
 
     # --- Logic to find/create latest attempt & pending executions ---
     if run.attempts:
         latest_attempt = max(run.attempts, key=lambda a: a.attempt_number)
     else:
-        latest_attempt = TestRunAttempt(test_run=run, attempt_number=1, current_sequence=0, status='pending')
+        latest_attempt = TestRunAttempt(
+            test_run=run, attempt_number=1, current_sequence=0, status='pending')
         db.session.add(latest_attempt)
         # Create TestExecution records for each test case in associated suites
         sequence = 0
@@ -294,12 +310,14 @@ def execute_test_run(run_id):
         db.session.commit()
 
     # Use the latest attempt’s executions
-    pending_executions = [ex for ex in latest_attempt.executions if ex.status == 'pending']
-    
+    pending_executions = [
+        ex for ex in latest_attempt.executions if ex.status == 'pending']
+
     # If no pending executions remain, create a new attempt.
     if not pending_executions:
         new_attempt_number = latest_attempt.attempt_number + 1
-        new_attempt = TestRunAttempt(test_run=run, attempt_number=new_attempt_number, current_sequence=0, status='pending')
+        new_attempt = TestRunAttempt(
+            test_run=run, attempt_number=new_attempt_number, current_sequence=0, status='pending')
         db.session.add(new_attempt)
         sequence = 0
         for suite in run.test_suites:
@@ -318,55 +336,65 @@ def execute_test_run(run_id):
 
     # Mark the current attempt as running.
     latest_attempt.status = 'running'
-    db.session.commit() # Commit status change before dispatching
+    db.session.commit()  # Commit status change before dispatching
 
     # --- Prepare common data ---
     endpoint_obj = run.endpoint
     original_payload_str = endpoint_obj.http_payload if endpoint_obj else ""
-    stored_headers = headers_from_apiheader_list(endpoint_obj.headers) if endpoint_obj else {}
-    raw_headers_str = "\n".join([f"{k}: {v}" for k, v in stored_headers.items()])
+    stored_headers = headers_from_apiheader_list(
+        endpoint_obj.headers) if endpoint_obj else {}
+    raw_headers_str = "\n".join(
+        [f"{k}: {v}" for k, v in stored_headers.items()])
     run_filter_ids_data = [f.id for f in run.filters]
 
     # --- Create Task Signatures ---
     task_signatures = []
     for execution in pending_executions:
         if execution.test_case and endpoint_obj:
-            test_case_transformations_data = execution.test_case.transformations 
+            test_case_transformations_data = execution.test_case.transformations
             # Create a signature for the task with its arguments
             # Use .s() instead of .delay()
-            sig = execute_single_test_case_task.s(
-                execution_id=execution.id,
-                endpoint_id=endpoint_obj.id,
-                test_case_prompt=execution.test_case.prompt,
-                test_case_transformations_data=test_case_transformations_data, 
-                run_filter_ids_data=run_filter_ids_data, 
-                original_payload_str=original_payload_str,
-                raw_headers_str=raw_headers_str
+            sig = celery.signature(
+                'workers.execution_tasks.execute_single_test_case_task',  # Task name as string
+                args=[  # Pass arguments as a list/tuple in order
+                    execution.id,
+                    endpoint_obj.id,
+                    execution.test_case.prompt,
+                    test_case_transformations_data,
+                    run_filter_ids_data,
+                    original_payload_str,
+                    raw_headers_str
+                ]
+                # If you had keyword arguments, use kwargs={'key': value, ...}
             )
             task_signatures.append(sig)
         else:
-            print(f"Skipping execution {execution.id}: Missing test case or endpoint link.")
+            print(
+                f"Skipping execution {execution.id}: Missing test case or endpoint link.")
             # Consider marking as skipped directly in DB here
             execution.status = 'skipped'
-            db.session.add(execution) 
+            db.session.add(execution)
 
     # --- Conditionally Dispatch Tasks using chain (serial) or group (parallel) ---
     if not task_signatures:
-         flash("No valid tasks could be prepared for execution.", "warning")
+        flash("No valid tasks could be prepared for execution.", "warning")
     elif run.run_serially:
-        print(f"Executing Test Run {run.id} serially (chaining {len(task_signatures)} tasks).")
+        print(
+            f"Executing Test Run {run.id} serially (chaining {len(task_signatures)} tasks).")
         # Create a chain - tasks run one after another
-        task_workflow = chain(task_signatures) 
-        task_workflow.apply_async() # Execute the chain
+        task_workflow = chain(task_signatures)
+        task_workflow.apply_async()  # Execute the chain
         flash(f"Test run {run.id} queued for serial execution.", "success")
-    else: # Default is parallel
-        print(f"Executing Test Run {run.id} in parallel (grouping {len(task_signatures)} tasks).")
+    else:  # Default is parallel
+        print(
+            f"Executing Test Run {run.id} in parallel (grouping {len(task_signatures)} tasks).")
         # Create a group - tasks run in parallel (distributed to workers)
         task_workflow = group(task_signatures)
-        task_workflow.apply_async() # Execute the group
+        task_workflow.apply_async()  # Execute the group
         flash(f"Test run {run.id} queued for parallel execution.", "success")
 
-    flash("Test run executed with the custom {{INJECT_PROMPT}} variable replaced in http_payload.", "success")
+    flash(
+        "Test run executed with the custom {{INJECT_PROMPT}} variable replaced in http_payload.", "success")
     return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
 
 
@@ -376,20 +404,20 @@ def update_execution_status(run_id):
     # Retrieve form data
     execution_id = request.form.get('execution_id')
     new_status = request.form.get('status')
-    
+
     if not execution_id or not new_status:
         flash("Missing execution ID or status.", "error")
         # For AJAX requests, return JSON error
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return jsonify({"status": "error", "message": "Missing execution ID or status."}), 400
         return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
-    
+
     try:
         execution = TestExecution.query.get_or_404(execution_id)
         execution.status = new_status
         db.session.commit()
         flash("Test execution status updated successfully.", "success")
-        
+
         # Return a JSON response for AJAX calls
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return jsonify({"status": "success", "message": "Test execution status updated successfully."})
@@ -405,19 +433,21 @@ def update_execution_status(run_id):
 # TestRun has a 1-to-many relationship with TestRunAttempt
 # These in turn cascade to TestExecution records
 # TestRun has a 1-to-many relationship with TestSuite through the association table
+
+
 @test_runs_bp.route('/<int:run_id>/delete', methods=['POST'])
 @login_required
 def delete_test_run(run_id):
     # Retrieve the test run or return a 404 if not found
     test_run = TestRun.query.get_or_404(run_id)
-    
+
     # Clear the many-to-many association with test suites to avoid orphaned rows
     test_run.test_suites.clear()
-    
+
     # Delete the test run; its attempts (and their executions) will be removed via cascade
     db.session.delete(test_run)
     db.session.commit()
-    
+
     flash("Test run deleted successfully", "success")
     return redirect(url_for('test_runs_bp.list_test_runs'))
 
@@ -433,6 +463,7 @@ def add_filter(run_id):
         db.session.commit()
         flash(f"Added filter “{pf.name}”", "success")
     return redirect(url_for('test_runs_bp.view_test_run', run_id=run_id))
+
 
 @test_runs_bp.route('/<int:run_id>/remove_filter/<int:filter_id>', methods=['POST'])
 @login_required

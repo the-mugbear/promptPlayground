@@ -24,7 +24,8 @@ from routes.prompt_filter import prompt_filter_bp
 from routes.auth import auth_bp
 from routes.admin import admin_bp
 
-from workers import celery_tasks
+from commands import bp as commands_bp
+
 import json
 import os
 
@@ -66,24 +67,35 @@ def create_app():
         
     # Register the prettyjson filter with Jinja
     app.add_template_filter(prettyjson_filter, 'prettyjson')
-    
+
     # --- Load Configuration from Environment Variables ---
-    # Use os.getenv('VARIABLE_NAME', 'optional_default_value')
-    db_user = os.getenv('DB_USER', 'fuzzy_user') 
-    db_pass = os.getenv('DB_PASSWORD') # No default for password is safer
-    db_host = os.getenv('DB_HOST', 'localhost')
-    db_port = os.getenv('DB_PORT', '5432')
-    db_name = os.getenv('DB_NAME', 'fuzzy_prompts_db')
+    database_url = os.getenv('DATABASE_URL')
 
-    # ---- TEMPORARY DEBUG ----
-    print(f"DEBUG: Connecting with User='{db_user}', Password='{db_pass}'") 
-    # -------------------------
+    if database_url:
+        # If DATABASE_URL is set, use it directly
+        # Optionally, replace postgresql:// with postgresql+psycopg2:// if needed by SQLAlchemy v2+
+        if database_url.startswith("postgresql://"):
+            database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+        print(f"DEBUG: Using DATABASE_URL: {database_url}") # Debug print
+    else:
+        # Use os.getenv('VARIABLE_NAME', 'optional_default_value')
+        db_user = os.getenv('DB_USER', 'fuzzy_user') 
+        db_pass = os.getenv('DB_PASSWORD') # No default for password is safer
+        db_host = os.getenv('DB_HOST', 'localhost')
+        db_port = os.getenv('DB_PORT', '5432')
+        db_name = os.getenv('DB_NAME', 'fuzzy_prompts_db')
 
-    # Check if password was loaded
-    if not db_pass:
-        raise ValueError("DB_PASSWORD environment variable not set.")
-        
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}'
+        # ---- TEMPORARY DEBUG ----
+        print(f"DEBUG: Connecting with User='{db_user}', Password='{db_pass}'") 
+
+        if not db_pass:
+            raise ValueError("DB_PASSWORD environment variable not set.")
+
+        # Use psycopg2 driver explicitly if needed for SQLAlchemy v2+
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}'
+        print(f"DEBUG: Using individual DB parts. URI set to: {app.config['SQLALCHEMY_DATABASE_URI']}") # Add clear log
+
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     # Load Secret Key (provide a default ONLY for development if necessary, error out otherwise)
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') 
@@ -127,6 +139,7 @@ def create_app():
     app.register_blueprint(prompt_filter_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(commands_bp)
 
     # --- Define APPLICATION-LEVEL Error Handlers ---
     @app.errorhandler(500)

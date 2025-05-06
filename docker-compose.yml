@@ -12,22 +12,25 @@ services:
     ports:
       - "8021:8000" # Map host port 8021 to container port 8000
     environment:
-      # Pass environment variables from .env file OR define them here
-      # Use service names for hostnames (docker/podman compose networking)
+      # Keep Flask/DB/Secret variables
       - FLASK_APP=fuzzy_prompts:create_app
-      - FLASK_DEBUG=1 # Set appropriately for dev/prod
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME} # Points to 'db' service
-      - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@broker:5672// # Points to 'broker' service
-      - CELERY_RESULT_BACKEND=db+postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME} # Example: Use DB backend
-      - SECRET_KEY=${SECRET_KEY} # Read from .env usually
-      # Include DB_USER, DB_PASSWORD, DB_NAME read from .env
+      - FLASK_DEBUG=1 # Set appropriately
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - SECRET_KEY=${SECRET_KEY}
+
+      # --- MODIFIED Celery Broker URL ---
+      # Directly substitute from .env, using 'guest' as default if var is unset in .env
+      - CELERY_BROKER_URL=amqp://guest:guest@broker:5672//
+
+      # Keep DB variables if needed elsewhere (e.g., result backend)
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
-      - DB_HOST=db
-      # Include RabbitMQ credentials if needed, defaults are often sufficient
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-guest} # Use guest if not set in .env
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-guest} # Use guest if not set in .env
+      - DB_HOST=db # If your app uses this directly
+
+      # Keep Celery Result Backend if needed
+      - CELERY_RESULT_BACKEND=db+postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+
     depends_on:
       - db       # Wait for db service to be healthy (basic check)
       - broker   # Wait for broker service to be healthy (basic check)
@@ -40,18 +43,20 @@ services:
     container_name: fuzzy_prompts_worker
     # Override the default CMD from the Dockerfile
     command: celery -A celery_app.celery worker -P eventlet --loglevel=info
+    # command: sleep infinity
     volumes:
       - .:/app # Mount code for development consistency
     environment:
+      - PYTHONPATH=/app
       # Pass same environment variables as web service
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@broker:5672//
+      - CELERY_BROKER_URL=amqp://guest:guest@broker:5672//
       - CELERY_RESULT_BACKEND=db+postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-guest}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-guest}
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
       # Add SECRET_KEY if celery tasks indirectly need it
       - SECRET_KEY=${SECRET_KEY}
     depends_on:
@@ -88,8 +93,10 @@ services:
       - "15672:15672" # Management UI port
     environment:
       # Set default user/pass (optional, can use defaults 'guest'/'guest')
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-guest}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-guest}
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit loopback_users "[]"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq/ # Persist RabbitMQ data (optional for dev)
 

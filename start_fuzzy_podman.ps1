@@ -1,6 +1,8 @@
 # start_fuzzy_podman.ps1 - Script to start the containerized application stack using Podman Compose
 
-# to stop use command "podman-compose -f docker-compose.yml down"
+# to stop AND remove use command "podman-compose -f docker-compose.yml down"
+# to just stop "podman-compose -f docker-compose.yml stop"
+# to build podman with new requirements additions "podman-compose -f docker-compose.yml up --build --no-cache -d"
 
 Write-Host "Starting containerized development environment via Podman Compose..." -ForegroundColor Yellow
 

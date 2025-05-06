@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Import Test Suites | HF Datasets{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  {% endblock %}
+
+{% block content %}
+<div class="container content-card neon-box">
+  <div class="card-header">
+    <h2><i class="bi bi-cloud-download"></i> Import Test Suites from Hugging Face</h2>
+  </div>
+
+  <details class="collapsible-section" {% if not available_datasets %}open{% endif %}>
+    <summary class="collapsible-header"><strong><i class="bi bi-info-circle"></i> Instructions</strong></summary>
+    <div class="collapsible-content">
+      <p>Select one or more datasets below. Each dataset becomes its own Test Suite.</p>
+      <p>Provide a <a href="https://huggingface.co/docs/hub/security-tokens" target="_blank" class="neon-hover">Hugging Face User Access Token</a> if you need private‑dataset access or higher rate limits.</p>
+      <div class="status-badge"><i class="bi bi-clock-history"></i> Import may take several minutes per dataset.</div>
+    </div>
+  </details>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flash-messages">
+        {% for category, message in messages %}
+          <li class="flash-message {{ category }}">{{ message }}
+            <button class="flash-close" data-bs-dismiss="alert" aria-label="Close">&times;</button>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('test_suites_bp.import_hf_datasets') }}" class="test-form">
+    <div class="form-group">
+      <label for="hf_token">Hugging Face Token (Optional)</label>
+      <input type="password" id="hf_token" name="hf_token" placeholder="hf_...">
+      <small class="text-muted">Token is used only during import and is never stored.</small>
+    </div>
+
+    {% if available_datasets %}
+      <div class="form-group">
+        <label>Select Datasets:</label>
+
+        <div class="datasets-grid">
+          {% for name, details in available_datasets.items() %}
+            <div class="dataset-card">
+              <div class="dataset-card-header">
+                <input type="checkbox" id="dataset{{ loop.index }}" name="selected_datasets" value="{{ name }}">
+                <label for="dataset{{ loop.index }}"><h4>{{ name }}</h4></label>
+              </div>
+              <div class="dataset-card-body">
+                <ul class="dataset-meta">
+                  <li><span class="dataset-meta-label">Prompt Field:</span> {{ details.prompt_field | default('?') }}</li>
+                  <li><span class="dataset-meta-label">Attack Type:</span> {{ details.attack_type | default('?') }}</li>
+                </ul>
+                {% if details.description %}
+                  <p class="text-muted dataset-description">{{ details.description }}</p>
+                {% endif %}
+              </div>
+            </div> {% endfor %}
+        </div> </div>
+    {% else %}
+      <p class="text-danger">No datasets found. Check importable_datasets.yaml.</p>
+    {% endif %}
+
+    <button type="submit" class="neon-hover"><i class="bi bi-cloud-download"></i> Start Import</button>
+  </form>
+</div>
+{% endblock %}

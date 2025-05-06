@@ -8,7 +8,10 @@ celery = Celery(
     'fuzzy_prompts',
     broker=os.getenv('CELERY_BROKER_URL', 'amqp://guest:guest@localhost:5672//'), # Default to AMQP
     backend=os.getenv('CELERY_RESULT_BACKEND'), # Default to None - rely on .env
-    include=['workers.celery_tasks']
+    include=[
+        'workers.execution_tasks',
+        'workers.import_tasks'
+        ]
 )
 
 # Create a custom Task base class that pushes app context

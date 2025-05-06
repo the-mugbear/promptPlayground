@@ -187,8 +187,6 @@ def upgrade():
     with op.batch_alter_table('test_executions', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_test_executions_test_run_attempt_id'), ['test_run_attempt_id'], unique=False)
 
-    op.drop_table('celery_taskmeta')
-    op.drop_table('celery_tasksetmeta')
     # ### end Alembic commands ###
 
 

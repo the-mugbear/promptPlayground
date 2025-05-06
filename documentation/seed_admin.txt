@@ -1,0 +1,40 @@
+# Enter flask shell
+podman-compose -f docker-compose.yml exec web flask shell
+
+# Import necessary components (adjust paths/names if slightly different)
+from extensions import db
+from models.model_User import User, ROLE_ADMIN # Assuming ROLE_ADMIN is defined/imported here
+
+# --- Create the new admin user ---
+
+# Choose a username, email, and password
+admin_username = 'admin'
+admin_email = 'kmcmurdie3@gatech.edu' 
+admin_password = 'passwordEntropyIsReal1!'
+
+# Create an instance of the User model
+admin_user = User(
+    username=admin_username,
+    email=admin_email,
+    role=ROLE_ADMIN,  # Set the role to Admin
+    is_active=True     # Usually good to set active immediately
+)
+
+# Set the password (this hashes it)
+admin_user.set_password(admin_password)
+
+# Add the user to the database session
+db.session.add(admin_user)
+
+# Commit the changes to the database
+db.session.commit()
+
+# Optional: Print confirmation
+print(f"Admin user '{admin_username}' created successfully.")
+
+# --- Exit the shell ---
+exit()
+
+OR
+
+podman exec -it fuzzy_prompts_web flask create-admin --username admin --email "" --password --is-admin      

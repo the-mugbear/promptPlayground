@@ -1,14 +1,16 @@
 import datetime
 import json
+import os
 
 from extensions import db
 from models.model_TestExecution import TestExecution
 from models.model_Endpoints import Endpoint
 from models.model_PromptFilter import PromptFilter
+
 from services.transformers.registry import apply_transformation
 from services.common.http_request_service import replay_post_request
-from sqlalchemy.exc import OperationalError
-from celery_app import celery # Or from extensions import celery
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from celery_app import celery 
 
 
 @celery.task(bind=True, max_retries=3, default_retry_delay=60)
