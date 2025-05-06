@@ -113,6 +113,9 @@
                 <li class="dropdown user-menu">
                     <a href="#">{{ current_user.username }}</a>
                     <ul class="dropdown-menu">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.blueprint == 'user_bp' and request.endpoint.endswith('profile') %}active{% endif %}" href="{{ url_for('user_bp.profile') }}">My Profile</a>
+                    </li>
                     <li><a href="{{ url_for('auth_bp.logout') }}">Logout</a></li>
                     <li><a href="{{ url_for('help_bp.index') }}">Help</a></li>
                     </ul>

@@ -8,26 +8,35 @@
 {% block title %}Manage Invitations - Admin{% endblock %}
 
 {% block content %}
-{# 1. Apply card styling to main container #}
-<div class="content-card mt-4"> {# Or use a custom class styled like report-section #}
+<div class="content-card mt-4">
 
-    {# 2. Animated Heading #}
     <h1 class="cyberpunk-flicker">Manage Invitations</h1>
 
     <p class="mb-4">
-        {# 5. Neon Hover Button #}
         <a href="{{ url_for('admin_bp.create_invitation') }}" class="btn btn-success btn-sm neon-hover">[+] Create New Invitation</a>
     </p>
 
+    {# Display Flashed Messages (ensure this is present in your base.html or here) #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
     {% if invitations %}
-    {# 3. Enhanced Table Container #}
-    <div class="themed-table-wrapper"> {# Style this class like .chart-container or .report-section #}
-        <h3 class="cyberpunk-flicker">Invitation Codes</h3> {# Optional themed sub-heading #}
+    <div class="themed-table-wrapper">
+        <h3 class="cyberpunk-flicker">Invitation Codes & Links</h3>
         <div class="table-responsive">
             <table class="table table-striped table-bordered table-hover">
                 <thead class="thead-dark">
                     <tr>
                         <th>Code</th>
+                        <th>Shareable Link</th> {# NEW COLUMN #}
                         <th>Email Restriction</th>
                         <th>Assign Role</th>
                         <th>Status</th>
@@ -39,28 +48,35 @@
                 </thead>
                 <tbody>
                     {% for inv in invitations %}
+                    {% set invite_url = url_for('auth_bp.register_with_code', code=inv.code, _external=True) %} {# Generate URL here #}
                     <tr class="{{ 'table-secondary' if inv.is_used else ('table-warning' if not inv.is_valid() else '') }}">
                         <td>
-                            <input type="text" readonly value="{{ inv.code }}" id="invite-code-{{ inv.id }}" size="18" style="background: transparent; border: none; color: inherit; cursor: default; padding: 0;">
-                            <button class="btn btn-outline-secondary btn-sm py-0 neon-hover" onclick="copyCode('invite-code-{{ inv.id }}')" title="Copy Code">Copy</button>
+                            <input type="text" readonly value="{{ inv.code }}" id="invite-code-{{ inv.id }}" size="15" style="background: transparent; border: none; color: inherit; cursor: default; padding: 0; width: 120px; margin-right: 5px;">
+                            <button class="btn btn-outline-secondary btn-sm py-0 neon-hover" onclick="copyToClipboard('{{ inv.code }}', this)" title="Copy Code">Copy Code</button>
+                        </td>
+                        <td> {# NEW CELL for Shareable Link #}
+                            {% if inv.is_valid() and not inv.is_used %}
+                                <input type="text" readonly value="{{ invite_url }}" id="invite-url-{{ inv.id }}" style="background: transparent; border: none; color: inherit; cursor: default; padding: 0; width: 250px; margin-right: 5px;">
+                                <button class="btn btn-outline-info btn-sm py-0 neon-hover" onclick="copyToClipboard('{{ invite_url }}', this)" title="Copy Link">Copy Link</button>
+                            {% else %}
+                                -
+                            {% endif %}
                         </td>
                         <td>{{ inv.email or 'Any' }}</td>
                         <td>{{ inv.role_to_assign }}</td>
                         <td>
-                            {# 4. Use specific status classes for potential text-shadow/glow #}
                             {% if inv.is_used %}
-                                <span class="badge status-skipped">Used</span> {# Example: using skipped style for used #}
+                                <span class="badge status-skipped">Used</span>
                             {% elif not inv.is_valid() %}
-                                <span class="badge status-failed">Expired</span> {# Use report's status-failed style #}
+                                <span class="badge status-failed">Expired</span>
                             {% else %}
-                                <span class="badge status-passed">Valid</span> {# Use report's status-passed style #}
+                                <span class="badge status-passed">Valid</span>
                             {% endif %}
                         </td>
                         <td>{{ inv.created_at.strftime('%Y-%m-%d %H:%M') if inv.created_at else '-'}}</td>
                         <td>{{ inv.expires_at.strftime('%Y-%m-%d %H:%M') if inv.expires_at else 'Never' }}</td>
                         <td>{{ inv.notes or '-' }}</td>
                         <td>
-                            {# Add themed action buttons/icons here later #}
                             -
                         </td>
                     </tr>
@@ -68,74 +84,51 @@
                 </tbody>
             </table>
         </div>
-
-        {# Pagination - Apply neon-hover via JS or specific CSS if desired #}
         {{ render_pagination(pagination, 'admin_bp.list_invitations') }}
-    </div> {# End themed-table-wrapper #}
+    </div>
 
     {% else %}
     <p>No invitations found.</p>
     {% endif %}
 
-</div> {# End content-card #}
-
-{# 6 & 7: Loading Indicator Placeholder (control visibility with JS) #}
-<div id="action-loader" style="display: none;">
-    {# Choose your loader type, e.g.: #}
-    <div class="typing-loader">Processing...</div>
-    {# Or <div class="terminal-loader processing"></div> #}
 </div>
 
-{# Updated script for copy feedback #}
+<div id="action-loader" style="display: none;">
+    <div class="typing-loader">Processing...</div>
+</div>
+
+{# Simplified and more robust copy function #}
 <script>
-function copyCode(elementId) {
-    const input = document.getElementById(elementId);
-    const button = input.nextElementSibling;
-    const originalText = button.textContent;
+function copyToClipboard(textToCopy, buttonElement) {
+    const originalText = buttonElement.textContent;
+    navigator.clipboard.writeText(textToCopy).then(function() {
+        buttonElement.textContent = 'Copied!';
+        buttonElement.classList.add('btn-success');
+        buttonElement.classList.remove('btn-outline-secondary', 'btn-outline-info'); // Adjust classes as needed
 
-    input.select();
-    input.setSelectionRange(0, 99999);
-
-    try {
-        navigator.clipboard.writeText(input.value);
-
-        // Enhanced Feedback
-        button.textContent = 'Copied!';
-        button.classList.add('btn-success'); // Use themed success state
-        button.classList.add('cyberpunk-flicker'); // Add flicker effect
-
-        // Optional: Show flash message (requires Flask backend setup)
-        // showFlashMessage('Code copied successfully!', 'success');
-
-        setTimeout(() => {
-            button.textContent = originalText;
-            button.classList.remove('btn-success');
-            button.classList.remove('cyberpunk-flicker'); // Remove flicker
+        setTimeout(function() {
+            buttonElement.textContent = originalText;
+            buttonElement.classList.remove('btn-success');
+            // Add back original classes if needed, e.g.
+            if (originalText.toLowerCase().includes('code')) {
+                 buttonElement.classList.add('btn-outline-secondary');
+            } else {
+                 buttonElement.classList.add('btn-outline-info');
+            }
         }, 1500);
-
-    } catch (err) {
-        console.error('Failed to copy code: ', err);
-        button.textContent = 'Error!';
-        button.classList.add('btn-danger'); // Use themed error state
-         button.classList.add('cyberpunk-flicker');
-
-        // Optional: Show flash message for error
-        // showFlashMessage('Failed to copy code.', 'error');
-
-         setTimeout(() => {
-            button.textContent = originalText;
-            button.classList.remove('btn-danger');
-            button.classList.remove('cyberpunk-flicker');
+    }).catch(function(err) {
+        console.error('Failed to copy text: ', err);
+        buttonElement.textContent = 'Error!';
+        buttonElement.classList.add('btn-danger');
+         setTimeout(function() {
+            buttonElement.textContent = originalText;
+            buttonElement.classList.remove('btn-danger');
         }, 2000);
-    }
-    window.getSelection().removeAllRanges();
+    });
 }
 </script>
-
 {% endblock %}
 
 {% block scripts %}
     {{ super() }}
-    {# Include JS for loaders if needed, e.g.: #}
-    {# <script src="{{ url_for('static', filename='js/styling/matrix.js') }}"></script> #}
 {% endblock %}

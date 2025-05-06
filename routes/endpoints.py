@@ -1,5 +1,5 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from extensions import db
 from models.model_Endpoints import Endpoint, APIHeader
 from models.model_ManualTestRecord import ManualTestRecord
@@ -131,6 +131,7 @@ def handle_create_endpoint():
             hostname=data["hostname"],
             endpoint=data["endpoint_path"],
             http_payload=data["payload"],
+            user_id=current_user.id
         )
         db.session.add(new_endpoint)
         db.session.flush()  # Ensure new_endpoint.id is assigned

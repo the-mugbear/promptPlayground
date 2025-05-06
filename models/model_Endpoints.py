@@ -15,6 +15,7 @@ class Endpoint(db.Model):
         http_payload (str): The HTTP payload sent with the request.
         timestamp (datetime): The time the log was created.
         headers (list[APIHeader]): A list of headers associated with the request.
+        user_id (int): Foreign key referencing the user who created the endpoint.
     """
     __tablename__ = 'endpoints'
     
@@ -24,6 +25,11 @@ class Endpoint(db.Model):
     endpoint = db.Column(db.String(255), nullable=False)
     http_payload = db.Column(db.Text, nullable=True)   # HTTP payload sent with the request, should handle and store as JSON
     timestamp = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)  # <--- ADDED TIMESTAMP
+
+    # Foreign key to the User model
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) # Or False if user is mandatory
+    # Relationship to User (optional, for easier access to user object)
+    user = db.relationship('User', backref=db.backref('endpoints', lazy=True))
     
     # Relationships
     headers = db.relationship('APIHeader', back_populates='endpoint', cascade='all, delete-orphan')
@@ -39,6 +45,7 @@ class Endpoint(db.Model):
             "http_payload": self.http_payload,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
             "headers": [header.to_dict() for header in self.headers],
+            "user_id": self.user_id
         }
 
     def __repr__(self):

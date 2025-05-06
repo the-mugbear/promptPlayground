@@ -3,7 +3,7 @@ import yaml
 import os
 
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, current_app
-from flask_login import login_required
+from flask_login import login_required, current_user
 from extensions import db
 from models.model_TestCase import TestCase
 from models.model_TestSuite import TestSuite
@@ -96,7 +96,8 @@ def create_test_suite():
     new_suite = TestSuite(
         description=description,
         behavior=behavior,
-        objective=objective
+        objective=objective,
+        user_id=current_user.id
     )
     db.session.add(new_suite)
     db.session.commit()

@@ -13,7 +13,7 @@
                 <h2 class="mb-4">[ New User Registration ]<span class="terminal-prompt"></span></h2>
                 
                 {# --- Registration Form --- #}
-                <form action="{{ url_for('auth_bp.register') }}" method="post" novalidate>
+                <form action="{{ url_for('auth_bp.register_with_code', code=code) }}" method="post" novalidate>
                     {{ form.hidden_tag() }}
                     
                     <div class="mb-3">

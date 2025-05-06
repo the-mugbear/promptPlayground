@@ -1,0 +1,99 @@
+{% extends 'base.html' %} {# Or your main layout template #}
+
+{% block title %}{{ title }} - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="content-card"> {# Using a similar card style from your other pages #}
+                <div class="card-header">
+                    <h1>{{ current_user.username }}'s Profile</h1>
+                </div>
+
+                <div class="card-body" style="padding: 2rem;">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <div class="profile-details">
+                        <div class="detail-item mb-3">
+                            <strong class="detail-label">Username:</strong>
+                            <span class="detail-value">{{ current_user.username }}</span>
+                        </div>
+                        <hr>
+                        <div class="detail-item mb-3">
+                            <strong class="detail-label">Email:</strong>
+                            <span class="detail-value">{{ current_user.email }}</span>
+                        </div>
+                        <hr>
+                        <div class="detail-item mb-3">
+                            <strong class="detail-label">Role:</strong>
+                            <span class="detail-value">{{ current_user.role.capitalize() }}</span>
+                        </div>
+                        <hr>
+                        <div class="detail-item mb-3">
+                            <strong class="detail-label">Account Status:</strong>
+                            {% if current_user.is_active %}
+                                <span class="badge status-passed">Active</span>
+                            {% else %}
+                                <span class="badge status-failed">Inactive</span>
+                            {% endif %}
+                        </div>
+                        {# Add more details as needed, e.g., registration date if you store it #}
+                    </div>
+
+                    {# Optional: Add links for actions like 'Edit Profile' or 'Change Password' here in the future #}
+                    {# For example:
+                    <div class="mt-4">
+                        <a href="#" class="btn btn-secondary btn-sm neon-hover">Edit Profile (Not Implemented)</a>
+                        <a href="#" class="btn btn-secondary btn-sm neon-hover">Change Password (Not Implemented)</a>
+                    </div>
+                    #}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .content-card .card-body {
+        /* Add any specific styling for the profile page card body here */
+        font-size: 1.1rem;
+    }
+    .profile-details .detail-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+    }
+    .profile-details .detail-label {
+        color: var(--neon-text-color, #00ffde); /* Example color */
+        margin-right: 1rem;
+    }
+    .profile-details .detail-value {
+        color: var(--text-color, #ccc); /* Example color */
+        word-break: break-all; /* Ensure long emails or usernames don't break layout */
+    }
+    .profile-details hr {
+        border-color: rgba(var(--neon-glow-rgb, 0, 255, 222), 0.3);
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    /* Re-using status badge styles from list_invitations.html */
+    .badge.status-passed {
+        background-color: var(--status-passed-bg, #198754);
+        color: white;
+    }
+    .badge.status-failed {
+        background-color: var(--status-failed-bg, #dc3545);
+        color: white;
+    }
+</style>
+{% endblock %}

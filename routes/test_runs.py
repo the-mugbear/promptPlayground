@@ -2,7 +2,7 @@ import json
 import requests
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from extensions import db
 from celery_app import celery
 from sqlalchemy.orm import selectinload
@@ -221,7 +221,8 @@ def handle_create_test_run():
         new_run = TestRun(
             name=run_name,
             endpoint_id=endpoint_id,
-            status='pending'
+            status='pending',
+            user_id=current_user.id
         )
         db.session.add(new_run)
 

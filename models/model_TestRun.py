@@ -19,8 +19,12 @@ class TestRun(db.Model):
         index=True
     )
 
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    user = db.relationship('User', backref=db.backref('test_runs', lazy=True))
+
     endpoint = db.relationship("Endpoint", back_populates="test_runs", passive_deletes=True)
     test_suites = db.relationship('TestSuite', secondary=test_run_suites, back_populates='test_runs')
+    
     # Relationship to execution attempts
     attempts = db.relationship('TestRunAttempt', back_populates='test_run', cascade='all, delete-orphan')
     filters = db.relationship('PromptFilter', secondary=test_run_filters, backref='test_runs')
