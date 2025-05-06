@@ -19,7 +19,7 @@ env/
 */env/
 
 # Instance folder 
-instance/ 
+# instance/ 
 
 # Other common ignores...
 .DS_Store

@@ -1,0 +1,75 @@
+# List of Hugging Face datasets available for import
+# Each entry requires:
+# name: The Hugging Face dataset identifier (e.g., 'username/dataset_name')
+# prompt_field: The name of the column/key within the dataset containing the text prompt.
+# attack_type: A classification string for the type of attack represented (e.g., 'jailbreak', 'prompt_injection', 'harm').
+
+- name: rubend18/ChatGPT-Jailbreak-Prompts
+  prompt_field: Prompt
+  attack_type: jailbreak
+
+- name: deadbits/vigil-jailbreak-ada-002
+  prompt_field: text
+  attack_type: jailbreak
+
+- name: jdineen/human-jailbreaks
+  prompt_field: text
+  attack_type: jailbreak
+
+- name: Nannanzi/evaluation_jailbreak_safe
+  prompt_field: prompt
+  attack_type: jailbreak
+
+- name: dvilasuero/jailbreak-classification-gemma
+  prompt_field: prompt
+  attack_type: jailbreak
+
+- name: usisoftware-org/JailbreakBench
+  prompt_field: prompt
+  attack_type: jailbreak
+
+- name: jackhhao/jailbreak-classification
+  prompt_field: prompt
+  attack_type: jailbreak
+
+- name: allenai/tulu-3-trustllm-jailbreaktrigger-eval
+  prompt_field: prompt
+  attack_type: jailbreak
+
+- name: SpawnedShoyo/ai-jailbreak
+  prompt_field: text
+  attack_type: jailbreak
+
+- name: mrcuddle/Synthetic-JailBreak-RP
+  prompt_field: instruction
+  attack_type: jailbreak
+
+- name: EthanQzx/ImmuniPrompt-JailbreakDatasets
+  prompt_field: prompt
+  attack_type: jailbreak
+
+- name: jkazdan/amazing-jailbreak-llama
+  prompt_field: prompt
+  attack_type: jailbreak
+
+- name: sevdeawesome/jailbreak_success
+  prompt_field: jailbreak_prompt_text
+  attack_type: jailbreak
+
+- name: BornSaint/harmful_instructor
+  prompt_field: inputs
+  attack_type: harm
+
+- name: r1char9/prompt-2-prompt-injection
+  prompt_field: prompt_injection
+  attack_type: prompt_injection
+
+- name: Arthur-AI/arthur_prompt_injection_benchmark
+  prompt_field: text
+  attack_type: prompt_injection
+
+- name: hackaprompt/hackaprompt-dataset
+  prompt_field: prompt
+  attack_type: jailbreak
+
+# --- Add all other datasets you want to suggest ---
