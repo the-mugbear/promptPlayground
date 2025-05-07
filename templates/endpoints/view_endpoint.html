@@ -4,12 +4,43 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/endpoints/inline_edit.css') }}">
+<style>
+    .endpoint-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .endpoint-header h2 {
+        margin: 0;
+    }
+    
+    .test-form-container {
+        margin: 0;
+    }
+    
+    .test-form-container h3 {
+        display: none;
+    }
+    
+    .test-form-container form {
+        margin: 0;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="endpoint-details" data-endpoint-id="{{ endpoint.id }}">
-        <h2>Endpoint Details</h2>
+        <div class="endpoint-header">
+            <h2>Endpoint Details</h2>
+            <div class="test-form-container">
+                <form id="testForm" action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}" method="POST">
+                    <button type="submit" class="btn btn-primary">Test Endpoint</button>
+                </form>
+            </div>
+        </div>
         
         <div class="details-grid">
             <div class="editable-field" data-field="name">
@@ -60,23 +91,18 @@
 
         <div class="headers-box">
             <h3>Headers</h3>
-            {% if endpoint.headers %}
-                {% for header in endpoint.headers %}
-                    <div class="header-item">
-                        <span class="header-key">{{ header.key }}:</span>
-                        <span class="header-value">{{ header.value }}</span>
-                    </div>
-                {% endfor %}
-            {% else %}
-                <p><em>No headers available.</em></p>
-            {% endif %}
-        </div>
-
-        <div class="test-form-container">
-            <h3>Test Endpoint</h3>
-            <form id="testForm" action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}" method="POST">
-                <button type="submit" class="btn btn-primary">Test Endpoint</button>
-            </form>
+            <div class="headers-list">
+                {% if endpoint.headers and endpoint.headers|length > 0 %}
+                    {% for header in endpoint.headers %}
+                        <div class="header-item">
+                            <span class="header-key">{{ header.key }}:</span>
+                            <span class="header-value">{{ header.value }}</span>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="no-headers" style="display: none;"><em>No headers available.</em></p>
+                {% endif %}
+            </div>
         </div>
 
         {% if test_result %}

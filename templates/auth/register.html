@@ -2,23 +2,34 @@
 {% block title %}Register - {{ super() }}{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/auth/login.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth/register.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <div class="login-card"> <!-- Reuse login-card for consistent styling -->
+            <div class="register-card">
                 <h2 class="mb-4">[ New User Registration ]<span class="terminal-prompt"></span></h2>
                 
-                {# --- Registration Form --- #}
-                <form action="{{ url_for('auth_bp.register_with_code', code=code) }}" method="post" novalidate>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <form action="{{ url_for('auth_bp.register_with_code', code=code) }}" method="post" novalidate class="registration-form">
                     {{ form.hidden_tag() }}
                     
-                    <div class="mb-3">
+                    <div class="form-group">
                         {{ form.username.label(class="form-label") }}
-                        {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), size=32, placeholder="Create user identifier") }}
+                        {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), 
+                            size=32, 
+                            placeholder="Create user identifier",
+                            autocomplete="off") }}
                         {% if form.username.errors %}
                             <div class="invalid-feedback">
                                 {% for error in form.username.errors %}
@@ -28,9 +39,12 @@
                         {% endif %}
                     </div>
                     
-                    <div class="mb-3">
+                    <div class="form-group">
                         {{ form.email.label(class="form-label") }}
-                        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), size=64, placeholder="Enter comms channel") }}
+                        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), 
+                            size=64, 
+                            placeholder="Enter comms channel",
+                            autocomplete="off") }}
                         {% if form.email.errors %}
                             <div class="invalid-feedback">
                                 {% for error in form.email.errors %}
@@ -40,9 +54,13 @@
                         {% endif %}
                     </div>
                     
-                    <div class="mb-3">
+                    <div class="form-group">
                         {{ form.password.label(class="form-label") }}
-                        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), size=32, placeholder="Create security key") }}
+                        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), 
+                            size=32, 
+                            placeholder="Create security key",
+                            autocomplete="new-password") }}
+                        <div class="password-strength"></div>
                         {% if form.password.errors %}
                             <div class="invalid-feedback">
                                 {% for error in form.password.errors %}
@@ -52,9 +70,12 @@
                         {% endif %}
                     </div>
                     
-                    <div class="mb-3">
+                    <div class="form-group">
                         {{ form.password2.label(class="form-label") }}
-                        {{ form.password2(class="form-control" + (" is-invalid" if form.password2.errors else ""), size=32, placeholder="Verify security key") }}
+                        {{ form.password2(class="form-control" + (" is-invalid" if form.password2.errors else ""), 
+                            size=32, 
+                            placeholder="Verify security key",
+                            autocomplete="new-password") }}
                         {% if form.password2.errors %}
                             <div class="invalid-feedback">
                                 {% for error in form.password2.errors %}
@@ -64,7 +85,7 @@
                         {% endif %}
                     </div>
                     
-                    <div class="d-grid gap-2">
+                    <div class="form-group">
                         {{ form.submit(class="btn btn-primary", value="INITIALIZE USER PROFILE") }}
                     </div>
                 </form>
@@ -79,24 +100,51 @@
     </div>
 </div>
 
-<!-- Add JavaScript for terminal/typewriter effects -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Add body class for the theme
     document.body.classList.add('hacker-theme');
     
-    // Optional: Add typing/terminal effect
-    setTimeout(function() {
-        const terminalEffect = document.querySelector('.terminal-prompt');
-        if (terminalEffect) {
-            setInterval(() => {
-                terminalEffect.style.visibility = 
-                    terminalEffect.style.visibility === 'hidden' ? 'visible' : 'hidden';
-            }, 500);
-        }
-    }, 1000);
+    // Terminal prompt effect
+    const terminalEffect = document.querySelector('.terminal-prompt');
+    if (terminalEffect) {
+        setInterval(() => {
+            terminalEffect.style.visibility = 
+                terminalEffect.style.visibility === 'hidden' ? 'visible' : 'hidden';
+        }, 500);
+    }
     
-    // Optional: Add "datastream" animation to form fields when focused
+    // Password strength indicator
+    const passwordInput = document.querySelector('input[type="password"]');
+    const strengthIndicator = document.querySelector('.password-strength');
+    
+    if (passwordInput && strengthIndicator) {
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            let strength = 0;
+            
+            // Length check
+            if (password.length >= 8) strength++;
+            // Contains number
+            if (/\d/.test(password)) strength++;
+            // Contains special character
+            if (/[!@#$%^&*]/.test(password)) strength++;
+            // Contains uppercase
+            if (/[A-Z]/.test(password)) strength++;
+            
+            // Update strength indicator
+            strengthIndicator.className = 'password-strength';
+            if (strength <= 1) {
+                strengthIndicator.classList.add('weak');
+            } else if (strength <= 3) {
+                strengthIndicator.classList.add('medium');
+            } else {
+                strengthIndicator.classList.add('strong');
+            }
+        });
+    }
+    
+    // Form field animations
     const formInputs = document.querySelectorAll('.form-control');
     formInputs.forEach(input => {
         input.addEventListener('focus', function() {

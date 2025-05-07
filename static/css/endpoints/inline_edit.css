@@ -194,6 +194,8 @@
   margin-bottom: 0.5rem;
   border: 1px solid var(--neon-pink);
   transition: all 0.3s ease;
+  position: relative;
+  flex-wrap: wrap;
 }
 
 .headers-box .header-item:hover {
@@ -214,6 +216,7 @@
   word-break: break-word;
   color: #fff;
   font-family: 'Courier New', monospace;
+  min-width: 200px;
 }
 
 .headers-box .header-actions {
@@ -589,4 +592,45 @@
 .header-edit-modal button:hover {
   box-shadow: 0 0 15px var(--neon-pink);
   transform: translateY(-2px);
+}
+
+.headers-list {
+    position: relative;
+    min-height: 30px;
+}
+
+.headers-list:empty::after {
+    content: "No headers available.";
+    font-style: italic;
+    color: #666;
+    display: block;
+    padding: 10px 0;
+}
+
+.headers-list:not(:empty) + .no-headers {
+    display: none;
+}
+
+.token-info {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    margin-left: auto;
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+.token-info.valid {
+    color: var(--neon-blue);
+    background: rgba(0, 243, 255, 0.1);
+    border: 1px solid var(--neon-blue);
+    text-shadow: 0 0 5px var(--neon-blue);
+}
+
+.token-info.expired {
+    color: var(--neon-pink);
+    background: rgba(255, 0, 255, 0.1);
+    border: 1px solid var(--neon-pink);
+    text-shadow: 0 0 5px var(--neon-pink);
 } 

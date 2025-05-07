@@ -7,6 +7,138 @@ class InlineEditor {
     this.setupEventListeners();
   }
 
+  isJWT(token) {
+    // Remove 'Bearer ' prefix if present
+    if (token.startsWith('Bearer ')) {
+      token = token.substring(7);
+    }
+    
+    // Check if token matches JWT format (three base64-encoded parts separated by dots)
+    const jwtRegex = /^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$/;
+    console.log('Checking if token is JWT:', token);
+    console.log('Token matches regex:', jwtRegex.test(token));
+    return jwtRegex.test(token);
+  }
+
+  decodeJWT(token) {
+    try {
+      console.log('Attempting to decode JWT:', token);
+      // Remove 'Bearer ' prefix if present
+      if (token.startsWith('Bearer ')) {
+        token = token.substring(7);
+        console.log('Removed Bearer prefix:', token);
+      }
+
+      // Split the token into parts
+      const parts = token.split('.');
+      console.log('Token parts:', parts);
+      if (parts.length !== 3) {
+        console.log('Invalid token parts length:', parts.length);
+        return null;
+      }
+
+      try {
+        // Decode the payload (second part)
+        const payload = JSON.parse(atob(parts[1]));
+        console.log('Decoded payload:', payload);
+        return payload;
+      } catch (e) {
+        console.error('Error decoding payload:', e);
+        return null;
+      }
+    } catch (e) {
+      console.error('Error decoding JWT:', e);
+      return null;
+    }
+  }
+
+  getTokenExpirationInfo(token) {
+    console.log('Getting token expiration info for:', token);
+    if (!this.isJWT(token)) {
+      console.log('Token is not a valid JWT');
+      return null;
+    }
+
+    const payload = this.decodeJWT(token);
+    console.log('Decoded payload:', payload);
+    if (!payload || !payload.exp) {
+      console.log('No payload or expiration time found');
+      return null;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const expiresAt = payload.exp;
+    const timeRemaining = expiresAt - now;
+    console.log('Time remaining:', timeRemaining);
+
+    if (timeRemaining <= 0) {
+      console.log('Token has expired');
+      return {
+        isExpired: true,
+        message: 'Token has expired'
+      };
+    }
+
+    // Format the remaining time
+    const days = Math.floor(timeRemaining / (24 * 60 * 60));
+    const hours = Math.floor((timeRemaining % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((timeRemaining % (60 * 60)) / 60);
+
+    let message = '';
+    if (days > 0) message += `${days} day${days !== 1 ? 's' : ''} `;
+    if (hours > 0) message += `${hours} hour${hours !== 1 ? 's' : ''} `;
+    if (minutes > 0) message += `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+
+    console.log('Token expires in:', message.trim());
+    return {
+      isExpired: false,
+      message: `Expires in ${message.trim()}`
+    };
+  }
+
+  updateTokenExpirationInfo(headerItem) {
+    console.log('Updating token info for header item:', headerItem);
+    const valueSpan = headerItem.querySelector('.header-value');
+    const tokenInfo = headerItem.querySelector('.token-info');
+    
+    console.log('Value span:', valueSpan);
+    console.log('Current value:', valueSpan?.textContent);
+    
+    // Remove existing token info if any
+    if (tokenInfo) {
+      console.log('Removing existing token info');
+      tokenInfo.remove();
+    }
+
+    const value = valueSpan.textContent.trim();
+    console.log('Trimmed value:', value);
+    
+    if (value.toLowerCase().startsWith('bearer ')) {
+      console.log('Value starts with Bearer, checking JWT');
+      const expirationInfo = this.getTokenExpirationInfo(value);
+      console.log('Expiration info:', expirationInfo);
+      
+      if (expirationInfo) {
+        console.log('Creating token info span');
+        const infoSpan = document.createElement('span');
+        infoSpan.className = `token-info ${expirationInfo.isExpired ? 'expired' : 'valid'}`;
+        infoSpan.textContent = expirationInfo.message;
+        
+        // Insert before the actions div
+        const actions = headerItem.querySelector('.header-actions');
+        console.log('Actions div:', actions);
+        
+        if (actions) {
+          console.log('Inserting before actions');
+          headerItem.insertBefore(infoSpan, actions);
+        } else {
+          console.log('Appending to header item');
+          headerItem.appendChild(infoSpan);
+        }
+      }
+    }
+  }
+
   setupEventListeners() {
     // Make fields editable on click
     document.querySelectorAll('.editable-field .view-mode span').forEach(span => {
@@ -148,6 +280,9 @@ class InlineEditor {
 
     headerItem.appendChild(actions);
 
+    // Check for JWT token in existing header
+    this.updateTokenExpirationInfo(headerItem);
+
     actions.querySelector('.edit-btn').addEventListener('click', async (e) => {
       e.stopPropagation();
       const oldKey = keySpan.textContent.replace(':', '').trim();
@@ -204,9 +339,7 @@ class InlineEditor {
 
         if (confirmed) {
           try {
-            await this.updateHeader(oldKey, newKey, newValue);
-            keySpan.textContent = newKey + ':';
-            valueSpan.textContent = newValue;
+            await this.handleHeaderEdit(headerItem, newKey, newValue);
           } catch (error) {
             console.error('Failed to update header:', error);
             alert('Failed to update header. Please try again.');
@@ -311,6 +444,8 @@ class InlineEditor {
         
         this.makeHeaderEditable(headerItem);
         headersBox.insertBefore(headerItem, headersBox.lastElementChild);
+        // Check for JWT token in new header value
+        this.updateTokenExpirationInfo(headerItem);
         removeModal();
       } catch (error) {
         console.error('Failed to add header:', error);
@@ -336,6 +471,21 @@ class InlineEditor {
       }
     };
     document.addEventListener('keydown', handleEscape);
+  }
+
+  async handleHeaderEdit(headerItem, key, value) {
+    try {
+      await this.updateHeader(key, key, value);
+      const keySpan = headerItem.querySelector('.header-key');
+      const valueSpan = headerItem.querySelector('.header-value');
+      keySpan.textContent = key + ':';
+      valueSpan.textContent = value;
+      // Update token info after editing
+      this.updateTokenExpirationInfo(headerItem);
+    } catch (error) {
+      console.error('Failed to update header:', error);
+      alert('Failed to update header. Please try again.');
+    }
   }
 
   async updateHeader(oldKey, newKey, newValue) {
