@@ -3,7 +3,7 @@
  */
 class InlineEditor {
   constructor() {
-    this.endpointId = document.querySelector('.endpoint-details').dataset.endpointId;
+    this.endpointId = document.querySelector('.endpoint-details')?.dataset.endpointId;
     this.setupEventListeners();
   }
 
@@ -153,28 +153,85 @@ class InlineEditor {
       const oldKey = keySpan.textContent.replace(':', '').trim();
       const oldValue = valueSpan.textContent.trim();
       
-      const newKey = prompt('Enter new header key:', oldKey);
-      if (!newKey) return;
-      
-      const newValue = prompt('Enter new header value:', oldValue);
-      if (!newValue) return;
+      // Create a modal dialog for editing
+      const modal = document.createElement('div');
+      modal.className = 'header-edit-modal';
+      modal.innerHTML = `
+        <div class="modal-content">
+          <h3>Edit Header</h3>
+          <div class="form-group">
+            <label>Key:</label>
+            <input type="text" id="header-key-input" value="${this.escapeHtml(oldKey)}">
+          </div>
+          <div class="form-group">
+            <label>Value:</label>
+            <textarea id="header-value-input">${this.escapeHtml(oldValue)}</textarea>
+          </div>
+          <div class="modal-actions">
+            <button class="cancel-btn">Cancel</button>
+            <button class="save-btn">Save</button>
+          </div>
+        </div>
+      `;
 
-      const confirmed = await this.showConfirmationDialog(
-        'Header',
-        `${oldKey}: ${oldValue}`,
-        `${newKey}: ${newValue}`
-      );
+      document.body.appendChild(modal);
 
-      if (confirmed) {
-        try {
-          await this.updateHeader(oldKey, newKey, newValue);
-          keySpan.textContent = newKey + ':';
-          valueSpan.textContent = newValue;
-        } catch (error) {
-          console.error('Failed to update header:', error);
-          alert('Failed to update header. Please try again.');
+      // Function to remove modal
+      const removeModal = () => {
+        if (document.body.contains(modal)) {
+          document.body.removeChild(modal);
         }
-      }
+      };
+
+      // Handle save
+      modal.querySelector('.save-btn').addEventListener('click', async () => {
+        const newKey = modal.querySelector('#header-key-input').value.trim();
+        const newValue = modal.querySelector('#header-value-input').value.trim();
+        
+        if (!newKey) {
+          alert('Header key cannot be empty');
+          return;
+        }
+
+        // Remove the edit modal first
+        removeModal();
+
+        const confirmed = await this.showConfirmationDialog(
+          'Header',
+          `${oldKey}: ${oldValue}`,
+          `${newKey}: ${newValue}`
+        );
+
+        if (confirmed) {
+          try {
+            await this.updateHeader(oldKey, newKey, newValue);
+            keySpan.textContent = newKey + ':';
+            valueSpan.textContent = newValue;
+          } catch (error) {
+            console.error('Failed to update header:', error);
+            alert('Failed to update header. Please try again.');
+          }
+        }
+      });
+
+      // Handle cancel
+      modal.querySelector('.cancel-btn').addEventListener('click', removeModal);
+
+      // Handle clicking outside the modal
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          removeModal();
+        }
+      });
+
+      // Handle escape key
+      const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+          removeModal();
+          document.removeEventListener('keydown', handleEscape);
+        }
+      };
+      document.addEventListener('keydown', handleEscape);
     });
 
     actions.querySelector('.delete-btn').addEventListener('click', async (e) => {
@@ -201,67 +258,142 @@ class InlineEditor {
   }
 
   async addNewHeader() {
-    const key = prompt('Enter header key:');
-    if (!key) return;
+    // Create a modal dialog for adding
+    const modal = document.createElement('div');
+    modal.className = 'header-edit-modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h3>Add Header</h3>
+        <div class="form-group">
+          <label>Key:</label>
+          <input type="text" id="header-key-input">
+        </div>
+        <div class="form-group">
+          <label>Value:</label>
+          <textarea id="header-value-input"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="cancel-btn">Cancel</button>
+          <button class="save-btn">Save</button>
+        </div>
+      </div>
+    `;
 
-    const value = prompt('Enter header value:');
-    if (!value) return;
+    document.body.appendChild(modal);
 
-    try {
-      await this.updateHeader('', key, value);
+    // Function to remove modal
+    const removeModal = () => {
+      if (document.body.contains(modal)) {
+        document.body.removeChild(modal);
+      }
+    };
+
+    // Handle save
+    modal.querySelector('.save-btn').addEventListener('click', async () => {
+      const key = modal.querySelector('#header-key-input').value.trim();
+      const value = modal.querySelector('#header-value-input').value.trim();
       
-      const headersBox = document.querySelector('.headers-box');
-      const headerItem = document.createElement('div');
-      headerItem.className = 'header-item';
-      headerItem.innerHTML = `
-        <span class="header-key">${this.escapeHtml(key)}:</span>
-        <span class="header-value">${this.escapeHtml(value)}</span>
-      `;
-      
-      this.makeHeaderEditable(headerItem);
-      headersBox.insertBefore(headerItem, headersBox.lastElementChild);
-    } catch (error) {
-      console.error('Failed to add header:', error);
-      alert('Failed to add header. Please try again.');
-    }
+      if (!key) {
+        alert('Header key cannot be empty');
+        return;
+      }
+
+      try {
+        await this.updateHeader('', key, value);
+        
+        const headersBox = document.querySelector('.headers-box');
+        const headerItem = document.createElement('div');
+        headerItem.className = 'header-item';
+        headerItem.innerHTML = `
+          <span class="header-key">${this.escapeHtml(key)}:</span>
+          <span class="header-value">${this.escapeHtml(value)}</span>
+        `;
+        
+        this.makeHeaderEditable(headerItem);
+        headersBox.insertBefore(headerItem, headersBox.lastElementChild);
+        removeModal();
+      } catch (error) {
+        console.error('Failed to add header:', error);
+        alert('Failed to add header. Please try again.');
+      }
+    });
+
+    // Handle cancel
+    modal.querySelector('.cancel-btn').addEventListener('click', removeModal);
+
+    // Handle clicking outside the modal
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        removeModal();
+      }
+    });
+
+    // Handle escape key
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        removeModal();
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
   }
 
   async updateHeader(oldKey, newKey, newValue) {
-    const response = await fetch(`/endpoints/${this.endpointId}/update_header`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      body: JSON.stringify({
-        old_key: oldKey,
-        new_key: newKey,
-        new_value: newValue
-      })
-    });
+    console.log('Updating header:', { oldKey, newKey, newValue });
+    try {
+      const response = await fetch(`/endpoints/${this.endpointId}/update_header`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+          old_key: oldKey,
+          new_key: newKey,
+          new_value: newValue
+        })
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to update header');
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update header');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error updating header:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   async deleteHeader(key) {
-    const response = await fetch(`/endpoints/${this.endpointId}/delete_header`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      body: JSON.stringify({ key })
-    });
+    console.log('Deleting header:', key);
+    try {
+      const response = await fetch(`/endpoints/${this.endpointId}/delete_header`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ key })
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to delete header');
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete header');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error deleting header:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   escapeHtml(str) {

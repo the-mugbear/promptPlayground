@@ -353,6 +353,82 @@ def update_endpoint_field(endpoint_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
+@endpoints_bp.route('/<int:endpoint_id>/update_header', methods=['PUT'])
+@login_required
+def update_header(endpoint_id):
+    """
+    PUT /endpoints/<id>/update_header -> Updates a single header via AJAX
+    """
+    endpoint = Endpoint.query.get_or_404(endpoint_id)
+    data = request.get_json(force=True)
+    
+    # Get the old and new header data
+    old_key = data.get('old_key')
+    new_key = data.get('new_key')
+    new_value = data.get('new_value')
+    
+    if not new_key or not new_value:
+        return jsonify({"error": "Header key and value are required"}), 400
+        
+    try:
+        # If this is a new header (old_key is empty)
+        if not old_key:
+            # Check if header already exists
+            existing = APIHeader.query.filter_by(endpoint_id=endpoint_id, key=new_key).first()
+            if existing:
+                return jsonify({"error": f"Header '{new_key}' already exists"}), 400
+                
+            # Create new header
+            header = APIHeader(endpoint_id=endpoint_id, key=new_key, value=new_value)
+            db.session.add(header)
+        else:
+            # Update existing header
+            header = APIHeader.query.filter_by(endpoint_id=endpoint_id, key=old_key).first()
+            if not header:
+                return jsonify({"error": f"Header '{old_key}' not found"}), 404
+                
+            # If key is changing, check for conflicts
+            if old_key != new_key:
+                existing = APIHeader.query.filter_by(endpoint_id=endpoint_id, key=new_key).first()
+                if existing:
+                    return jsonify({"error": f"Header '{new_key}' already exists"}), 400
+            
+            header.key = new_key
+            header.value = new_value
+            
+        db.session.commit()
+        return jsonify({"message": "Header updated successfully"}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@endpoints_bp.route('/<int:endpoint_id>/delete_header', methods=['DELETE'])
+@login_required
+def delete_header(endpoint_id):
+    """
+    DELETE /endpoints/<id>/delete_header -> Deletes a single header via AJAX
+    """
+    endpoint = Endpoint.query.get_or_404(endpoint_id)
+    data = request.get_json(force=True)
+    
+    key = data.get('key')
+    if not key:
+        return jsonify({"error": "Header key is required"}), 400
+        
+    try:
+        header = APIHeader.query.filter_by(endpoint_id=endpoint_id, key=key).first()
+        if not header:
+            return jsonify({"error": f"Header '{key}' not found"}), 404
+            
+        db.session.delete(header)
+        db.session.commit()
+        return jsonify({"message": "Header deleted successfully"}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
 # Helper to consolidate form data extraction across endpoints
 def get_endpoint_form_data(default_payload=None):
     """
