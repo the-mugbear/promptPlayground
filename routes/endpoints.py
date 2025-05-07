@@ -148,15 +148,17 @@ def handle_create_endpoint():
             http_payload=form_data["payload"]
         )
         
-        # Process headers if provided
+        # Add and commit the endpoint first to get its ID
+        db.session.add(endpoint)
+        db.session.commit()
+        
+        # Now process headers if provided
         if form_data["raw_headers"]:
             parsed_headers = parse_raw_headers(form_data["raw_headers"])
             for key, value in parsed_headers.items():
                 header = APIHeader(endpoint_id=endpoint.id, key=key, value=value)
                 db.session.add(header)
-        
-        db.session.add(endpoint)
-        db.session.commit()
+            db.session.commit()
         
         flash("Endpoint created successfully", "success")
         return redirect(url_for("endpoints_bp.view_endpoint_details", endpoint_id=endpoint.id))
