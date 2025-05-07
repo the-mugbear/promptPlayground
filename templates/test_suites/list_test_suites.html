@@ -111,6 +111,13 @@
 <div class="content-card">
   <h1>All Test Suites</h1>
 
+  <div class="action-buttons">
+    <a href="{{ url_for('test_suites_bp.create_test_suite_form') }}" class="btn btn-primary">Create New Suite</a>
+    <button type="button" class="btn btn-secondary" onclick="document.getElementById('importFile').click()">Import Suite</button>
+    <input type="file" id="importFile" accept=".json" style="display: none" onchange="importTestSuite(this)">
+    <a href="{{ url_for('test_suites_bp.export_all_test_suites') }}" class="btn btn-secondary">Export All Suites</a>
+  </div>
+
   <input 
     type="search" 
     id="searchSuite" 
@@ -143,6 +150,13 @@
             >
               View Test Cases
             </button>
+
+            <a 
+              href="{{ url_for('test_suites_bp.export_test_suite', suite_id=suite.id) }}" 
+              class="btn btn-secondary"
+            >
+              Export
+            </a>
 
             <form action="{{ url_for('test_suites_bp.delete_test_suite', suite_id=suite.id) }}" method="POST" style="display:inline;">
               <button 
@@ -188,5 +202,33 @@
       hideDetailsText: "Hide Test Cases"    // Text when details are visible
     }
   ];
+
+async function importTestSuite(input) {
+  if (!input.files || !input.files[0]) return;
+  
+  const formData = new FormData();
+  formData.append('file', input.files[0]);
+  
+  try {
+    const response = await fetch('/test_suites/import_suite', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      alert('Test suite imported successfully!');
+      window.location.reload();
+    } else {
+      alert(`Error importing test suite: ${result.error}`);
+    }
+  } catch (error) {
+    alert('Error importing test suite: ' + error.message);
+  }
+  
+  // Reset the input
+  input.value = '';
+}
 </script>
 {% endblock %}

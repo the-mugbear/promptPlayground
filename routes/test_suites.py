@@ -165,7 +165,7 @@ def delete_test_suite(suite_id):
     """
     suite_to_delete = TestSuite.query.get_or_404(suite_id)
 
-    # Option A) If you want to block deletion if it’s used in a run:
+    # Option A) If you want to block deletion if it's used in a run:
     if suite_to_delete.test_runs:
         flash("Cannot delete this suite because it's used by one or more test runs.", "error")
         return redirect(url_for('test_suites_bp.list_test_suites'))
@@ -281,7 +281,7 @@ def add_test_case_to_suite(suite_id):
     # Fetch suite
     suite = TestSuite.query.get_or_404(suite_id)
 
-    # Decide on transformations (here: inherit suite’s defaults)
+    # Decide on transformations (here: inherit suite's defaults)
     transformations = suite_transformations = suite_transformations = suite_transformations = process_transformations(request.form) if False else (suite_transformations := [])
 
     # Create & associate
@@ -387,3 +387,139 @@ def import_hf_datasets():
     # GET request: Pass the loaded dictionary to the template
     return render_template('test_suites/import_datasets.html',
                            available_datasets=available_datasets_dict)
+
+@test_suites_bp.route('/<int:suite_id>/export', methods=['GET'])
+@login_required
+def export_test_suite(suite_id):
+    """Export a test suite to a JSON file."""
+    suite = TestSuite.query.get_or_404(suite_id)
+    
+    # Create export data
+    export_data = {
+        'version': '1.0',
+        'test_suite': {
+            'description': suite.description,
+            'behavior': suite.behavior,
+            'objective': suite.objective,
+            'test_cases': []
+        }
+    }
+    
+    # Add test cases
+    for tc in suite.test_cases:
+        case_data = {
+            'prompt': tc.prompt,
+            'transformations': tc.transformations,
+            'source': tc.source,
+            'attack_type': tc.attack_type,
+            'data_type': tc.data_type,
+            'nist_risk': tc.nist_risk,
+            'reviewed': tc.reviewed
+        }
+        export_data['test_suite']['test_cases'].append(case_data)
+    
+    # Create response with JSON file
+    response = jsonify(export_data)
+    response.headers['Content-Disposition'] = f'attachment; filename=test_suite_{suite_id}.json'
+    return response
+
+@test_suites_bp.route('/import_suite', methods=['POST'])
+@login_required
+def import_test_suite():
+    """Import a test suite from a JSON file."""
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    try:
+        import_data = json.loads(file.read())
+        
+        # Validate version
+        if import_data.get('version') != '1.0':
+            return jsonify({'error': 'Unsupported file version'}), 400
+        
+        suite_data = import_data.get('test_suite')
+        if not suite_data:
+            return jsonify({'error': 'Invalid file format'}), 400
+        
+        # Create new test suite
+        new_suite = TestSuite(
+            description=suite_data['description'],
+            behavior=suite_data.get('behavior'),
+            objective=suite_data.get('objective'),
+            user_id=current_user.id
+        )
+        db.session.add(new_suite)
+        
+        # Create test cases
+        for case_data in suite_data.get('test_cases', []):
+            test_case = TestCase(
+                prompt=case_data['prompt'],
+                transformations=case_data.get('transformations'),
+                source=case_data.get('source'),
+                attack_type=case_data.get('attack_type'),
+                data_type=case_data.get('data_type'),
+                nist_risk=case_data.get('nist_risk'),
+                reviewed=case_data.get('reviewed', False)
+            )
+            db.session.add(test_case)
+            new_suite.test_cases.append(test_case)
+        
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Test suite imported successfully',
+            'suite_id': new_suite.id
+        })
+        
+    except json.JSONDecodeError:
+        return jsonify({'error': 'Invalid JSON file'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Error importing test suite: {str(e)}'}), 500
+
+@test_suites_bp.route('/export_all', methods=['GET'])
+@login_required
+def export_all_test_suites():
+    """Export all test suites to a JSON file."""
+    # Query all test suites
+    test_suites = TestSuite.query.all()
+    
+    # Create export data
+    export_data = {
+        'version': '1.0',
+        'exported_at': datetime.utcnow().isoformat(),
+        'test_suites': []
+    }
+    
+    # Add each test suite
+    for suite in test_suites:
+        suite_data = {
+            'description': suite.description,
+            'behavior': suite.behavior,
+            'objective': suite.objective,
+            'test_cases': []
+        }
+        
+        # Add test cases for this suite
+        for tc in suite.test_cases:
+            case_data = {
+                'prompt': tc.prompt,
+                'transformations': tc.transformations,
+                'source': tc.source,
+                'attack_type': tc.attack_type,
+                'data_type': tc.data_type,
+                'nist_risk': tc.nist_risk,
+                'reviewed': tc.reviewed
+            }
+            suite_data['test_cases'].append(case_data)
+        
+        export_data['test_suites'].append(suite_data)
+    
+    # Create response with JSON file
+    response = jsonify(export_data)
+    response.headers['Content-Disposition'] = 'attachment; filename=all_test_suites.json'
+    return response
