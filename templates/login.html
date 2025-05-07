@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block head %}
+<style>
+    .login-container {
+        max-width: 400px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: rgba(26, 26, 26, 0.95);
+        border: 1px solid #00ff00;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .login-container::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(
+            45deg,
+            transparent,
+            rgba(0, 255, 0, 0.1),
+            transparent
+        );
+        transform: rotate(45deg);
+        animation: shine 3s infinite;
+    }
+
+    @keyframes shine {
+        0% {
+            transform: translateX(-100%) rotate(45deg);
+        }
+        100% {
+            transform: translateX(100%) rotate(45deg);
+        }
+    }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        color: #00ff00;
+        text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    }
+
+    .login-header h1 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+        font-family: 'Orbitron', sans-serif;
+    }
+
+    .login-header p {
+        color: #888;
+        font-size: 0.9rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #00ff00;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 0.8rem;
+        background: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 4px;
+        color: #fff;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: #00ff00;
+        box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+    }
+
+    .remember-me {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        color: #888;
+    }
+
+    .remember-me input[type="checkbox"] {
+        margin-right: 0.5rem;
+        accent-color: #00ff00;
+    }
+
+    .submit-btn {
+        width: 100%;
+        padding: 1rem;
+        background: #00ff00;
+        color: #000;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .submit-btn:hover {
+        background: #00cc00;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+    }
+
+    .register-link {
+        text-align: center;
+        margin-top: 1.5rem;
+        color: #888;
+    }
+
+    .register-link a {
+        color: #00ff00;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+
+    .register-link a:hover {
+        text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    }
+
+    .flash-messages {
+        margin-bottom: 1.5rem;
+    }
+
+    .flash-message {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 4px;
+        background: rgba(255, 0, 0, 0.1);
+        border: 1px solid #ff0000;
+        color: #ff0000;
+        text-align: center;
+    }
+
+    .flash-message.success {
+        background: rgba(0, 255, 0, 0.1);
+        border-color: #00ff00;
+        color: #00ff00;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-header">
+        <h1>SYSTEM LOGIN</h1>
+        <p>Enter your credentials to access the system</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message {% if category == 'success' %}success{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('auth_bp.login') }}">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-group">
+            {{ form.username.label }}
+            {{ form.username(class="form-control") }}
+            {% if form.username.errors %}
+                {% for error in form.username.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            {{ form.password.label }}
+            {{ form.password(class="form-control") }}
+            {% if form.password.errors %}
+                {% for error in form.password.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <div class="remember-me">
+            {{ form.remember_me() }}
+            {{ form.remember_me.label }}
+        </div>
+
+        {{ form.submit(class="submit-btn") }}
+    </form>
+
+    <div class="register-link">
+        <p>New user? Contact an administrator for an invitation code.</p>
+    </div>
+</div>
+{% endblock %} 
