@@ -31,7 +31,6 @@
             color: var(--accent-color, #00FF41); /* Example: change color on hover */
             outline: none; /* Remove default focus outline if needed */
         }
-        
     </style>
 
     {% block head %}{% endblock %}
@@ -185,7 +184,7 @@
         (function() {
             const themeOriginalLink = document.getElementById('theme-original');
             const themeInspiredLink = document.getElementById('theme-inspired');
-            const toggleButton = document.getElementById('theme-toggle'); // Still finds the button by ID
+            const toggleButton = document.getElementById('theme-toggle');
             const localStorageKey = 'selectedTheme';
 
             if (!themeOriginalLink || !themeInspiredLink) {
@@ -194,7 +193,6 @@
             }
             if (!toggleButton) {
                  console.warn("Theme toggle button not found in footer. Toggling disabled.");
-                 // Still apply saved theme even if button is missing
             }
 
             function applyTheme(themeName) {
@@ -203,12 +201,10 @@
                     if (themeName === 'inspired') {
                         themeOriginalLink.disabled = true;
                         themeInspiredLink.disabled = false;
-                        // Removed text content update for the footer button
                         console.log("Applied Inspired Theme");
-                    } else { // Default to original theme
+                    } else {
                         themeOriginalLink.disabled = false;
                         themeInspiredLink.disabled = true;
-                        // Removed text content update for the footer button
                         console.log("Applied Original Theme");
                     }
                     localStorage.setItem(localStorageKey, themeName);
@@ -226,13 +222,11 @@
             }
 
             const savedTheme = localStorage.getItem(localStorageKey) || 'original';
-            applyTheme(savedTheme); // Apply saved theme on load
+            applyTheme(savedTheme);
 
-            // Add listener only if button exists
             if (toggleButton) {
                 toggleButton.addEventListener('click', toggleTheme);
             }
-
         })();
     </script>
 

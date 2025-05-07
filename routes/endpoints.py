@@ -9,6 +9,7 @@ from services.common.http_request_service import replay_post_request
 from services.common.header_parser_service import parse_raw_headers, headers_from_apiheader_list
 from werkzeug.exceptions import BadRequest
 from sqlalchemy.orm import joinedload
+import json
 
 endpoints_bp = Blueprint('endpoints_bp', __name__, url_prefix='/endpoints')
 
@@ -111,48 +112,59 @@ def manual_test():
 @endpoints_bp.route('/create', methods=['POST'])
 @login_required
 def handle_create_endpoint():
+    """Handle the creation of a new endpoint."""
     try:
-        data = get_endpoint_form_data(default_payload=(
-            '''{
-                "messages": [
-                    {"role": "user", "content": "{{INJECT_PROMPT}}"}
-                ]
-            }'''
-        ))
-        # Validate required fields for creation
-        if not data["name"] or not data["hostname"] or not data["endpoint_path"]:
-            raise BadRequest("Missing required fields: 'name', 'hostname' or 'endpoint'.")
-        # For creation, ensure the payload contains the injection prompt.
-        if data["payload"] and "{{INJECT_PROMPT}}" not in data["payload"]:
-            raise BadRequest("The HTTP payload must contain '{{INJECT_PROMPT}}'.")
-    
-        new_endpoint = Endpoint(
-            name=data["name"],
-            hostname=data["hostname"],
-            endpoint=data["endpoint_path"],
-            http_payload=data["payload"],
-            user_id=current_user.id
+        # Get form data
+        form_data = get_endpoint_form_data()
+        
+        # Validate required fields
+        if not form_data["name"] or not form_data["hostname"] or not form_data["endpoint_path"]:
+            flash("Name, hostname, and endpoint path are required", "error")
+            return redirect(url_for("endpoints_bp.create_endpoint_form"))
+        
+        # Validate that the payload contains the injection prompt token
+        if "{{INJECT_PROMPT}}" not in form_data["payload"]:
+            flash("HTTP Payload must contain the {{INJECT_PROMPT}} token", "error")
+            return redirect(url_for("endpoints_bp.create_endpoint_form"))
+            
+        # Validate that the token is not directly quoted (but can be part of a JSON string)
+        if '"{{INJECT_PROMPT}}"' in form_data["payload"] and not any(
+            pattern in form_data["payload"] 
+            for pattern in [
+                '"content": "{{INJECT_PROMPT}}"',
+                '"prompt": "{{INJECT_PROMPT}}"',
+                '"input": "{{INJECT_PROMPT}}"',
+                '"text": "{{INJECT_PROMPT}}"'
+            ]
+        ):
+            flash("The {{INJECT_PROMPT}} token should be part of a JSON string value (e.g., in a 'content' or 'prompt' field)", "error")
+            return redirect(url_for("endpoints_bp.create_endpoint_form"))
+        
+        # Create new endpoint
+        endpoint = Endpoint(
+            name=form_data["name"],
+            hostname=form_data["hostname"],
+            endpoint=form_data["endpoint_path"],
+            http_payload=form_data["payload"]
         )
-        db.session.add(new_endpoint)
-        db.session.flush()  # Ensure new_endpoint.id is assigned
-
-        # Use the already parsed headers (which includes the cookie header handled appropriately).
-        for key, value in data["parsed_headers"].items():
-            header = APIHeader(endpoint_id=new_endpoint.id, key=key, value=value)
-            db.session.add(header)
-
+        
+        # Process headers if provided
+        if form_data["raw_headers"]:
+            parsed_headers = parse_raw_headers(form_data["raw_headers"])
+            for key, value in parsed_headers.items():
+                header = APIHeader(endpoint_id=endpoint.id, key=key, value=value)
+                db.session.add(header)
+        
+        db.session.add(endpoint)
         db.session.commit()
-        flash('Endpoint created successfully!', 'success')
-        return redirect(url_for('endpoints_bp.view_endpoint_details', endpoint_id=new_endpoint.id))
-
-    except BadRequest as e:
-        db.session.rollback()
-        flash(str(e), 'error')
-        return redirect(url_for('endpoints_bp.create_endpoint_form'))
+        
+        flash("Endpoint created successfully", "success")
+        return redirect(url_for("endpoints_bp.view_endpoint_details", endpoint_id=endpoint.id))
+        
     except Exception as e:
         db.session.rollback()
-        flash(f'Error creating endpoint: {str(e)}', 'error')
-        return redirect(url_for('endpoints_bp.create_endpoint_form'))
+        flash(f"Error creating endpoint: {str(e)}", "error")
+        return redirect(url_for("endpoints_bp.create_endpoint_form"))
 
 
 @endpoints_bp.route('/get_suggestions', methods=['GET'])
@@ -225,24 +237,119 @@ def get_endpoint_json(endpoint_id):
     return jsonify(endpoint_obj.to_dict())
 
 @endpoints_bp.route('/test', methods=['POST'])
+@endpoints_bp.route('/<int:endpoint_id>/test', methods=['POST'])
 @login_required
-def test_endpoint():
+def test_endpoint(endpoint_id=None):
     """
-    Unified endpoint that tests an API.
-    If 'endpoint_id' is provided, fetch stored values; otherwise, use form values.
+    Test an endpoint with its current configuration.
+    Can be used to test either an existing endpoint (with ID) or a new endpoint configuration.
     """
-    data = get_endpoint_form_data()
-    if "{{INJECT_PROMPT}}" in data["payload"]:
-        data["payload"] = data["payload"].replace("{{INJECT_PROMPT}}", "What is 4 + 3?")
-    result = replay_post_request(data["hostname"], data["endpoint_path"], data["payload"], data["raw_headers"])
-    return render_template(
-        data["template"],
-        test_payload=data["payload"],
-        test_response=result.get("response_text"),
-        test_status_code=result.get("status_code", "N/A"),
-        test_headers_sent=result.get("headers_sent", {}),
-        endpoint=data["endpoint_obj"]
-    )
+    if endpoint_id:
+        # Test an existing endpoint
+        endpoint = Endpoint.query.get_or_404(endpoint_id)
+        payload = endpoint.http_payload
+        headers_dict = headers_from_apiheader_list(endpoint.headers)
+        hostname = endpoint.hostname
+        endpoint_path = endpoint.endpoint
+    else:
+        # Test a new endpoint configuration from the form
+        payload = request.form.get('http_payload', '').strip()
+        raw_headers = request.form.get('raw_headers', '').strip()
+        headers_dict = parse_raw_headers(raw_headers) if raw_headers else {}
+        hostname = request.form.get('hostname', '').strip()
+        endpoint_path = request.form.get('endpoint', '').strip()
+    
+    # Validate that the payload contains the INJECT_PROMPT token
+    if "{{INJECT_PROMPT}}" not in payload:
+        flash("Error: The HTTP payload must contain '{{INJECT_PROMPT}}' token.", 'error')
+        if endpoint_id:
+            return redirect(url_for('endpoints_bp.view_endpoint_details', endpoint_id=endpoint_id))
+        else:
+            return redirect(url_for('endpoints_bp.create_endpoint_form'))
+    
+    # Convert headers dictionary to string format
+    headers_str = "\n".join(f"{k}: {v}" for k, v in headers_dict.items())
+    
+    # Replace the injection prompt with a test value
+    test_prompt = "What is 4 + 3?"
+    payload = payload.replace("{{INJECT_PROMPT}}", test_prompt)
+    
+    # Validate JSON format
+    try:
+        json.loads(payload)
+    except json.JSONDecodeError as e:
+        flash(f"Error: Invalid JSON in payload: {str(e)}", 'error')
+        if endpoint_id:
+            return redirect(url_for('endpoints_bp.view_endpoint_details', endpoint_id=endpoint_id))
+        else:
+            return redirect(url_for('endpoints_bp.create_endpoint_form'))
+    
+    # Ensure the hostname has the correct protocol and handle container networking
+    if not hostname.startswith(('http://', 'https://')):
+        hostname = 'http://' + hostname
+    
+    # Replace localhost/127.0.0.1 with host.containers.internal for container networking
+    if hostname.startswith('http://127.0.0.1') or hostname.startswith('http://localhost'):
+        hostname = hostname.replace('127.0.0.1', 'host.containers.internal').replace('localhost', 'host.containers.internal')
+    
+    # Make the request
+    result = replay_post_request(hostname, endpoint_path, payload, headers_str)
+    
+    if endpoint_id:
+        # Return the results in the view_endpoint template
+        return render_template(
+            'endpoints/view_endpoint.html',
+            endpoint=endpoint,
+            test_result={
+                'payload_sent': payload,
+                'response_data': result.get("response_text"),
+                'status_code': result.get("status_code", "N/A"),
+                'headers_sent': result.get("headers_sent", {})
+            }
+        )
+    else:
+        # Return the results in the create_endpoint template
+        return render_template(
+            'endpoints/create_endpoint.html',
+            payload_templates=PAYLOAD_TEMPLATES,
+            test_payload=payload,
+            test_response=result.get("response_text"),
+            test_status_code=result.get("status_code", "N/A"),
+            test_headers_sent=result.get("headers_sent", {})
+        )
+
+@endpoints_bp.route('/<int:endpoint_id>/update_field', methods=['PUT'])
+@login_required
+def update_endpoint_field(endpoint_id):
+    """
+    PUT /endpoints/<id>/update_field -> Updates a single field of an endpoint via AJAX
+    """
+    endpoint = Endpoint.query.get_or_404(endpoint_id)
+    data = request.get_json(force=True)
+    
+    # Get the field name and value from the request
+    field_name = list(data.keys())[0]  # Get the first (and only) key
+    value = data[field_name]
+    
+    # Map the field name to the actual model attribute
+    field_mapping = {
+        'name': 'name',
+        'hostname': 'hostname',
+        'path': 'endpoint',  # Note: 'path' in frontend maps to 'endpoint' in model
+        'timestamp': 'timestamp',
+        'http_payload': 'http_payload'
+    }
+    
+    if field_name not in field_mapping:
+        return jsonify({"error": f"Invalid field: {field_name}"}), 400
+        
+    try:
+        setattr(endpoint, field_mapping[field_name], value)
+        db.session.commit()
+        return jsonify({"message": f"Updated {field_name}"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 # Helper to consolidate form data extraction across endpoints
 def get_endpoint_form_data(default_payload=None):

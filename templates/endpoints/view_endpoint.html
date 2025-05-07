@@ -1,235 +1,108 @@
 {% extends "base.html" %}
-{% block title %}View & Test Endpoint #{{ endpoint.id }}{% endblock %}
+
+{% block title %}View Endpoint{% endblock %}
 
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
-  <style>
-    .results-box, .results-box pre {
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      word-break: break-word;
-      width: 100%;
-      max-width: 100%;
-      overflow-x: hidden;
-      overflow-y: auto;
-    }
-    label { margin-top: 0; }
-    #readOnlyHeadersDisplay {
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      word-break: break-word;
-      background-color: #000;
-      border: 1px solid var(--accent-color);
-      border-radius: 4px;
-      padding: 0.5rem;
-      margin-bottom: 1rem;
-      max-height: 500px;
-      overflow-y: auto;
-    }
-    .header-display { margin-bottom: 0.5rem; }
-    .header-display strong { color: var(--accent-color); }
-    .payload-box {
-      white-space: pre-wrap;
-    }
-
-    .headers-box {
-      white-space: normal;
-    }
-  </style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/endpoints/inline_edit.css') }}">
 {% endblock %}
 
 {% block content %}
-  <div id="loadingIndicator" class="loading-indicator blink" style="display: none;">LOADING...</div>
-  <div class="two-column-container">
-    <div class="left-card">
-      <h2>Endpoint #{{ endpoint.id }}</h2>
-      <button id="editButton" type="button">Edit Endpoint</button>
-
-      <!-- View Mode Container -->
-      <div id="viewContainer" class="content-card">
-        <div>
-          <label>Name:</label>
-          <span>{{ endpoint.name }}</span>
-        </div>
-        <div>
-          <label>Hostname:</label>
-          <span>{{ endpoint.hostname }}</span>
-        </div>
-        <div>
-          <label>Path:</label>
-          <span>{{ endpoint.endpoint }}</span>
-        </div>
-        <div>
-          <label>Timestamp:</label>
-          <span>{% if endpoint.timestamp %}{{ endpoint.timestamp }}{% else %}N/A{% endif %}</span>
-        </div>
-        <!-- HTTP Payload -->
-        <div class="endpoint-field">
-          <label>Payload:</label>
-          {% if endpoint.http_payload %}
-            <pre class="results-box payload-box">{{ endpoint.http_payload | trim }}</pre>
-          {% else %}
-            <em>No payload</em>
-          {% endif %}
-        </div>
-        <!-- Headers display -->
-        <div class="endpoint-field">
-          <label>Headers:</label>
-          {% if endpoint.headers and endpoint.headers|length > 0 %}
-            <div class="results-box headers-box">
-              {% for hdr in endpoint.headers %}
-                <div class="header-item">
-                  <span class="header-key">{{ hdr.key }}:</span>
-                  <span class="header-value">{{ hdr.value }}</span>
+<div class="container mt-4">
+    <div class="endpoint-details" data-endpoint-id="{{ endpoint.id }}">
+        <h2>Endpoint Details</h2>
+        
+        <div class="details-grid">
+            <div class="editable-field" data-field="name">
+                <label>Name:</label>
+                <div class="view-mode">
+                    <span>{{ endpoint.name }}</span>
                 </div>
-              {% endfor %}
-            </div>          
-          {% else %}
-            <p><em>No headers available.</em></p>
-          {% endif %}
+                <div class="edit-mode">
+                    <input type="text" class="form-control" value="{{ endpoint.name }}">
+                </div>
+            </div>
+            
+            <div class="editable-field" data-field="hostname">
+                <label>Hostname:</label>
+                <div class="view-mode">
+                    <span>{{ endpoint.hostname }}</span>
+                </div>
+                <div class="edit-mode">
+                    <input type="text" class="form-control" value="{{ endpoint.hostname }}">
+                </div>
+            </div>
+            
+            <div class="editable-field" data-field="path">
+                <label>Path:</label>
+                <div class="view-mode">
+                    <span>{{ endpoint.endpoint }}</span>
+                </div>
+                <div class="edit-mode">
+                    <input type="text" class="form-control" value="{{ endpoint.endpoint }}">
+                </div>
+            </div>
+
+            <div class="info-field">
+                <label>Created:</label>
+                <span>{{ endpoint.timestamp }}</span>
+            </div>
         </div>
-      </div>
 
-      <!-- Edit Mode Container -->
-      <div id="editContainer" style="display: none; margin-top: 1rem;">
-        <h3>Edit Endpoint</h3>
-        <form action="{{ url_for('endpoints_bp.update_endpoint', endpoint_id=endpoint.id) }}"
-              method="POST" id="create-endpoint-form">
-          <div class="form-group">
-            <label for="edit_name">Name:</label>
-            <input type="text" id="edit_name" name="name" value="{{ endpoint.name }}">
-          </div>
-          <div class="form-group">
-            <label for="edit_hostname">Hostname:</label>
-            <input type="text" id="edit_hostname" name="hostname" value="{{ endpoint.hostname }}">
-          </div>
-          <div class="form-group">
-            <label for="edit_endpoint">Path:</label>
-            <input type="text" id="edit_endpoint" name="endpoint" value="{{ endpoint.endpoint }}">
-          </div>
-          <div class="form-group">
-            <label for="edit_http_payload">HTTP Payload:</label>
-            <textarea id="edit_http_payload" name="http_payload" rows="14" placeholder="Enter HTTP Payload...">
-{{ endpoint.http_payload }}
-            </textarea>
-          </div>
-          <div class="form-group">
-            <label for="raw_headers">Headers (Key: Value per line):</label>
-            <textarea id="raw_headers" name="raw_headers" rows="14" placeholder="e.g., Content-Type: application/json&#10;Authorization: Bearer &lt;token&gt;">{% for hdr in endpoint.headers %}{{ hdr.key }}: {{ hdr.value }}{% if not loop.last %}&#10;{% endif %}{% endfor %}</textarea>
-          </div>
-
-          <button type="submit">Save Changes</button>
-          <button type="button" id="cancelEdit">Cancel</button>
-        </form>
-      </div>
-
-      <!-- Test Form Container -->
-      <div id="testFormContainer">
-        <form class="test-form" action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}"
-              method="POST" id="test-endpoint-form">
-          <input type="hidden" name="endpoint_id" value="{{ endpoint.id }}">
-          <input type="hidden" name="hostname" value="{{ endpoint.hostname }}">
-          <input type="hidden" name="endpoint" value="{{ endpoint.endpoint }}">
-          <input type="hidden" name="http_payload" value="{{ endpoint.http_payload }}">
-          {% if endpoint.headers and endpoint.headers|length > 0 %}
-            <textarea name="raw_headers" style="display: none;">
-{% for hdr in endpoint.headers %}{{ hdr.key }}: {{ hdr.value }}{% if not loop.last %}&#10;{% endif %}{% endfor %}
-            </textarea>
-          {% endif %}
-          <button type="submit" style="margin-top: 1rem;">Test This Endpoint</button>
-        </form>
-      </div>
-    </div>
-
-    <!-- Right Card: Read-Only Parsed Headers -->
-    <div class="right-card">
-      <h2>Parsed Headers</h2>
-      <div id="readOnlyHeadersDisplay"></div>
-    </div>
-  </div>
-
-  {% if test_payload or test_response %}
-    <div class="results-container" id="testResultsContainer">
-      <h2>Test Results</h2>
-      <div class="test-section">
-        <strong>What was sent:</strong>
-        <div class="results-box">
-          {% if test_payload %}
-            <pre>{{ test_payload }}</pre>
-          {% else %}
-            <em>No test performed yet.</em>
-          {% endif %}
+        <div class="editable-field" data-field="http_payload">
+            <label>HTTP Payload:</label>
+            <div class="view-mode">
+                <span>{{ endpoint.http_payload }}</span>
+            </div>
+            <div class="edit-mode">
+                <textarea class="form-control">{{ endpoint.http_payload }}</textarea>
+            </div>
         </div>
-      </div>
-      <div class="test-section">
-        <strong>What was received:</strong>
-        <div class="results-box">
-          {% if test_response %}
-            <pre>{{ test_response }}</pre>
-          {% else %}
-            <em>No response yet.</em>
-          {% endif %}
+
+        <div class="headers-box">
+            <h3>Headers</h3>
+            {% if endpoint.headers %}
+                {% for header in endpoint.headers %}
+                    <div class="header-item">
+                        <span class="header-key">{{ header.key }}:</span>
+                        <span class="header-value">{{ header.value }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p><em>No headers available.</em></p>
+            {% endif %}
         </div>
-      </div>
+
+        <div class="test-form-container">
+            <h3>Test Endpoint</h3>
+            <form id="testForm" action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}" method="POST">
+                <button type="submit" class="btn btn-primary">Test Endpoint</button>
+            </form>
+        </div>
+
+        {% if test_result %}
+            <div class="test-results">
+                <h4>Test Results</h4>
+                
+                <div class="result-section">
+                    <h5>Status Code</h5>
+                    <div class="status-code">{{ test_result.status_code }}</div>
+                </div>
+
+                <div class="result-section">
+                    <h5>Response</h5>
+                    <pre class="response-data">{{ test_result.response_data }}</pre>
+                </div>
+
+                <div class="result-section">
+                    <h5>Headers Sent</h5>
+                    <pre class="headers-sent">{{ test_result.headers_sent | tojson(indent=2) }}</pre>
+                </div>
+            </div>
+        {% endif %}
     </div>
-  {% endif %}
+</div>
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>
-  <script>
-    // Parse raw headers for the read-only display.
-    function parseReadOnlyHeaders() {
-      const rawHeadersElem = document.getElementById('raw_headers');
-      if (!rawHeadersElem) {
-        console.error("raw_headers element not found.");
-        return;
-      }
-      const rawText = rawHeadersElem.value;
-      const lines = rawText.split('\n');
-      let html = '';
-      lines.forEach(line => {
-        const trimmed = line.trim();
-        if (!trimmed) return;
-        const colonIndex = trimmed.indexOf(':');
-        if (colonIndex === -1) return;
-        const key = trimmed.substring(0, colonIndex).trim();
-        const value = trimmed.substring(colonIndex + 1).trim();
-        html += `<div class="header-display" data-key="${key}"><strong>${key}:</strong> ${value}</div>`;
-      });
-      const displayDiv = document.getElementById('readOnlyHeadersDisplay');
-      if (displayDiv) {
-        displayDiv.innerHTML = html;
-      } else {
-        console.error("readOnlyHeadersDisplay element not found.");
-      }
-    }
-    
-    document.addEventListener('DOMContentLoaded', function() {
-      parseReadOnlyHeaders();
-    });
-    
-    document.getElementById("editButton").addEventListener("click", function() {
-      document.getElementById("editContainer").style.display = "block";
-      document.getElementById("viewContainer").style.display = "none";
-      document.getElementById("testFormContainer").style.display = "none";
-      document.getElementById("testResultsContainer").style.display = "none";
-      const readOnlyDisplay = document.getElementById("readOnlyHeadersDisplay");
-      if (readOnlyDisplay) { readOnlyDisplay.style.display = "none"; }
-      // Re-parse headers on switching to edit mode.
-      parseHeaders();
-    });
-    
-    document.getElementById("cancelEdit").addEventListener("click", function() {
-      document.getElementById("editContainer").style.display = "none";
-      document.getElementById("viewContainer").style.display = "block";
-      document.getElementById("testFormContainer").style.display = "block";
-      document.getElementById("testResultsContainer").style.display = "block";
-      const readOnlyDisplay = document.getElementById("readOnlyHeadersDisplay");
-      if (readOnlyDisplay) { readOnlyDisplay.style.display = "block"; }
-    });
-  </script>
+<script src="{{ url_for('static', filename='js/endpoints/inline_edit.js') }}"></script>
 {% endblock %}

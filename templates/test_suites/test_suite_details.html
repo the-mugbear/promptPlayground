@@ -32,6 +32,14 @@
       </span>
     </p>
     <p>
+      <strong>Created By:</strong>
+      {% if test_suite.created_by %}
+        {{ test_suite.created_by.username }}
+      {% else %}
+        N/A
+      {% endif %}
+    </p>
+    <p>
       <strong>Created At:</strong>
       {% if test_suite.created_at %}
         {{ test_suite.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
