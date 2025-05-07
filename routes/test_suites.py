@@ -426,57 +426,137 @@ def export_test_suite(suite_id):
 @test_suites_bp.route('/import_suite', methods=['POST'])
 @login_required
 def import_test_suite():
-    """Import a test suite from a JSON file."""
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-    
+    """Import test suite(s) from a JSON file."""
     try:
-        import_data = json.loads(file.read())
+        # Handle both JSON and form data
+        if request.is_json:
+            import_data = request.get_json()
+        else:
+            if 'file' not in request.files:
+                return jsonify({'error': 'No file provided'}), 400
+            
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({'error': 'No file selected'}), 400
+            
+            try:
+                import_data = json.loads(file.read())
+            except json.JSONDecodeError:
+                return jsonify({'error': 'Invalid JSON file'}), 400
         
         # Validate version
         if import_data.get('version') != '1.0':
             return jsonify({'error': 'Unsupported file version'}), 400
         
-        suite_data = import_data.get('test_suite')
-        if not suite_data:
+        # Check if this is a bulk export file (contains multiple suites)
+        if 'test_suites' in import_data:
+            # First, check for duplicates
+            duplicates = []
+            for suite_data in import_data['test_suites']:
+                existing_suite = TestSuite.query.filter_by(
+                    description=suite_data['description'],
+                    behavior=suite_data.get('behavior')
+                ).first()
+                
+                if existing_suite:
+                    duplicates.append({
+                        'description': suite_data['description'],
+                        'behavior': suite_data.get('behavior'),
+                        'existing_id': existing_suite.id
+                    })
+            
+            # If there are duplicates, return them for confirmation
+            if duplicates:
+                return jsonify({
+                    'error': 'duplicates_found',
+                    'message': 'Duplicate test suites found',
+                    'duplicates': duplicates,
+                    'total_suites': len(import_data['test_suites']),
+                    'duplicate_count': len(duplicates)
+                }), 409
+            
+            # If no duplicates or force_import is True, proceed with import
+            suites_imported = 0
+            for suite_data in import_data['test_suites']:
+                new_suite = TestSuite(
+                    description=suite_data['description'],
+                    behavior=suite_data.get('behavior'),
+                    objective=suite_data.get('objective'),
+                    user_id=current_user.id
+                )
+                db.session.add(new_suite)
+                
+                # Create test cases
+                for case_data in suite_data.get('test_cases', []):
+                    test_case = TestCase(
+                        prompt=case_data['prompt'],
+                        transformations=case_data.get('transformations'),
+                        source=case_data.get('source'),
+                        attack_type=case_data.get('attack_type'),
+                        data_type=case_data.get('data_type'),
+                        nist_risk=case_data.get('nist_risk'),
+                        reviewed=case_data.get('reviewed', False)
+                    )
+                    db.session.add(test_case)
+                    new_suite.test_cases.append(test_case)
+                
+                suites_imported += 1
+            
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': f'Successfully imported {suites_imported} test suite(s)',
+                'suites_imported': suites_imported
+            })
+            
+        # Handle single suite import
+        elif 'test_suite' in import_data:
+            suite_data = import_data['test_suite']
+            
+            # Check for duplicates
+            existing_suite = TestSuite.query.filter_by(
+                description=suite_data['description'],
+                behavior=suite_data.get('behavior')
+            ).first()
+            
+            if existing_suite:
+                return jsonify({
+                    'error': 'Duplicate test suite',
+                    'message': f'A test suite with description "{suite_data["description"]}" and behavior "{suite_data.get("behavior")}" already exists.',
+                    'existing_suite_id': existing_suite.id
+                }), 409
+            
+            new_suite = TestSuite(
+                description=suite_data['description'],
+                behavior=suite_data.get('behavior'),
+                objective=suite_data.get('objective'),
+                user_id=current_user.id
+            )
+            db.session.add(new_suite)
+            
+            # Create test cases
+            for case_data in suite_data.get('test_cases', []):
+                test_case = TestCase(
+                    prompt=case_data['prompt'],
+                    transformations=case_data.get('transformations'),
+                    source=case_data.get('source'),
+                    attack_type=case_data.get('attack_type'),
+                    data_type=case_data.get('data_type'),
+                    nist_risk=case_data.get('nist_risk'),
+                    reviewed=case_data.get('reviewed', False)
+                )
+                db.session.add(test_case)
+                new_suite.test_cases.append(test_case)
+            
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': 'Test suite imported successfully',
+                'suite_id': new_suite.id
+            })
+        else:
             return jsonify({'error': 'Invalid file format'}), 400
         
-        # Create new test suite
-        new_suite = TestSuite(
-            description=suite_data['description'],
-            behavior=suite_data.get('behavior'),
-            objective=suite_data.get('objective'),
-            user_id=current_user.id
-        )
-        db.session.add(new_suite)
-        
-        # Create test cases
-        for case_data in suite_data.get('test_cases', []):
-            test_case = TestCase(
-                prompt=case_data['prompt'],
-                transformations=case_data.get('transformations'),
-                source=case_data.get('source'),
-                attack_type=case_data.get('attack_type'),
-                data_type=case_data.get('data_type'),
-                nist_risk=case_data.get('nist_risk'),
-                reviewed=case_data.get('reviewed', False)
-            )
-            db.session.add(test_case)
-            new_suite.test_cases.append(test_case)
-        
-        db.session.commit()
-        return jsonify({
-            'success': True,
-            'message': 'Test suite imported successfully',
-            'suite_id': new_suite.id
-        })
-        
-    except json.JSONDecodeError:
-        return jsonify({'error': 'Invalid JSON file'}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Error importing test suite: {str(e)}'}), 500

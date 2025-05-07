@@ -143,9 +143,9 @@ def create_app():
     app.register_blueprint(commands_bp)
     app.register_blueprint(user_bp)
 
-    print("Registered Blueprints:") # DEBUG LINE
-    for bp_name, bp_object in app.blueprints.items(): # DEBUG LINE
-        print(f"- {bp_name}: {bp_object.name}, import_name: {bp_object.import_name}, url_prefix: {bp_object.url_prefix}") # DEBUG LINE
+    # print("Registered Blueprints:") # DEBUG LINE
+    # for bp_name, bp_object in app.blueprints.items(): # DEBUG LINE
+    #     print(f"- {bp_name}: {bp_object.name}, import_name: {bp_object.import_name}, url_prefix: {bp_object.url_prefix}") # DEBUG LINE
 
     # --- Define APPLICATION-LEVEL Error Handlers ---
     @app.errorhandler(500)

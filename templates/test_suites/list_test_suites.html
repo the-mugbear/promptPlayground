@@ -2,119 +2,40 @@
 
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
-  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/attacks/best_of_n.css') }}"> -->
-  <style>
-    /* Override any conflicting base table styles */
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-    #suitesTable {
-      margin-top: 1rem;
-      border: none; /* Remove default table border */
-    }
-
-    #suitesTable thead {
-      background-color: transparent; /* No header background */
-      color: var(--accent-color);
-      border-bottom: 2px dashed var(--accent-color);
-    }
-
-    #suitesTable th,
-    #suitesTable td {
-      padding: 0.75rem;
-      text-align: left;
-      border: none; /* Remove default cell borders */
-      border-bottom: 1px solid rgba(0, 255, 65, 0.2); /* Subtle cell dividers */
-    }
-
-    .test-cases-container {
-      background-color: rgba(0, 0, 0, 0.3);
-      border: 1px solid var(--secondary-color);
-      padding: 1rem;
-      border-radius: 4px;
-      margin-top: 0.5rem;
-    }
-
-    .test-cases-container li {
-      /* Allows the browser to break long words/strings to prevent overflow */
-      overflow-wrap: break-word;
-      word-wrap: break-word; /* Legacy fallback for older browsers */
-
-      /* You might also want to ensure default white-space handling is active */
-      white-space: normal; /* Default, but good to be explicit if issues persist */
-
-      /* Optional: Improve readability for very long wrapped lines */
-      line-height: 1.4;
-    }
-
-    .view-test-cases-btn {
-      background: transparent;
-      border: 1px solid var(--accent-color);
-      color: var(--text-color);
-      padding: 0.25rem 0.5rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .view-test-cases-btn:hover {
-      background: var(--accent-color);
-      color: #000;
-    }
-
-    .delete-btn {
-      background: transparent;
-      border: 1px solid #FF0000;
-      color: #FF0000;
-      padding: 0.25rem 0.5rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .delete-btn:hover {
-      background: #FF0000;
-      color: #000;
-    }
-
-    /* Style the search bar */
-    .search-bar {
-      background-color: #111;
-      color: var(--text-color);
-      border: 2px dashed var(--accent-color);
-      border-radius: 6px;
-      padding: 0.5rem 1rem;
-      font-family: var(--main-font);
-      font-size: 1rem;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      width: 50%; /* Set a fixed width, or use a percentage */
-    }
-
-    .search-bar:focus {
-      border-color: var(--secondary-color);
-      box-shadow: 0 0 5px var(--secondary-color);
-    }
-
-    .search-bar::placeholder {
-        color: rgba(255, 255, 255, 0.6);
-        opacity: 1;
-    }
-
-    /* Hide built-in clear button on WebKit */
-    input[type="search"]::-webkit-search-cancel-button {
-        -webkit-appearance: none;
-    }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/test_suites/list_test_suites.css') }}">
 {% endblock %}
 
 {% block content %}
+<!-- Import Selection Modal -->
+<div id="importModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Select Test Suites to Import</h2>
+      <span class="close">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div class="suite-selection-controls">
+        <button type="button" class="btn btn-secondary" onclick="selectAllSuites()">Select All</button>
+        <button type="button" class="btn btn-secondary" onclick="deselectAllSuites()">Deselect All</button>
+      </div>
+      <div id="suiteList" class="suite-list">
+        <!-- Suites will be populated here -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="importSelectedSuites()">Import Selected</button>
+    </div>
+  </div>
+</div>
+
 <div class="content-card">
   <h1>All Test Suites</h1>
 
   <div class="action-buttons">
     <a href="{{ url_for('test_suites_bp.create_test_suite_form') }}" class="btn btn-primary">Create New Suite</a>
     <button type="button" class="btn btn-secondary" onclick="document.getElementById('importFile').click()">Import Suite</button>
-    <input type="file" id="importFile" accept=".json" style="display: none" onchange="importTestSuite(this)">
+    <input type="file" id="importFile" accept=".json" style="display: none" onchange="handleFileSelect(this)">
     <a href="{{ url_for('test_suites_bp.export_all_test_suites') }}" class="btn btn-secondary">Export All Suites</a>
   </div>
 
@@ -192,6 +113,8 @@
 
 <script src="{{ url_for('static', filename='js/filterCommon.js') }}"></script>
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize filter config
   window.filterConfigs = [
     {
       searchInputId: "searchSuite",         // ID of the search input element
@@ -203,16 +126,109 @@
     }
   ];
 
-async function importTestSuite(input) {
+  // Initialize modal event listeners
+  const modal = document.getElementById('importModal');
+  const closeBtn = document.querySelector('.close');
+  
+  if (closeBtn) {
+    closeBtn.onclick = closeImportModal;
+  }
+  
+  window.onclick = function(event) {
+    if (event.target === modal) {
+      closeImportModal();
+    }
+  };
+});
+
+let importData = null;
+
+function handleFileSelect(input) {
   if (!input.files || !input.files[0]) return;
   
-  const formData = new FormData();
-  formData.append('file', input.files[0]);
+  const file = input.files[0];
+  const reader = new FileReader();
   
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      
+      // Validate version
+      if (data.version !== '1.0') {
+        alert('Unsupported file version');
+        return;
+      }
+      
+      // Check if this is a bulk export file
+      if (data.test_suites) {
+        importData = data;
+        showImportModal(data.test_suites);
+      } else if (data.test_suite) {
+        // Handle single suite import
+        importSingleSuite(data);
+      } else {
+        alert('Invalid file format');
+      }
+    } catch (error) {
+      alert('Error reading file: ' + error.message);
+    }
+  };
+  
+  reader.readAsText(file);
+}
+
+function showImportModal(suites) {
+  const modal = document.getElementById('importModal');
+  const suiteList = document.getElementById('suiteList');
+  
+  // Clear existing content
+  suiteList.innerHTML = '';
+  
+  // Add each suite to the list
+  suites.forEach((suite, index) => {
+    const suiteDiv = document.createElement('div');
+    suiteDiv.className = 'suite-item';
+    suiteDiv.innerHTML = `
+      <div class="suite-header">
+        <input type="checkbox" id="suite-${index}" checked>
+        <label for="suite-${index}">${suite.description}</label>
+      </div>
+      <div class="suite-details">
+        <p><strong>Behavior:</strong> ${suite.behavior || 'N/A'}</p>
+        <p><strong>Objective:</strong> ${suite.objective || 'N/A'}</p>
+        <p><strong>Test Cases:</strong> ${suite.test_cases.length}</p>
+      </div>
+    `;
+    suiteList.appendChild(suiteDiv);
+  });
+  
+  modal.style.display = 'block';
+}
+
+function closeImportModal() {
+  const modal = document.getElementById('importModal');
+  modal.style.display = 'none';
+  importData = null;
+}
+
+function selectAllSuites() {
+  const checkboxes = document.querySelectorAll('.suite-item input[type="checkbox"]');
+  checkboxes.forEach(checkbox => checkbox.checked = true);
+}
+
+function deselectAllSuites() {
+  const checkboxes = document.querySelectorAll('.suite-item input[type="checkbox"]');
+  checkboxes.forEach(checkbox => checkbox.checked = false);
+}
+
+async function importSingleSuite(data) {
   try {
     const response = await fetch('/test_suites/import_suite', {
       method: 'POST',
-      body: formData
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
     });
     
     const result = await response.json();
@@ -220,6 +236,71 @@ async function importTestSuite(input) {
     if (response.ok) {
       alert('Test suite imported successfully!');
       window.location.reload();
+    } else if (response.status === 409) {
+      const shouldImport = confirm(`${result.message}\n\nWould you like to import it anyway?`);
+      if (shouldImport) {
+        // TODO: Add force import option to the backend
+        alert('Force import not implemented yet. Please modify the existing suite instead.');
+      }
+    } else {
+      alert(`Error importing test suite: ${result.error}`);
+    }
+  } catch (error) {
+    alert('Error importing test suite: ' + error.message);
+  }
+}
+
+async function importSelectedSuites() {
+  if (!importData) return;
+  
+  const selectedSuites = [];
+  const checkboxes = document.querySelectorAll('.suite-item input[type="checkbox"]');
+  
+  checkboxes.forEach((checkbox, index) => {
+    if (checkbox.checked) {
+      selectedSuites.push(importData.test_suites[index]);
+    }
+  });
+  
+  if (selectedSuites.length === 0) {
+    alert('Please select at least one test suite to import');
+    return;
+  }
+  
+  // Create a new import data object with only selected suites
+  const selectedImportData = {
+    version: '1.0',
+    test_suites: selectedSuites
+  };
+  
+  try {
+    const response = await fetch('/test_suites/import_suite', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(selectedImportData)
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      alert(`Successfully imported ${result.suites_imported} test suite(s)!`);
+      window.location.reload();
+    } else if (response.status === 409) {
+      if (result.error === 'duplicates_found') {
+        const duplicateList = result.duplicates.map(d => 
+          `- "${d.description}" (Behavior: ${d.behavior || 'N/A'})`
+        ).join('\n');
+        
+        const message = `Found ${result.duplicate_count} duplicate test suite(s) out of ${result.total_suites} total suites:\n\n${duplicateList}\n\nWould you like to:\n1. Skip duplicates and import the rest\n2. Cancel the import`;
+        
+        const choice = confirm(message);
+        if (choice) {
+          // TODO: Add force_import parameter to skip duplicates
+          alert('Skipping duplicates not implemented yet. Please modify the existing suites instead.');
+        }
+      }
     } else {
       alert(`Error importing test suite: ${result.error}`);
     }
@@ -227,8 +308,7 @@ async function importTestSuite(input) {
     alert('Error importing test suite: ' + error.message);
   }
   
-  // Reset the input
-  input.value = '';
+  closeImportModal();
 }
 </script>
 {% endblock %}
