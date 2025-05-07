@@ -29,6 +29,7 @@ test_runs_bp = Blueprint('test_runs_bp', __name__, url_prefix='/test_runs')
 
 
 @test_runs_bp.route('/', methods=['GET'])
+@login_required 
 def list_test_runs():
     """
     GET /test_runs -> Displays a table or list of existing test runs
@@ -43,6 +44,7 @@ def list_test_runs():
 
 
 @test_runs_bp.route('/<int:run_id>', methods=['GET'])
+@login_required 
 def view_test_run(run_id):
 
     run = (TestRun.query
