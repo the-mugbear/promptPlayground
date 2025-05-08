@@ -12,65 +12,214 @@
     .headers-container .header-row input[type="text"] {
       flex: 1;
     }
+
+    /* Dashboard styles */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .dashboard-card {
+      background: var(--card-bg, rgba(26, 26, 26, 0.95));
+      border: 1px solid var(--border-color, rgba(0, 255, 65, 0.4));
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
+    }
+
+    .dashboard-card h2 {
+      color: var(--accent-color, #00FF41);
+      margin-bottom: 1rem;
+      font-size: 1.5rem;
+    }
+
+    .dashboard-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .dashboard-list li {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border-color, rgba(0, 255, 65, 0.2));
+    }
+
+    .dashboard-list li:last-child {
+      border-bottom: none;
+    }
+
+    .dashboard-list a {
+      color: var(--text-color, #eee);
+      text-decoration: none;
+      display: block;
+      transition: color 0.3s ease;
+    }
+
+    .dashboard-list a:hover {
+      color: var(--accent-color, #00FF41);
+    }
+
+    .dashboard-list .meta {
+      font-size: 0.9rem;
+      color: var(--text-muted, #888);
+      margin-top: 0.25rem;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      margin-left: 0.5rem;
+    }
+
+    .status-pending { background: #ffd700; color: #000; }
+    .status-running { background: #00bfff; color: #fff; }
+    .status-completed { background: #32cd32; color: #fff; }
+    .status-failed { background: #ff4500; color: #fff; }
+
+    /* Reference list styles */
+    .reference-item {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: var(--card-bg, rgba(26, 26, 26, 0.95));
+      border: 1px solid var(--border-color, rgba(0, 255, 65, 0.2));
+      border-radius: 4px;
+    }
+
+    .reference-item h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.2rem;
+    }
+
+    .reference-item .excerpt {
+      color: var(--text-muted, #888);
+      font-size: 0.9rem;
+      margin: 0.5rem 0;
+      line-height: 1.4;
+    }
+
+    .reference-item .meta {
+      font-size: 0.8rem;
+      color: var(--text-muted, #888);
+    }
+
+    .reference-item .meta span {
+      margin-right: 1rem;
+    }
   </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
+  {% if current_user.is_authenticated %}
+    <div class="dashboard-grid">
+      <!-- User's Test Runs -->
+      <div class="dashboard-card">
+        <h2>Your Recent Test Runs</h2>
+        {% if user_test_runs %}
+          <ul class="dashboard-list">
+            {% for run in user_test_runs %}
+              <li>
+                <a href="{{ url_for('test_runs_bp.view_test_run', run_id=run.id) }}">
+                  {{ run.name }}
+                  <span class="status-badge status-{{ run.status }}">{{ run.status }}</span>
+                </a>
+                <div class="meta">
+                  Created: {{ run.created_at.strftime('%Y-%m-%d %H:%M') }}
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>No test runs found. <a href="{{ url_for('test_runs_bp.create_test_run_form') }}">Create your first test run</a></p>
+        {% endif %}
+      </div>
+
+      <!-- Recent Test Suites -->
+      <div class="dashboard-card">
+        <h2>Recent Test Suites</h2>
+        {% if recent_test_suites %}
+          <ul class="dashboard-list">
+            {% for suite in recent_test_suites %}
+              <li>
+                <a href="{{ url_for('test_suites_bp.test_suite_details', suite_id=suite.id) }}">
+                  {{ suite.description }}
+                </a>
+                <div class="meta">
+                  Created: {{ suite.created_at.strftime('%Y-%m-%d %H:%M') }}
+                  {% if suite.user %}
+                    by {{ suite.user.username }}
+                  {% endif %}
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>No test suites found.</p>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
   <hr>
   <div class="content-card">
-    <h2>Dataset References</h2>
+    <h2>Research References</h2>
     <!-- Search Bar -->
-    <input type="text" id="dataset-search" placeholder="Search dataset references...">
-    <!-- Dataset List -->
+    <input type="text" id="dataset-search" placeholder="Search references...">
+    <!-- Reference List -->
     {% if dataset_references %}
-      <ul id="dataset-references-list">
+      <div id="dataset-references-list">
         {% for ref in dataset_references %}
-          <li class="dataset-reference">
-            <a href="{{ ref.url }}" target="_blank">{{ ref.name }}</a>
-            - Added on {{ ref.date_added.strftime('%Y-%m-%d') }}
-            - <span class="dataset-status {{ 'added' if ref.added else 'not-added' }}">
+          <div class="reference-item">
+            <h3>
+              <a href="{{ ref.url }}" target="_blank">{{ ref.name }}</a>
+              <span class="dataset-status {{ 'added' if ref.added else 'not-added' }}">
                 {{ 'Added' if ref.added else 'Not Added' }}
               </span>
-          </li>
+            </h3>
+            {% if ref.excerpt %}
+              <div class="excerpt">{{ ref.excerpt }}</div>
+            {% endif %}
+            <div class="meta">
+              <span>Added: {{ ref.date_added.strftime('%Y-%m-%d') }}</span>
+            </div>
+          </div>
         {% endfor %}
-      </ul>
+      </div>
     {% else %}
-      <p>No dataset references found.</p>
+      <p>No references found.</p>
     {% endif %}
   </div>
 
-  <hr>
-  <div class="content-card">
-    <h2>Add New Dataset Reference</h2>
-    <form method="POST" action="{{ url_for('core_bp.index') }}">
-      <div class="form-group">
-        <label for="dataset_name">Name:</label>
-        <input type="text" id="dataset_name" name="dataset_name" required placeholder="Enter dataset name">
-      </div>
-      <div class="form-group">
-        <label for="dataset_url">URL:</label>
-        <input type="url" id="dataset_url" name="dataset_url" required placeholder="Enter dataset URL">
-      </div>
-      <div class="form-group">
-        <label for="dataset_added">
-          <input type="checkbox" id="dataset_added" name="dataset_added"> Mark as Added
-        </label>
-      </div>
-      <button type="submit">Add Dataset Reference</button>
-    </form>
-  </div>
-
-  <!-- <hr>
-  <div class="content-card">
-    <h3>Select a Visual Effect</h3>
-    <ul>
-      <li><a href="{{ url_for('core_bp.visual', effect='matrix_rain') }}">Matrix Rain</a></li>
-      <li><a href="{{ url_for('core_bp.visual', effect='neon_grid_glitch') }}">Neon Grid with Glitch Effect</a></li>
-      <li><a href="{{ url_for('core_bp.visual', effect='neon_circles') }}">Neon Circles</a></li>
-      <li><a href="{{ url_for('core_bp.visual', effect='8_bit_fire') }}">Campfire</a></li>
-    </ul>
-  </div> -->
+  {% if current_user.is_authenticated %}
+    <hr>
+    <div class="content-card">
+      <h2>Add New Reference</h2>
+      <form method="POST" action="{{ url_for('core_bp.index') }}">
+        <div class="form-group">
+          <label for="dataset_name">Name:</label>
+          <input type="text" id="dataset_name" name="dataset_name" required placeholder="Enter reference name">
+        </div>
+        <div class="form-group">
+          <label for="dataset_url">URL:</label>
+          <input type="url" id="dataset_url" name="dataset_url" required placeholder="Enter reference URL">
+        </div>
+        <div class="form-group">
+          <label for="excerpt">Summary:</label>
+          <textarea id="excerpt" name="excerpt" rows="4" placeholder="Enter a brief summary of the article/research"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="dataset_added">
+            <input type="checkbox" id="dataset_added" name="dataset_added"> Mark as Added
+          </label>
+        </div>
+        <button type="submit">Add Reference</button>
+      </form>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}
 
