@@ -123,7 +123,7 @@
               <div class="attempt-filter">
                 <span class="filter-label">Attempt:</span>
                 <div class="attempt-checkboxes">
-                  <!-- “All” Option -->
+                  <!-- "All" Option -->
                   <label>
                     <input type="checkbox" name="attempt_filter" id="attempt_filter_all" value="" checked>
                     All
@@ -207,10 +207,10 @@
                                             <form method="POST" action="{{ url_for('test_runs_bp.update_execution_status', run_id=run.id) }}" class="update-status-form">
                                                 <input type="hidden" name="execution_id" value="{{ attempt.execution_id }}">
                                                 <select name="status" class="border rounded p-1">
+                                                    <option value="pending_review" {% if attempt.status == 'pending_review' %}selected{% endif %}>Pending Review</option>
                                                     <option value="passed" {% if attempt.status == 'passed' %}selected{% endif %}>Passed</option>
                                                     <option value="failed" {% if attempt.status == 'failed' %}selected{% endif %}>Failed</option>
                                                     <option value="skipped" {% if attempt.status == 'skipped' %}selected{% endif %}>Skipped</option>
-                                                    <option value="pending_review" {% if attempt.status == 'pending_review' %}selected{% endif %}>Pending Review</option>
                                                 </select>
                                             </form>
                                         </td>

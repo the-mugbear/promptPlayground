@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import time
 
 from extensions import db
 from models.model_TestExecution import TestExecution
@@ -87,7 +88,7 @@ def execute_single_test_case_task(self, execution_id, endpoint_id,
                 # Logged and continues
 
         # --- Store the final, processed prompt ---
-        execution.processed_prompt = prompt # Assumes field exists in model
+        execution.processed_prompt = prompt
 
         # --- 4. Inject into Payload ---
         try:
@@ -109,34 +110,60 @@ def execute_single_test_case_task(self, execution_id, endpoint_id,
              # Implicitly returns None here
              return # Stop if payload prep fails
 
-        # --- 5. Make HTTP Request ---
-        try:
-            result = replay_post_request(
-                endpoint_obj.hostname,
-                endpoint_obj.endpoint,
-                replaced_payload_str,
-                raw_headers_str,
-                timeout=60
-            )
+        # --- 5. Make HTTP Request with Retry Logic ---
+        max_retries = 3
+        base_delay = 5  # Base delay in seconds
+        retry_count = 0
+        
+        while retry_count <= max_retries:
+            try:
+                result = replay_post_request(
+                    endpoint_obj.hostname,
+                    endpoint_obj.endpoint,
+                    replaced_payload_str,
+                    raw_headers_str,
+                    timeout=60
+                )
 
-            # --- Update execution based on result ---
-            execution.finish_time = datetime.datetime.utcnow()
-            execution.response_data = result.get("response_text", "No response text received.")
-            execution.status_code = result.get("status_code")
+                # --- Update execution based on result ---
+                execution.finish_time = datetime.datetime.utcnow()
+                execution.response_data = result.get("response_text", "No response text received.")
+                execution.status_code = result.get("status_code")
 
-            # Determine final status - Keep 'WARNING' if set previously
-            if execution.status != 'WARNING':
-                if execution.status_code and 200 <= execution.status_code < 300:
-                    execution.status = 'PASSED' # Or PENDING_REVIEW based on your logic
+                # Check if we need to retry based on status code
+                if result.get("status_code") != 200:
+                    if retry_count < max_retries:
+                        retry_count += 1
+                        delay = base_delay * (2 ** (retry_count - 1))  # Exponential backoff
+                        print(f"Non-200 status code ({result.get('status_code')}) received. Retrying in {delay} seconds... (Attempt {retry_count}/{max_retries})")
+                        execution.response_data += f"\nRetry attempt {retry_count}/{max_retries} scheduled in {delay} seconds."
+                        db.session.commit()
+                        time.sleep(delay)
+                        continue
+                    else:
+                        execution.status = 'FAILED'
+                        execution.response_data += f"\nFailed after {max_retries} retries. Last status code: {result.get('status_code')}"
                 else:
-                    execution.status = 'PENDING_REVIEW' # Or FAILED
+                    # Success - determine final status
+                    if execution.status != 'WARNING':
+                        execution.status = 'PASSED'
+                    break
 
-        except Exception as req_exc:
-            print(f"Error during HTTP request for Execution {execution_id}: {req_exc}")
-            execution.finish_time = datetime.datetime.utcnow()
-            execution.status = 'FAILED'
-            execution.response_data = (execution.response_data or "") + f"\nRequest Error: {req_exc}"
-            # Let Celery handle retry via OperationalError if applicable
+            except Exception as req_exc:
+                if retry_count < max_retries:
+                    retry_count += 1
+                    delay = base_delay * (2 ** (retry_count - 1))  # Exponential backoff
+                    print(f"Request error for Execution {execution_id}: {req_exc}. Retrying in {delay} seconds... (Attempt {retry_count}/{max_retries})")
+                    execution.response_data = (execution.response_data or "") + f"\nRequest Error: {req_exc}\nRetry attempt {retry_count}/{max_retries} scheduled in {delay} seconds."
+                    db.session.commit()
+                    time.sleep(delay)
+                    continue
+                else:
+                    print(f"Error during HTTP request for Execution {execution_id}: {req_exc}")
+                    execution.finish_time = datetime.datetime.utcnow()
+                    execution.status = 'FAILED'
+                    execution.response_data = (execution.response_data or "") + f"\nRequest Error: {req_exc}\nFailed after {max_retries} retries."
+                    break
 
         # --- Commit final changes for THIS execution ---
         db.session.commit()

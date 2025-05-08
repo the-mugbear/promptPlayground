@@ -27,6 +27,50 @@
     .test-form-container form {
         margin: 0;
     }
+    
+    .payload-container {
+        position: relative;
+        width: 100%;
+    }
+    
+    .payload-textarea {
+        width: 100% !important;
+        height: 300px !important;
+        min-height: 300px !important;
+        font-family: monospace !important;
+        resize: vertical !important;
+        box-sizing: border-box !important;
+    }
+    
+    .json-validation-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .json-validation-badge.valid {
+        background-color: #d4edda;
+        color: #155724;
+        opacity: 1;
+    }
+    
+    .json-validation-badge.invalid {
+        background-color: #f8d7da;
+        color: #721c24;
+        opacity: 1;
+    }
+    
+    .validation-icon {
+        font-weight: bold;
+    }
 </style>
 {% endblock %}
 
@@ -85,7 +129,13 @@
                 <span>{{ endpoint.http_payload }}</span>
             </div>
             <div class="edit-mode">
-                <textarea class="form-control">{{ endpoint.http_payload }}</textarea>
+                <div class="payload-container">
+                    <textarea class="form-control payload-textarea">{{ endpoint.http_payload }}</textarea>
+                    <div class="json-validation-badge" id="jsonValidationBadge">
+                        <span class="validation-icon">✓</span>
+                        <span class="validation-text">Valid JSON</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -131,4 +181,29 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/endpoints/inline_edit.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.querySelector('.payload-textarea');
+    const badge = document.getElementById('jsonValidationBadge');
+    
+    function validateJSON() {
+        try {
+            const value = textarea.value.trim();
+            if (!value) {
+                badge.className = 'json-validation-badge';
+                return;
+            }
+            JSON.parse(value);
+            badge.className = 'json-validation-badge valid';
+            badge.querySelector('.validation-text').textContent = 'Valid JSON';
+        } catch (e) {
+            badge.className = 'json-validation-badge invalid';
+            badge.querySelector('.validation-text').textContent = 'Invalid JSON';
+        }
+    }
+    
+    textarea.addEventListener('input', validateJSON);
+    validateJSON(); // Initial validation
+});
+</script>
 {% endblock %}
