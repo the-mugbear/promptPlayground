@@ -134,7 +134,7 @@ def execute_single_test_case_task(self, execution_id, endpoint_id,
                 if result.get("status_code") != 200:
                     if retry_count < max_retries:
                         retry_count += 1
-                        delay = base_delay * (2 ** (retry_count - 1))  # Exponential backoff
+                        delay = base_delay * (2 ** (retry_count - 1))  # Exponential backoff (should be 5, 10 and finally 20  seconds)
                         print(f"Non-200 status code ({result.get('status_code')}) received. Retrying in {delay} seconds... (Attempt {retry_count}/{max_retries})")
                         execution.response_data += f"\nRetry attempt {retry_count}/{max_retries} scheduled in {delay} seconds."
                         db.session.commit()
@@ -146,7 +146,7 @@ def execute_single_test_case_task(self, execution_id, endpoint_id,
                 else:
                     # Success - determine final status
                     if execution.status != 'WARNING':
-                        execution.status = 'PASSED'
+                        execution.status = 'PENDING_REVIEW'
                     break
 
             except Exception as req_exc:
