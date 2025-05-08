@@ -5,7 +5,7 @@ import os
 
 from extensions import db
 from models.model_TestSuite import TestSuite
-from models.model_DatasetReference import DatasetReference
+from models.model_Reference import DatasetReference
 from models.model_TestCase import TestCase
 
 from sqlalchemy.exc import SQLAlchemyError

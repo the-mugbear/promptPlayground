@@ -6,6 +6,7 @@ FROM python:3.11-slim
 # Set environment variables to prevent caching issues and ensure output is shown
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV PYTHONPATH=/app
 
 # Set the working directory in the container
 WORKDIR /app
@@ -20,6 +21,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code into the container
 COPY . .
+
+# Install the package in development mode
+RUN pip install -e .
 
 # Make port 8000 available to the world outside this container (Gunicorn default)
 EXPOSE 8000

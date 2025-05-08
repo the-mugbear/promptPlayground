@@ -155,6 +155,52 @@
             </div>
         </div>
 
+        <!-- Discovered Endpoints Section -->
+        <div class="discovered-endpoints mt-4">
+            <h3>Discovered Endpoints</h3>
+            <div class="discovery-actions mb-3">
+                <button class="btn btn-primary" onclick="startDiscovery('auto')">Discover Endpoints</button>
+                <button class="btn btn-secondary" onclick="startDiscovery('openapi')">OpenAPI Discovery</button>
+                <button class="btn btn-secondary" onclick="startDiscovery('google')">Google API Discovery</button>
+                <button class="btn btn-secondary" onclick="startDiscovery('heuristic')">Heuristic Discovery</button>
+            </div>
+            
+            <div id="discoveryStatus" class="alert alert-info" style="display: none;">
+                Discovery in progress...
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Path</th>
+                            <th>Method</th>
+                            <th>Status Code</th>
+                            <th>Discovered At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="discoveredEndpoints">
+                        {% for discovered in endpoint.discovered_endpoints %}
+                        <tr>
+                            <td>{{ discovered.path }}</td>
+                            <td>{{ discovered.method }}</td>
+                            <td>
+                                <span class="badge {% if discovered.status_code < 400 %}bg-success{% elif discovered.status_code < 500 %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ discovered.status_code }}
+                                </span>
+                            </td>
+                            <td>{{ discovered.discovered_at }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="testDiscoveredEndpoint('{{ discovered.path }}', '{{ discovered.method }}')">Test</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         {% if test_result %}
             <div class="test-results">
                 <h4>Test Results</h4>
@@ -205,5 +251,85 @@ document.addEventListener('DOMContentLoaded', function() {
     textarea.addEventListener('input', validateJSON);
     validateJSON(); // Initial validation
 });
+
+function startDiscovery(strategy) {
+    const endpointId = document.querySelector('.endpoint-details').dataset.endpointId;
+    const statusDiv = document.getElementById('discoveryStatus');
+    const tbody = document.getElementById('discoveredEndpoints');
+    
+    // Show status
+    statusDiv.style.display = 'block';
+    statusDiv.textContent = 'Discovery in progress...';
+    
+    // Clear existing endpoints
+    tbody.innerHTML = '';
+    
+    // Start discovery
+    fetch(`/endpoints/${endpointId}/discover`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ strategy: strategy })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        return pollDiscoveryStatus(data.task_id);
+    })
+    .then(endpoints => {
+        // Update table with discovered endpoints
+        endpoints.forEach(endpoint => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${endpoint.path}</td>
+                <td>${endpoint.method}</td>
+                <td>
+                    <span class="badge ${endpoint.status_code < 400 ? 'bg-success' : endpoint.status_code < 500 ? 'bg-warning' : 'bg-danger'}">
+                        ${endpoint.status_code}
+                    </span>
+                </td>
+                <td>${new Date().toLocaleString()}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="testDiscoveredEndpoint('${endpoint.path}', '${endpoint.method}')">Test</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+        statusDiv.style.display = 'none';
+    })
+    .catch(error => {
+        statusDiv.className = 'alert alert-danger';
+        statusDiv.textContent = `Error: ${error.message}`;
+    });
+}
+
+function pollDiscoveryStatus(taskId) {
+    return new Promise((resolve, reject) => {
+        const checkStatus = () => {
+            fetch(`/endpoints/discovery/status/${taskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.state === 'SUCCESS') {
+                        resolve(data.status);
+                    } else if (data.state === 'FAILURE') {
+                        reject(new Error(data.status));
+                    } else {
+                        setTimeout(checkStatus, 1000);
+                    }
+                })
+                .catch(reject);
+        };
+        checkStatus();
+    });
+}
+
+function testDiscoveredEndpoint(path, method) {
+    const endpointId = document.querySelector('.endpoint-details').dataset.endpointId;
+    // TODO: Implement endpoint testing
+    alert(`Testing ${method} ${path}`);
+}
 </script>
 {% endblock %}

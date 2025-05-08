@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: fuzzy_prompts_web
+    command: gunicorn --bind 0.0.0.0:8000 "fuzzy_prompts:create_app()" --workers 1 --threads 4 --timeout 120 --access-logfile - --error-logfile -
+    volumes:
+      - .:/app
+    ports:
+      - "8021:8000"
+    environment:
+      - FLASK_APP=fuzzy_prompts:create_app
+      - FLASK_DEBUG=1
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - SECRET_KEY=${SECRET_KEY}
+      - CELERY_BROKER_URL=amqp://guest:guest@broker:5672//
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=db
+      - CELERY_RESULT_BACKEND=db+postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    depends_on:
+      - db
+      - broker
+    env_file:
+      - .env
+    networks:
+      - fuzzy_prompts_network
+
+  worker:
+    build: .
+    container_name: fuzzy_prompts_worker
+    command: >
+      bash -c "cd /app && 
+      export PYTHONPATH=/app && 
+      celery -A celery_app worker --loglevel=DEBUG --concurrency=1 --logfile=/dev/stdout"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+      - FLASK_APP=fuzzy_prompts:create_app
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - CELERY_BROKER_URL=amqp://guest:guest@broker:5672//
+      - CELERY_RESULT_BACKEND=db+postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - PYTHONUNBUFFERED=1
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=db
+      - SECRET_KEY=${SECRET_KEY}
+    depends_on:
+      - db
+      - broker
+    env_file:
+      - .env
+    networks:
+      - fuzzy_prompts_network
+
+  db:
+    image: postgres:15
+    container_name: fuzzy_prompts_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5432:5432"
+    networks:
+      - fuzzy_prompts_network
+
+  broker:
+    image: rabbitmq:3-management
+    container_name: fuzzy_prompts_broker
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    user: rabbitmq
+    networks:
+      - fuzzy_prompts_network
+
+networks:
+  fuzzy_prompts_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  rabbitmq_data: 

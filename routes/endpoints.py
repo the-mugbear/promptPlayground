@@ -10,6 +10,13 @@ from services.common.header_parser_service import parse_raw_headers, headers_fro
 from werkzeug.exceptions import BadRequest
 from sqlalchemy.orm import joinedload
 import json
+from services.discovery import EndpointDiscoveryService
+from services.discovery.tasks import (
+    discover_endpoints_task,
+    discover_openapi_task,
+    discover_google_task,
+    discover_heuristic_task
+)
 
 endpoints_bp = Blueprint('endpoints_bp', __name__, url_prefix='/endpoints')
 
@@ -22,7 +29,7 @@ def list_endpoints():
     GET /endpoints -> Displays a table/list of existing endpoints
     """
     endpoints = Endpoint.query.all()
-    return render_template('endpoints/list_endpoints.html', endpoints=endpoints)
+    return render_template('endpoints/index.html', endpoints=endpoints)
 
 @endpoints_bp.route('/create', methods=['GET'])
 @login_required
@@ -429,6 +436,101 @@ def delete_header(endpoint_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
+@endpoints_bp.route('/discover', methods=['POST'])
+def discover_endpoints():
+    """Discover potential API endpoints for a given base URL."""
+    data = request.get_json()
+    if not data or 'base_url' not in data:
+        return jsonify({'error': 'base_url is required'}), 400
+    
+    base_url = data['base_url']
+    api_key = data.get('api_key')  # Optional API key
+    strategy = data.get('strategy', 'auto')
+    endpoint_id = data.get('endpoint_id')  # Optional endpoint ID
+    
+    try:
+        # Start the discovery task
+        task = discover_endpoints_task.delay(base_url, strategy, api_key, endpoint_id)
+        
+        return jsonify({
+            'message': 'Endpoint discovery started',
+            'task_id': task.id
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@endpoints_bp.route('/<int:endpoint_id>/discover', methods=['POST'])
+@login_required
+def discover_related_endpoints(endpoint_id):
+    """Discover related endpoints using a specific strategy."""
+    endpoint = Endpoint.query.get_or_404(endpoint_id)
+    data = request.get_json()
+    
+    if not data or 'strategy' not in data:
+        return jsonify({'error': 'strategy is required'}), 400
+    
+    strategy = data['strategy']
+    api_key = data.get('api_key')  # Optional API key
+    
+    try:
+        # Start the appropriate discovery task based on strategy
+        if strategy == 'openapi':
+            task = discover_openapi_task.delay(endpoint.hostname, api_key, endpoint_id)
+        elif strategy == 'google':
+            task = discover_google_task.delay(endpoint.hostname, api_key, endpoint_id)
+        elif strategy == 'heuristic':
+            task = discover_heuristic_task.delay(endpoint.hostname, api_key, endpoint_id)
+        else:
+            task = discover_endpoints_task.delay(endpoint.hostname, strategy, api_key, endpoint_id)
+        
+        return jsonify({
+            'message': 'Endpoint discovery started',
+            'task_id': task.id
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@endpoints_bp.route('/discovery/status/<task_id>', methods=['GET'])
+@login_required
+def get_discovery_status(task_id):
+    """Get the status of a discovery task."""
+    task = discover_endpoints_task.AsyncResult(task_id)
+    
+    if task.state == 'PENDING':
+        response = {
+            'state': task.state,
+            'status': 'Task is waiting for execution or unknown.'
+        }
+    elif task.state == 'FAILURE':
+        response = {
+            'state': task.state,
+            'status': str(task.info) if task.info else 'Task failed with unknown error'
+        }
+    elif task.state == 'SUCCESS':
+        # Ensure we're returning a proper list of endpoints
+        result = task.result
+        if isinstance(result, dict) and 'error' in result:
+            response = {
+                'state': 'FAILURE',
+                'status': result
+            }
+        else:
+            # Convert the result to a list of endpoints if it's not already
+            endpoints = result if isinstance(result, list) else []
+            response = {
+                'state': task.state,
+                'status': endpoints
+            }
+    else:
+        response = {
+            'state': task.state,
+            'status': 'Task is in an unknown state'
+        }
+    
+    return jsonify(response)
+
 # Helper to consolidate form data extraction across endpoints
 def get_endpoint_form_data(default_payload=None):
     """
@@ -496,3 +598,11 @@ def get_endpoint_form_data(default_payload=None):
         data["template"] = request.form.get("template", "endpoints/view_endpoint.html").strip()
 
     return data
+
+@endpoints_bp.route('/enumerate', methods=['GET'])
+@login_required
+def enumerate_endpoints():
+    """
+    GET /endpoints/enumerate -> Shows the API enumeration interface
+    """
+    return render_template('endpoints/enumerate_endpoints.html')

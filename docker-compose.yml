@@ -32,38 +32,46 @@ services:
       - CELERY_RESULT_BACKEND=db+postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
 
     depends_on:
-      - db       # Wait for db service to be healthy (basic check)
-      - broker   # Wait for broker service to be healthy (basic check)
+      db:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
     env_file:
       - .env     # Load variables from .env file
+    networks:
+      - fuzzy_prompts_network
 
   # Celery Worker Service
   worker:
-    build: . # Use the same image as the web service
+    build: .
     container_name: fuzzy_prompts_worker
-    # Override the default CMD from the Dockerfile
-    command: celery -A celery_app.celery worker -P eventlet --loglevel=info
-    # command: sleep infinity
+    command: >
+      bash -c "cd /app && 
+      export PYTHONPATH=/app && 
+      celery -A celery_app worker --loglevel=DEBUG --concurrency=1 --logfile=/dev/stdout"
     volumes:
-      - .:/app # Mount code for development consistency
+      - .:/app
     environment:
       - PYTHONPATH=/app
-      # Pass same environment variables as web service
+      - FLASK_APP=fuzzy_prompts:create_app
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - CELERY_BROKER_URL=amqp://guest:guest@broker:5672//
       - CELERY_RESULT_BACKEND=db+postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - PYTHONUNBUFFERED=1  # Ensure Python output is not buffered
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
-      # Add SECRET_KEY if celery tasks indirectly need it
+      - DB_HOST=db
       - SECRET_KEY=${SECRET_KEY}
     depends_on:
-      - db
-      - broker
+      db:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
     env_file:
       - .env
+    networks:
+      - fuzzy_prompts_network
 
   # PostgreSQL Database Service
   db:
@@ -83,24 +91,34 @@ services:
         interval: 5s
         timeout: 5s
         retries: 5
+    networks:
+      - fuzzy_prompts_network
 
   # RabbitMQ Broker Service
   broker:
-    image: rabbitmq:3-management # Use official RabbitMQ image with management UI
+    image: rabbitmq:3-management
     container_name: fuzzy_prompts_broker
     ports:
-      - "5672:5672"   # AMQP port
-      - "15672:15672" # Management UI port
+      - "5672:5672"  # AMQP protocol port
+      - "15672:15672"  # Management UI port
     environment:
-      # Set default user/pass (optional, can use defaults 'guest'/'guest')
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
-
-      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit loopback_users "[]"
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq/ # Persist RabbitMQ data (optional for dev)
+      - rabbitmq_data:/var/lib/rabbitmq
+    user: rabbitmq  # Ensure RabbitMQ runs as the correct user
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fuzzy_prompts_network
 
-# Define named volumes for persistent data
+networks:
+  fuzzy_prompts_network:
+    driver: bridge
+
 volumes:
-  postgres_data:
-  rabbitmq_data: # Optional persistence for RabbitMQ
+  postgres_data: # Named volume for PostgreSQL data persistence
+  rabbitmq_data: # Named volume for RabbitMQ data persistence

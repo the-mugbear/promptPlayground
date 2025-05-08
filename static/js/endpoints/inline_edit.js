@@ -1,12 +1,22 @@
 /**
- * Handles inline editing of endpoint fields with confirmation dialogs
+ * InlineEditor handles inline editing of endpoint fields and headers,
+ * including JWT detection, decoding, and confirmation dialogs.
  */
 class InlineEditor {
+    /**
+   * Initialize the editor by reading the current endpoint ID
+   * and setting up event listeners for editing actions.
+   */
   constructor() {
     this.endpointId = document.querySelector('.endpoint-details')?.dataset.endpointId;
     this.setupEventListeners();
   }
 
+    /**
+   * Check if a given token string is a well-formed JWT.
+   * @param {string} token - The authorization token, may include 'Bearer ' prefix.
+   * @returns {boolean} True if the token matches JWT pattern, else false.
+   */
   isJWT(token) {
     // Remove 'Bearer ' prefix if present
     if (token.startsWith('Bearer ')) {
@@ -20,6 +30,11 @@ class InlineEditor {
     return jwtRegex.test(token);
   }
 
+    /**
+   * Decode the payload of a JWT token.
+   * @param {string} token - The JWT string, possibly with 'Bearer ' prefix.
+   * @returns {object|null} Parsed payload object, or null on failure.
+   */
   decodeJWT(token) {
     try {
       console.log('Attempting to decode JWT:', token);
@@ -52,6 +67,11 @@ class InlineEditor {
     }
   }
 
+    /**
+   * Compute expiration info for a JWT token.
+   * @param {string} token - The JWT to inspect.
+   * @returns {object|null} Expiration status and human-readable message, or null.
+   */
   getTokenExpirationInfo(token) {
     console.log('Getting token expiration info for:', token);
     if (!this.isJWT(token)) {
@@ -96,6 +116,10 @@ class InlineEditor {
     };
   }
 
+    /**
+   * Update the expiration display for a header element containing a JWT.
+   * @param {HTMLElement} headerItem - The DOM element for a header row.
+   */
   updateTokenExpirationInfo(headerItem) {
     console.log('Updating token info for header item:', headerItem);
     const valueSpan = headerItem.querySelector('.header-value');

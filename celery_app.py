@@ -1,6 +1,10 @@
 # celery_app.py
 from celery import Celery
 import os
+from services.discovery.logging_config import setup_logging
+
+# Set up logging
+setup_logging()
 
 # Define Celery instance here
 # Use environment variables for broker/backend defaults if possible
@@ -10,8 +14,9 @@ celery = Celery(
     backend=os.getenv('CELERY_RESULT_BACKEND'), # Default to None - rely on .env
     include=[
         'workers.execution_tasks',
-        'workers.import_tasks'
-        ]
+        'workers.import_tasks',
+        'services.discovery.tasks'  # Add discovery tasks
+    ]
 )
 
 # Create a custom Task base class that pushes app context
@@ -25,8 +30,8 @@ class ContextTask(celery.Task):
         if self._flask_app is None:
             print("Flask app not cached in worker, creating context...")
             # Import the factory function *here* to avoid circular imports at module level
-            from fuzzy_prompts import create_app
-            self._flask_app = create_app()
+            import fuzzy_prompts
+            self._flask_app = fuzzy_prompts.create_app()
             print("Flask app created for Celery context.")
         return self._flask_app
 
