@@ -60,7 +60,8 @@ def test_endpoint(endpoint_id=None):
             host = endpoint.hostname
             path = endpoint.endpoint
             payload = endpoint.http_payload
-            headers = {h.key: h.value for h in endpoint.headers}
+            # Convert headers dictionary to raw headers string
+            headers = "\n".join(f"{h.key}: {h.value}" for h in endpoint.headers)
         else:
             # Test a new endpoint configuration
             data = request.form if request.form else request.get_json()
@@ -75,7 +76,7 @@ def test_endpoint(endpoint_id=None):
             if not all([host, path, payload]):
                 return jsonify({'error': 'Missing required fields'}), 400
                 
-            headers = parse_raw_headers(raw_headers) if raw_headers else {}
+            headers = raw_headers
         
         # Make the test request
         result = replay_post_request(host, path, payload, headers)
@@ -84,7 +85,7 @@ def test_endpoint(endpoint_id=None):
         return jsonify({
             'status_code': result.get('status_code'),
             'response': result.get('response_text'),
-            'headers_sent': headers,
+            'headers_sent': result.get('headers_sent'),
             'payload': payload
         })
         
