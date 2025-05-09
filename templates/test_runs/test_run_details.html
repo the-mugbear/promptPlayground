@@ -1,0 +1,60 @@
+<div class="action-buttons">
+    <button id="analyzeInvalidChars" class="btn btn-primary">
+        Analyze Invalid Characters
+    </button>
+</div>
+
+<!-- Modal for Analysis Results -->
+<div class="modal fade" id="analysisResultsModal" tabindex="-1" role="dialog" aria-labelledby="analysisResultsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="analysisResultsModalLabel">Invalid Characters Analysis</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h6>Invalid Characters Found:</h6>
+                <div id="invalidCharsList" class="mb-4"></div>
+                
+                <h6>Successful Characters:</h6>
+                <div id="successfulCharsList" class="mb-4"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <a href="#" class="btn btn-primary" id="viewFilterBtn">View Filter</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#analyzeInvalidChars').click(function() {
+        $.post(`/test_runs/${testRunId}/analyze_invalid_chars`, function(response) {
+            if (response.success) {
+                // Display invalid characters
+                $('#invalidCharsList').html(
+                    response.invalid_chars.length > 0 
+                        ? response.invalid_chars.map(char => `<span class="badge badge-danger mr-2">${char}</span>`).join('')
+                        : '<p>No invalid characters found.</p>'
+                );
+                
+                // Display successful characters
+                $('#successfulCharsList').html(
+                    response.successful_chars.length > 0
+                        ? response.successful_chars.map(char => `<span class="badge badge-success mr-2">${char}</span>`).join('')
+                        : '<p>No successful characters found.</p>'
+                );
+                
+                // Update the view filter button
+                $('#viewFilterBtn').attr('href', `/prompt_filters/${response.filter_id}`);
+                
+                // Show the modal
+                $('#analysisResultsModal').modal('show');
+            }
+        });
+    });
+});
+</script> 

@@ -16,8 +16,8 @@ from routes.test_runs import test_runs_bp
 from routes.core import core_bp
 from routes.help import help_bp
 from routes.reports import report_bp
-from routes.evil_agent import evil_agent_bp
-from routes.best_of_n import best_of_n_bp
+from routes.attacks.evil_agent import evil_agent_bp
+from routes.attacks.best_of_n import best_of_n_bp
 from routes.testing_grounds import testing_grounds_bp
 from routes.dialogues import dialogue_bp
 from routes.prompt_filter import prompt_filter_bp
