@@ -11,6 +11,40 @@ from services.common.http_request_service import replay_post_request
 from services.common.header_parser_service import parse_raw_headers, headers_from_apiheader_list
 from . import endpoints_bp
 
+# Common payload templates for different API types
+PAYLOAD_TEMPLATES = {
+    'openai': {
+        'name': 'OpenAI Chat Completion',
+        'template': '''{
+    "model": "gpt-3.5-turbo",
+    "messages": [
+        {
+            "role": "user",
+            "content": "{{INJECT_PROMPT}}"
+        }
+    ]
+}'''
+    },
+    'anthropic': {
+        'name': 'Anthropic Claude',
+        'template': '''{
+    "model": "claude-3-opus-20240229",
+    "messages": [
+        {
+            "role": "user",
+            "content": "{{INJECT_PROMPT}}"
+        }
+    ]
+}'''
+    },
+    'custom': {
+        'name': 'Custom JSON',
+        'template': '''{
+    "prompt": "{{INJECT_PROMPT}}"
+}'''
+    }
+}
+
 @endpoints_bp.route('/get_suggestions', methods=['GET'])
 @login_required
 def get_endpoint_suggestions():
@@ -91,6 +125,15 @@ def test_endpoint(endpoint_id=None):
     
     # Make the request
     result = replay_post_request(hostname, endpoint_path, payload, headers_str)
+    
+    # Check if this is an AJAX request
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'status_code': result.get("status_code", "N/A"),
+            'response': result.get("response_text"),
+            'headers_sent': result.get("headers_sent", {}),
+            'payload': payload
+        })
     
     if endpoint_id:
         # Return the results in the view_endpoint template
