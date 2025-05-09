@@ -51,6 +51,7 @@
       <tr>
         <th>Description</th>
         <th>Behavior</th>
+        <th>Created By</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -63,6 +64,7 @@
             </a>
           </td>
           <td>{{ suite.behavior }}</td>
+          <td>{{ suite.user.username if suite.user else 'System' }}</td>
           <td>
             <button 
               type="button" 

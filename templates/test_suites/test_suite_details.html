@@ -43,8 +43,8 @@
     </p>
     <p>
       <strong>Created By:</strong>
-      {% if test_suite.created_by %}
-        {{ test_suite.created_by.username }}
+      {% if test_suite.user %}
+        {{ test_suite.user.username }}
       {% else %}
         N/A
       {% endif %}

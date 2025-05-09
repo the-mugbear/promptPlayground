@@ -366,7 +366,7 @@ def import_hf_datasets():
                 try:
                     # Ensure task name matches your structure (workers or tasks) and celery_app.py include
                     task_name = 'workers.import_tasks.import_dataset_task'
-                    celery.send_task(task_name, args=[name, prompt_field, attack_type, hf_token])
+                    celery.send_task(task_name, args=[name, prompt_field, attack_type, hf_token, current_user.id])
                     current_app.logger.info(f"Dispatched Celery task '{task_name}' for dataset '{name}'")
                     tasks_started_count += 1
                 except Exception as e:

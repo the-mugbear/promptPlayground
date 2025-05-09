@@ -2,6 +2,7 @@
 document.addEventListener("DOMContentLoaded", function() {
     const endpointSelect = document.getElementById('endpoint_id');
     if (endpointSelect) {
+
       endpointSelect.addEventListener('change', async function(e) {
         const endpointId = e.target.value;
         if (!endpointId) return;

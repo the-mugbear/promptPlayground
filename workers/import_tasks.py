@@ -1,3 +1,22 @@
+"""
+This module contains Celery tasks for importing datasets from Hugging Face and creating test suites.
+The main task is invoked from routes/test_suites.py when a user selects datasets to import.
+
+Task Flow:
+1. User selects datasets to import from the web interface
+2. import_dataset_task is invoked for each selected dataset
+3. Task processes the dataset and creates test suites with associated test cases
+4. Results are stored in the database
+
+Key Functions:
+- import_dataset_task: Main Celery task that orchestrates the import process
+- _load_or_update_reference_in_task: Manages dataset reference records
+- _load_huggingface_split_in_task: Loads data from Hugging Face
+- _process_dataset_entry_in_task: Processes individual dataset entries into test cases
+- _create_suite_in_task: Creates test suites from processed test cases
+- _create_dataset_reference_in_task: Creates new dataset reference records
+"""
+
 import datetime
 from datetime import timezone
 import json
@@ -5,10 +24,10 @@ import os
 
 from extensions import db
 from models.model_TestSuite import TestSuite
-from models.model_DatasetReference import DatasetReference
 from models.model_TestCase import TestCase
+from models.model_DatasetReference import DatasetReference
 
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, InternalError
 from celery_app import celery 
 from datasets import load_dataset
 from datasets.exceptions import DatasetNotFoundError 
@@ -28,25 +47,52 @@ except ImportError as e:
 # --- Helper Functions (Adapted from app.py) ---
 # Note: These run within the Celery task's app context provided by ContextTask
 def _load_or_update_reference_in_task(dataset_name):
-    """Checks/updates DatasetReference within the task."""
-    existing_ref = DatasetReference.query.filter_by(name=dataset_name).first()
-    if existing_ref:
-        # In a background task, we probably don't want interactive input.
-        # Decide on a policy: either always skip if exists, or always update.
-        # Let's choose to update the timestamp if found.
-        try:
-            existing_ref.date_added = datetime.now(timezone.utc)
-            # Commit happens later, just stage the change
-            print(f"Task: Found existing DatasetReference for '{dataset_name}'. Updating timestamp.")
-            return existing_ref # Return existing reference
-        except SQLAlchemyError as e:
-            db.session.rollback() # Rollback this specific potential change
-            print(f"Task Error: Error staging update for DatasetReference '{dataset_name}': {e}")
-            return None # Signal error/skip
-    return "create_new" # Signal to create a new one later
+    """
+    Checks if a dataset reference exists and updates it if found.
+    Called by import_dataset_task to manage dataset reference records.
+    
+    Args:
+        dataset_name (str): Name of the dataset to check/update
+        
+    Returns:
+        DatasetReference or str: Existing reference if found, "create_new" if new needed
+    """
+    try:
+        # Ensure we start with a clean transaction
+        db.session.rollback()
+        
+        existing_ref = DatasetReference.query.filter_by(name=dataset_name).first()
+        if existing_ref:
+            # In a background task, we probably don't want interactive input.
+            # Decide on a policy: either always skip if exists, or always update.
+            # Let's choose to update the timestamp if found.
+            try:
+                existing_ref.date_added = datetime.datetime.now(timezone.utc)
+                # Commit happens later, just stage the change
+                print(f"Task: Found existing DatasetReference for '{dataset_name}'. Updating timestamp.")
+                return existing_ref # Return existing reference
+            except SQLAlchemyError as e:
+                db.session.rollback() # Rollback this specific potential change
+                print(f"Task Error: Error staging update for DatasetReference '{dataset_name}': {e}")
+                return None # Signal error/skip
+        return "create_new" # Signal to create a new one later
+    except Exception as e:
+        db.session.rollback()
+        print(f"Task Error: Unexpected error in _load_or_update_reference_in_task: {e}")
+        return None
 
 def _load_huggingface_split_in_task(dataset_name, hf_token=None):
-    """Loads dataset split within the task, using token if provided."""
+    """
+    Loads a dataset split from Hugging Face.
+    Called by import_dataset_task to fetch the actual dataset data.
+    
+    Args:
+        dataset_name (str): Name of the dataset to load
+        hf_token (str, optional): Hugging Face API token for private datasets
+        
+    Returns:
+        Dataset: The loaded dataset split
+    """
     print(f"Task: Loading dataset '{dataset_name}'...")
     try:
         # Use the token when loading the dataset
@@ -73,7 +119,19 @@ def _load_huggingface_split_in_task(dataset_name, hf_token=None):
         return None
 
 def _process_dataset_entry_in_task(entry, prompt_field, dataset_name, attack_type):
-    """Processes a single entry within the task."""
+    """
+    Processes a single dataset entry into a test case.
+    Called by import_dataset_task for each entry in the dataset.
+    
+    Args:
+        entry (dict): Dataset entry containing the prompt
+        prompt_field (str): Field name containing the prompt text
+        dataset_name (str): Name of the source dataset
+        attack_type (str): Type of attack to associate with the test case
+        
+    Returns:
+        TestCase: Created test case object
+    """
     prompt = entry.get(prompt_field)
     if not prompt:
         return None
@@ -104,8 +162,20 @@ def _process_dataset_entry_in_task(entry, prompt_field, dataset_name, attack_typ
         print(f"Task Error: Failed creating TestCase for prompt prefix '{prompt[:50]}...': {e}")
         return None
 
-def _create_suite_in_task(created_test_cases, dataset_name, attack_type):
-    """Creates and stages a TestSuite within the task."""
+def _create_suite_in_task(created_test_cases, dataset_name, attack_type, user_id=None):
+    """
+    Creates a test suite from processed test cases.
+    Called by import_dataset_task after processing all dataset entries.
+    
+    Args:
+        created_test_cases (list): List of TestCase objects
+        dataset_name (str): Name of the source dataset
+        attack_type (str): Type of attack for the suite
+        user_id (int, optional): ID of the user creating the suite
+        
+    Returns:
+        TestSuite: Created test suite object
+    """
     if not created_test_cases:
         return None
 
@@ -114,7 +184,8 @@ def _create_suite_in_task(created_test_cases, dataset_name, attack_type):
         description=f"{dataset_name} (Imported)", # Make description clearer
         behavior=attack_type,
         objective=f"Test cases imported from Hugging Face dataset '{dataset_name}'",
-        created_at=datetime.datetime.now(timezone.utc)
+        created_at=datetime.datetime.now(timezone.utc),
+        user_id=user_id  # Add the user ID
     )
     new_suite.test_cases.extend(created_test_cases)
     try:
@@ -127,24 +198,59 @@ def _create_suite_in_task(created_test_cases, dataset_name, attack_type):
         raise # Re-raise to signal failure to the main task handler
 
 def _create_dataset_reference_in_task(dataset_name):
-     """Creates and stages a DatasetReference within the task."""
-     dataset_url = f"https://huggingface.co/datasets/{dataset_name}"
-     dataset_ref = DatasetReference(
-         name=dataset_name, url=dataset_url, added=True
-     )
-     try:
-         db.session.add(dataset_ref)
-         print(f"Task: DatasetReference '{dataset_ref.name}' prepared for commit.")
-         return dataset_ref
-     except SQLAlchemyError as e:
-         print(f"Task Error: Error preparing DatasetReference '{dataset_ref.name}': {e}")
-         raise # Re-raise to signal failure
+    """
+    Creates a new dataset reference record.
+    Called by import_dataset_task when a new dataset is being imported.
+    
+    Args:
+        dataset_name (str): Name of the dataset to create reference for
+        
+    Returns:
+        DatasetReference: Created reference object
+    """
+    try:
+        dataset_url = f"https://huggingface.co/datasets/{dataset_name}"
+        dataset_ref = DatasetReference(
+            name=dataset_name, url=dataset_url, added=True
+        )
+        db.session.add(dataset_ref)
+        print(f"Task: DatasetReference '{dataset_ref.name}' prepared for commit.")
+        return dataset_ref
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print(f"Task Error: Error preparing DatasetReference '{dataset_ref.name}': {e}")
+        raise # Re-raise to signal failure
+    except Exception as e:
+        db.session.rollback()
+        print(f"Task Error: Unexpected error in _create_dataset_reference_in_task: {e}")
+        raise
 
 
 # --- The Main Celery Task ---
-@celery.task(bind=True) # `bind=True` allows access to `self` for retries etc. if needed later
-def import_dataset_task(self, dataset_name, prompt_field, attack_type, hf_token=None):
-    """Celery task to import a single Hugging Face dataset."""
+@celery.task(bind=True)
+def import_dataset_task(self, dataset_name, prompt_field, attack_type, hf_token=None, user_id=None):
+    """
+    Main Celery task for importing a dataset from Hugging Face.
+    
+    This task is invoked from routes/test_suites.py when a user selects datasets to import.
+    The task orchestrates the entire import process:
+    1. Checks/updates dataset reference
+    2. Loads data from Hugging Face
+    3. Processes entries into test cases
+    4. Creates test suites
+    5. Manages database transactions
+    
+    Args:
+        self: Celery task instance (used for retries if needed)
+        dataset_name (str): Name of the dataset to import
+        prompt_field (str): Field name containing the prompt text
+        attack_type (str): Type of attack to associate with test cases
+        hf_token (str, optional): Hugging Face API token for private datasets
+        user_id (int, optional): ID of the user importing the dataset
+        
+    Returns:
+        bool: True if import succeeded, False if failed
+    """
     print(f"--- Task started: Importing {dataset_name} ---")
     task_failed = False
     try:
@@ -171,7 +277,7 @@ def import_dataset_task(self, dataset_name, prompt_field, attack_type, hf_token=
         print(f"Task: Finished processing entries for {dataset_name}. Prepared {len(created_test_cases)} test cases.")
 
         # 4. Stage Suite Creation
-        _create_suite_in_task(created_test_cases, dataset_name, attack_type) # Raises exception on error
+        _create_suite_in_task(created_test_cases, dataset_name, attack_type, user_id) # Pass user_id
 
         # 5. Stage DatasetReference Creation if needed
         if reference_action == "create_new":

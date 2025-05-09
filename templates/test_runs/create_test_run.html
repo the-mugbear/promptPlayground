@@ -33,7 +33,8 @@
       <!-- Endpoint Selection -->
       <div class="form-group">
         <label for="endpoint_id">Select Endpoint:</label>
-        <select name="endpoint_id" id="endpoint_id">
+        <select name="endpoint_id" id="endpoint_id" required>
+          <option value="" selected>— select an endpoint —</option>
           {% for endpoint in endpoints %}
             <option value="{{ endpoint.id }}">{{ endpoint.name }}</option>
           {% endfor %}
