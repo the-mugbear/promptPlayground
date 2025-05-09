@@ -12,8 +12,10 @@ from services.transformers.registry import apply_transformations_to_lines, TRANS
 from services.transformers.helpers import process_transformations
 from models.associations import test_suite_cases
 from datetime import datetime
-from sqlalchemy import or_, and_, desc
-from models.model_TestRun import TestRun, TestRunAttempt, TestExecution
+from sqlalchemy import or_, and_, desc, selectinload
+from models.model_TestRun import TestRun
+from models.model_TestRunAttempt import TestRunAttempt
+from models.model_TestExecution import TestExecution
 from models.model_Endpoint import Endpoint
 from models.model_PromptFilter import PromptFilter
 
