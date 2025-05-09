@@ -39,6 +39,15 @@
     <a href="{{ url_for('test_suites_bp.export_all_test_suites') }}" class="btn btn-secondary">Export All Suites</a>
   </div>
 
+  <div class="mb-4">
+    <a href="{{ url_for('test_suites_bp.create_test_suite_form') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Create New Test Suite
+    </a>
+    <button id="createCharProbeBtn" class="btn btn-info">
+        <i class="fas fa-search"></i> Create Character Probe Suite
+    </button>
+  </div>
+
   <input 
     type="search" 
     id="searchSuite" 
@@ -312,5 +321,16 @@ async function importSelectedSuites() {
   
   closeImportModal();
 }
+
+// Handle character probe suite creation
+$('#createCharProbeBtn').click(function() {
+    if (confirm('This will create a new test suite that systematically tests all ASCII characters. Continue?')) {
+        $.post("{{ url_for('test_suites_bp.create_char_probe_suite') }}", function(response) {
+            window.location.href = response.redirect;
+        }).fail(function(xhr) {
+            alert('Error creating character probe suite: ' + xhr.responseText);
+        });
+    }
+});
 </script>
 {% endblock %}

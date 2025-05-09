@@ -12,6 +12,10 @@ from services.transformers.registry import apply_transformations_to_lines, TRANS
 from services.transformers.helpers import process_transformations
 from models.associations import test_suite_cases
 from datetime import datetime
+from sqlalchemy import or_, and_, desc
+from models.model_TestRun import TestRun, TestRunAttempt, TestExecution
+from models.model_Endpoint import Endpoint
+from models.model_PromptFilter import PromptFilter
 
 test_suites_bp = Blueprint("test_suites_bp", __name__, url_prefix="/test_suites")
 
@@ -603,3 +607,40 @@ def export_all_test_suites():
     response = jsonify(export_data)
     response.headers['Content-Disposition'] = 'attachment; filename=all_test_suites.json'
     return response
+
+@test_suites_bp.route('/create_char_probe_suite', methods=['POST'])
+@login_required
+def create_char_probe_suite():
+    """Creates a new test suite specifically for probing character filters."""
+    try:
+        # Create the test suite
+        suite = TestSuite(
+            name="Character Probe Suite",
+            description="Systematically tests all ASCII characters to identify which ones are filtered",
+            behavior="detection",  # Set behavior to detection
+            user_id=current_user.id
+        )
+        db.session.add(suite)
+        db.session.flush()  # Get the suite ID
+
+        # Add test cases for ASCII punctuation characters
+        ascii_chars = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+        for char in ascii_chars:
+            test_case = TestCase(
+                name=f"Test Character: {char}",
+                description=f"Tests if the character '{char}' is filtered",
+                prompt=char,  # Just the character itself
+                expected_response="",  # Empty expected response since we're just checking if it's filtered
+                test_suite_id=suite.id,
+                user_id=current_user.id
+            )
+            db.session.add(test_case)
+
+        db.session.commit()
+        flash("Character probe suite created successfully!", "success")
+        return redirect(url_for('test_suites_bp.view_test_suite', suite_id=suite.id))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error creating character probe suite: {str(e)}", "error")
+        return redirect(url_for('test_suites_bp.list_test_suites'))

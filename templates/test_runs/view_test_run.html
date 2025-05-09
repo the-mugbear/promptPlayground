@@ -225,6 +225,43 @@
             <p>No test execution records found.</p>
         {% endif %}
     </div>
+
+    <div class="mb-4">
+        <button id="analyzeInvalidCharsBtn" class="btn btn-info">
+            <i class="fas fa-filter"></i> Create Prompt Filter from Results
+        </button>
+    </div>
+
+    <!-- Analysis Results Modal -->
+    <div class="modal fade" id="analysisResultsModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Analysis Results</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <h6>Invalid Characters:</h6>
+                    <div id="invalidCharsList" class="mb-3"></div>
+                    
+                    <h6>Successful Characters:</h6>
+                    <div id="successfulCharsList" class="mb-3"></div>
+                    
+                    <div id="filterCreated" class="alert alert-success" style="display: none;">
+                        Prompt filter created successfully!
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <a id="viewFilterBtn" href="#" class="btn btn-primary" style="display: none;">
+                        View Created Filter
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="{{ url_for('static', filename='js/testRuns/filterAttempts.js') }}"></script>
@@ -234,4 +271,26 @@
 <!-- For sick donuts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{{ url_for('static', filename='js/testRuns/donut.js') }}"></script>
+
+<script>
+$(document).ready(function() {
+    // ... existing code ...
+
+    // Handle invalid character analysis
+    $('#analyzeInvalidCharsBtn').click(function() {
+        if (confirm('This will analyze the test run results and create a prompt filter for invalid characters. Continue?')) {
+            $.post("{{ url_for('test_runs_bp.analyze_invalid_chars', run_id=run.id) }}", function(response) {
+                // Display results in modal
+                $('#invalidCharsList').text(response.failed_chars.join(', '));
+                $('#successfulCharsList').text(response.successful_chars.join(', '));
+                $('#filterCreated').show();
+                $('#viewFilterBtn').attr('href', "{{ url_for('prompt_filter_bp.view_prompt_filter', filter_id=0) }}".replace('0', response.filter_id)).show();
+                $('#analysisResultsModal').modal('show');
+            }).fail(function(xhr) {
+                alert('Error analyzing results: ' + xhr.responseText);
+            });
+        }
+    });
+});
+</script>
 {% endblock %}
