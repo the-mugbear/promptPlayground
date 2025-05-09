@@ -14,8 +14,11 @@ prompt_filter_bp = Blueprint('prompt_filter_bp', __name__, url_prefix='/prompt_f
 def create_prompt_filter():
     if request.method == 'POST':
         name = request.form.get('name')
-        invalid_characters = request.form.get('invalid_characters')
+        invalid_chars_input = request.form.get('invalid_characters', '').strip()
         words_input = request.form.get('words_to_replace', '').strip()
+
+        # Process invalid characters - split only by spaces, preserving all other characters
+        invalid_characters = ','.join(char for char in invalid_chars_input.split() if char)
 
         # Try interpreting the input as JSON; enforce dict
         try:

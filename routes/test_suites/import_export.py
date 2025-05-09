@@ -1,3 +1,8 @@
+"""
+Test suite import/export operations.
+This module handles importing and exporting test suites.
+"""
+
 import json
 import yaml
 from flask import request, render_template, redirect, url_for, flash, jsonify, send_file
@@ -90,6 +95,11 @@ def import_hf_datasets():
     # GET request: Pass the loaded dictionary to the template
     return render_template('test_suites/import_datasets.html',
                            available_datasets=available_datasets_dict)
+
+@test_suites_bp.route('/import/help', methods=['GET'])
+def import_help():
+    """Display help page for test suite import format."""
+    return render_template('test_suites/import_help.html')
 
 @test_suites_bp.route('/<int:suite_id>/export', methods=['GET'])
 @login_required
