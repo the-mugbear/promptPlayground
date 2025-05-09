@@ -109,8 +109,14 @@ def best_of_n_index():
                 # Prepare payload for this specific permutation
                 # Use try-except for robust replacement, handle potential errors
                 try:
-                    # Ensure payload is treated as a string for replacement
-                    payload = str(payload_template).replace("{{INJECT_PROMPT}}", json.dumps(perm)[1:-1]) # Escape prompt for JSON string
+                    # Parse the payload template as JSON
+                    payload_dict = json.loads(payload_template)
+                    # Find and replace the INJECT_PROMPT token in the messages
+                    for message in payload_dict.get('messages', []):
+                        if 'content' in message and '{{INJECT_PROMPT}}' in message['content']:
+                            message['content'] = message['content'].replace('{{INJECT_PROMPT}}', perm)
+                    # Convert back to JSON string
+                    payload = json.dumps(payload_dict)
                 except Exception as e:
                     # Handle error during payload creation (e.g., template issue)
                     error_message = f"Error creating payload for permutation {i + 1}: {e}"
