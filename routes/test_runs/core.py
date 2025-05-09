@@ -27,8 +27,10 @@ def list_test_runs():
         Rendered template with paginated test runs list
     """
     page = request.args.get('page', 1, type=int)
-    pagination = TestRun.query.order_by(TestRun.id.desc()).paginate(
-        page=page, per_page=10, error_out=False)
+    pagination = (TestRun.query
+                 .options(selectinload(TestRun.user))
+                 .order_by(TestRun.id.desc())
+                 .paginate(page=page, per_page=10, error_out=False))
     runs = pagination.items
     return render_template('test_runs/list_test_runs.html', test_runs=runs, pagination=pagination)
 

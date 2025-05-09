@@ -61,8 +61,11 @@ def handle_create_endpoint():
     - Associated headers
     
     Returns:
-        Redirect to the new endpoint's view page on success,
-        or back to the creation form with error message on failure
+        For AJAX requests:
+            JSON response with success/error message and redirect URL
+        For regular form submissions:
+            Redirect to the new endpoint's view page on success,
+            or back to the creation form with error message on failure
     """
     try:
         # Get form data
@@ -70,12 +73,18 @@ def handle_create_endpoint():
         
         # Validate required fields
         if not form_data["name"] or not form_data["hostname"] or not form_data["endpoint_path"]:
-            flash("Name, hostname, and endpoint path are required", "error")
+            error_msg = "Name, hostname, and endpoint path are required"
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'error': error_msg}), 400
+            flash(error_msg, "error")
             return redirect(url_for("endpoints_bp.create_endpoint_form"))
         
         # Validate that the payload contains the injection prompt token
         if "{{INJECT_PROMPT}}" not in form_data["payload"]:
-            flash("HTTP Payload must contain the {{INJECT_PROMPT}} token", "error")
+            error_msg = "HTTP Payload must contain the {{INJECT_PROMPT}} token"
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'error': error_msg}), 400
+            flash(error_msg, "error")
             return redirect(url_for("endpoints_bp.create_endpoint_form"))
             
         # Validate that the token is not directly quoted (but can be part of a JSON string)
@@ -88,7 +97,10 @@ def handle_create_endpoint():
                 '"text": "{{INJECT_PROMPT}}"'
             ]
         ):
-            flash("The {{INJECT_PROMPT}} token should be part of a JSON string value (e.g., in a 'content' or 'prompt' field)", "error")
+            error_msg = "The {{INJECT_PROMPT}} token should be part of a JSON string value (e.g., in a 'content' or 'prompt' field)"
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'error': error_msg}), 400
+            flash(error_msg, "error")
             return redirect(url_for("endpoints_bp.create_endpoint_form"))
         
         # Create new endpoint
@@ -96,7 +108,8 @@ def handle_create_endpoint():
             name=form_data["name"],
             hostname=form_data["hostname"],
             endpoint=form_data["endpoint_path"],
-            http_payload=form_data["payload"]
+            http_payload=form_data["payload"],
+            user_id=current_user.id
         )
         
         # Add and commit the endpoint first to get its ID
@@ -111,12 +124,22 @@ def handle_create_endpoint():
                 db.session.add(header)
             db.session.commit()
         
-        flash("Endpoint created successfully", "success")
+        success_msg = "Endpoint created successfully"
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'message': success_msg,
+                'redirect_url': url_for("endpoints_bp.view_endpoint_details", endpoint_id=endpoint.id)
+            })
+        
+        flash(success_msg, "success")
         return redirect(url_for("endpoints_bp.view_endpoint_details", endpoint_id=endpoint.id))
         
     except Exception as e:
         db.session.rollback()
-        flash(f"Error creating endpoint: {str(e)}", "error")
+        error_msg = f"Error creating endpoint: {str(e)}"
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': error_msg}), 500
+        flash(error_msg, "error")
         return redirect(url_for("endpoints_bp.create_endpoint_form"))
 
 @endpoints_bp.route('/<int:endpoint_id>/delete', methods=['POST'])
@@ -208,7 +231,7 @@ def get_endpoint_form_data(default_payload=None):
     return {
         "name": request.form.get('name', '').strip(),
         "hostname": request.form.get('hostname', '').strip(),
-        "endpoint_path": request.form.get('endpoint_path', '').strip(),
+        "endpoint_path": request.form.get('endpoint', '').strip(),
         "payload": request.form.get('http_payload', default_payload or '').strip(),
         "raw_headers": request.form.get('raw_headers', '').strip()
     } 

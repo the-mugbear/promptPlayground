@@ -6,6 +6,8 @@ This module handles testing of endpoints and retrieving test suggestions.
 from flask import request, jsonify
 from flask_login import login_required
 from models.model_Endpoints import Endpoint
+from services.common.http_request_service import replay_post_request
+from services.common.header_parser_service import parse_raw_headers
 from . import endpoints_bp
 
 @endpoints_bp.route('/get_suggestions', methods=['GET'])
@@ -45,42 +47,46 @@ def test_endpoint(endpoint_id=None):
         endpoint_id: Optional ID of an existing endpoint to test
         
     Returns:
-        JSON response with test results
+        JSON response with test results including:
+        - Status code
+        - Response text
+        - Headers sent
+        - Payload sent
     """
-    if endpoint_id:
-        # Test an existing endpoint
-        endpoint = Endpoint.query.get_or_404(endpoint_id)
-        host = endpoint.hostname
-        path = endpoint.endpoint
-        payload = endpoint.http_payload
-        headers = {h.key: h.value for h in endpoint.headers}
-    else:
-        # Test a new endpoint configuration
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
+    try:
+        if endpoint_id:
+            # Test an existing endpoint
+            endpoint = Endpoint.query.get_or_404(endpoint_id)
+            host = endpoint.hostname
+            path = endpoint.endpoint
+            payload = endpoint.http_payload
+            headers = {h.key: h.value for h in endpoint.headers}
+        else:
+            # Test a new endpoint configuration
+            data = request.form if request.form else request.get_json()
+            if not data:
+                return jsonify({'error': 'No data provided'}), 400
+                
+            host = data.get('hostname')
+            path = data.get('endpoint')
+            payload = data.get('http_payload')
+            raw_headers = data.get('raw_headers', '')
             
-        host = data.get('hostname')
-        path = data.get('endpoint')
-        payload = data.get('http_payload')
-        headers = data.get('headers', {})
+            if not all([host, path, payload]):
+                return jsonify({'error': 'Missing required fields'}), 400
+                
+            headers = parse_raw_headers(raw_headers) if raw_headers else {}
         
-        if not all([host, path, payload]):
-            return jsonify({'error': 'Missing required fields'}), 400
-    
-    # TODO: Implement actual endpoint testing logic
-    # This would typically involve:
-    # 1. Validating the endpoint configuration
-    # 2. Making a test request
-    # 3. Analyzing the response
-    # 4. Returning the results
-    
-    return jsonify({
-        'message': 'Endpoint testing not yet implemented',
-        'endpoint': {
-            'host': host,
-            'path': path,
-            'has_payload': bool(payload),
-            'header_count': len(headers)
-        }
-    }) 
+        # Make the test request
+        result = replay_post_request(host, path, payload, headers)
+        
+        # Return the results
+        return jsonify({
+            'status_code': result.get('status_code'),
+            'response': result.get('response_text'),
+            'headers_sent': headers,
+            'payload': payload
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500 

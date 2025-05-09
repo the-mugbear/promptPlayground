@@ -204,7 +204,7 @@
                                             <div class="code-block json-response">{{ attempt.response }}</div>
                                         </td>
                                         <td class="px-4 py-2">
-                                            <form method="POST" action="{{ url_for('test_runs_bp.update_execution_status', run_id=run.id) }}" class="update-status-form">
+                                            <form method="POST" action="{{ url_for('test_runs_bp.update_execution_status', execution_id=attempt.execution_id) }}" class="update-status-form">
                                                 <input type="hidden" name="execution_id" value="{{ attempt.execution_id }}">
                                                 <select name="status" class="border rounded p-1">
                                                     <option value="pending_review" {% if attempt.status == 'pending_review' %}selected{% endif %}>Pending Review</option>

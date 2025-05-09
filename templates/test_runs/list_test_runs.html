@@ -24,6 +24,7 @@
         <th>Name</th>
         <th>Status</th>
         <th>Created At</th>
+        <th>Created By</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -33,6 +34,7 @@
           <td><a href="{{ url_for('test_runs_bp.view_test_run', run_id=run.id) }}">{{ run.name or 'N/A' }}</a></td>
           <td>{{ run.status or 'pending' }}</td>
           <td>{{ run.created_at or 'N/A' }}</td>
+          <td>{{ run.user.username if run.user else 'N/A' }}</td>
           <td>
             <form action="{{ url_for('test_runs_bp.delete_test_run', run_id=run.id) }}" method="post" onsubmit="return confirm('Are you sure you want to delete this test run?');">
               <button type="submit">Delete</button>

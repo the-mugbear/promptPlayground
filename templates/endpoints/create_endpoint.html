@@ -11,6 +11,11 @@
   LOADING...
 </div>
 
+<!-- Error/Success Message Container -->
+<div id="messageContainer" style="display: none;" class="message-container">
+  <div id="messageContent" class="message-content"></div>
+</div>
+
 <div class="two-column-container">
   <!-- Left Card (Create or Test form) -->
   <div class="left-card">
@@ -18,12 +23,9 @@
 
     <!-- Form #1: create-endpoint-form -->
     <form 
-      action="{{ url_for('endpoints_bp.handle_create_endpoint') }}" 
-      method="POST" 
       id="create-endpoint-form"
       style="margin-bottom: 1rem;"
     >
-
       <div class="form-group">
         <label for="name">Endpoint Name</label>
         <input 
@@ -89,8 +91,6 @@
 
       <!-- Form #2: test-endpoint-form (does not store the endpoint) -->
       <form 
-        action="{{ url_for('endpoints_bp.test_endpoint') }}" 
-        method="POST"
         id="test-endpoint-form"
       >
         <!-- We'll pass the same fields so the route can do a test POST -->
@@ -115,40 +115,35 @@
 </div>
 
 <!-- Third Card: Show test results if present -->
-{% if test_payload or test_response %}
-<div class="results-container">
+<div id="testResults" class="results-container" style="display: none;">
   <h2>Test Results</h2>
-
 
   <summary class="collapsible-header">HTTP Status Code</summary>
   <div>
-    <strong>{{ test_status_code }}</strong>
+    <strong id="testStatusCode"></strong>
   </div>
-
 
   <details class="collapsible-section">
     <summary class="collapsible-header">What was sent</summary>
     <div class="results-box">
-      <pre>{{ test_payload }}</pre>
+      <pre id="testPayload"></pre>
     </div>
   </details>
 
   <details class="collapsible-section">
     <summary class="collapsible-header">Headers Sent</summary>
     <div class="results-box">
-      <pre>{{ test_headers_sent|tojson(indent=2) }}</pre>
+      <pre id="testHeadersSent"></pre>
     </div>
   </details>
 
-  <!-- This one is expanded by default and scrolled into view -->
   <details class="collapsible-section" id="received-section" open>
     <summary class="collapsible-header">What was received</summary>
     <div class="results-box">
-      <pre>{{ test_response }}</pre>
+      <pre id="testResponse"></pre>
     </div>
   </details>
 </div>
-{% endif %}
 
 {% endblock %}
 
@@ -162,12 +157,97 @@
   
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      const received = document.getElementById('received-section');
-      if (received) {
-        // Smoothly scroll the page so "What was received" is in view
-        received.scrollIntoView({ behavior: 'smooth' });
+      const createForm = document.getElementById('create-endpoint-form');
+      const testForm = document.getElementById('test-endpoint-form');
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      const messageContainer = document.getElementById('messageContainer');
+      const messageContent = document.getElementById('messageContent');
+      const testResults = document.getElementById('testResults');
+
+      function showMessage(message, type = 'error') {
+        messageContent.textContent = message;
+        messageContainer.className = `message-container ${type}`;
+        messageContainer.style.display = 'block';
+        setTimeout(() => {
+          messageContainer.style.display = 'none';
+        }, 5000);
       }
+
+      function showLoading() {
+        loadingIndicator.style.display = 'block';
+      }
+
+      function hideLoading() {
+        loadingIndicator.style.display = 'none';
+      }
+
+      createForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        showLoading();
+
+        try {
+          const formData = new FormData(createForm);
+          const response = await fetch("{{ url_for('endpoints_bp.handle_create_endpoint') }}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            showMessage('Endpoint created successfully!', 'success');
+            // Redirect to the new endpoint's page after a short delay
+            setTimeout(() => {
+              window.location.href = data.redirect_url;
+            }, 1000);
+          } else {
+            showMessage(data.error || 'Failed to create endpoint');
+          }
+        } catch (error) {
+          showMessage('An error occurred while creating the endpoint');
+          console.error('Error:', error);
+        } finally {
+          hideLoading();
+        }
+      });
+
+      testForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        showLoading();
+
+        try {
+          const formData = new FormData(testForm);
+          const response = await fetch("{{ url_for('endpoints_bp.test_endpoint') }}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            // Update test results
+            document.getElementById('testStatusCode').textContent = data.status_code;
+            document.getElementById('testPayload').textContent = data.payload;
+            document.getElementById('testHeadersSent').textContent = JSON.stringify(data.headers_sent, null, 2);
+            document.getElementById('testResponse').textContent = data.response;
+            testResults.style.display = 'block';
+            testResults.scrollIntoView({ behavior: 'smooth' });
+          } else {
+            showMessage(data.error || 'Failed to test endpoint');
+          }
+        } catch (error) {
+          showMessage('An error occurred while testing the endpoint');
+          console.error('Error:', error);
+        } finally {
+          hideLoading();
+        }
+      });
     });
   </script>
-    
 {% endblock %}
