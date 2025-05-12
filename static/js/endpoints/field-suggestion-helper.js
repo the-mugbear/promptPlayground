@@ -3,7 +3,7 @@
  * Purpose: When the user focuses a form field, fetch and display past database entries
  *          as suggestions, allowing easy reuse of hostnames, paths, payloads, etc.
  * Usage: Include this script on pages containing:
- *   • Inputs with IDs “hostname”, “endpoint”, “http_payload”, “raw_headers”
+ *   • Inputs with IDs "hostname", "endpoint", "http_payload", "raw_headers"
  *   • A <div id="suggestionText"> for explanatory text
  *   • A <ul id="suggestion-list"> to hold suggestion items
  */
@@ -19,35 +19,47 @@ document.addEventListener("DOMContentLoaded", function() {
   const rawHeaders    = document.getElementById("raw_headers");
   const previewDiv    = document.getElementById("suggestionText");
 
+  // Function to safely clear suggestion list
+  function clearSuggestionList() {
+    const suggestionList = document.getElementById("suggestion-list");
+    if (suggestionList) {
+      suggestionList.innerHTML = '';
+    }
+  }
+
   // When each field gains focus, record it and update helper text & suggestions
-  hostnameField.addEventListener("focus", () => {
+  hostnameField?.addEventListener("focus", () => {
     lastFocusedField = hostnameField;
-    previewDiv.textContent = '';
+    if (previewDiv) previewDiv.textContent = '';
+    clearSuggestionList();
     fetchAndShowSuggestions("hostnames");
   });
 
-  endpointField.addEventListener("focus", () => {
+  endpointField?.addEventListener("focus", () => {
     lastFocusedField = endpointField;
-    previewDiv.textContent = '';
+    if (previewDiv) previewDiv.textContent = '';
+    clearSuggestionList();
     fetchAndShowSuggestions("paths");
   });
 
-  payloadField.addEventListener("focus", () => {
+  payloadField?.addEventListener("focus", () => {
     lastFocusedField = payloadField;
-    previewDiv.textContent = 'Previous entries suggested below. JSON will be pretty‑printed if valid.';
+    if (previewDiv) previewDiv.textContent = 'Previous entries suggested below. JSON will be pretty‑printed if valid.';
+    clearSuggestionList();
     fetchAndShowSuggestions("payloads");
   });
 
-  rawHeaders.addEventListener("focus", () => {
+  rawHeaders?.addEventListener("focus", () => {
     lastFocusedField = rawHeaders;
-    previewDiv.textContent = 'Modify or remove key/value pairs below before creating endpoint.';
+    if (previewDiv) previewDiv.textContent = 'Modify or remove key/value pairs below before creating endpoint.';
+    clearSuggestionList();
     // No fetch here — suggestions only for hostname, endpoint, payload
   });
 });
 
 /**
  * Fetches the suggestion map from the server once, then delegates to populateSuggestionList.
- * key should be one of the object’s properties: "hostnames", "paths", or "payloads".
+ * key should be one of the object's properties: "hostnames", "paths", or "payloads".
  */
 function fetchAndShowSuggestions(key) {
   if (!SUGGESTIONS) {
@@ -70,6 +82,8 @@ function fetchAndShowSuggestions(key) {
  */
 function populateSuggestionList(items) {
   const listEl = document.getElementById("suggestion-list");
+  if (!listEl) return;
+  
   listEl.innerHTML = "";
 
   items.forEach(item => {
@@ -100,11 +114,10 @@ function populateSuggestionList(items) {
 }
 
 /**
- * Inserts the chosen suggestion into the lastFocusedField and
- * fires an input event so any sync scripts pick up the change.
+ * Copies a suggestion into the currently focused field.
  */
-function copySuggestionToFocusedField(value) {
+function copySuggestionToFocusedField(text) {
   if (!lastFocusedField) return;
-  lastFocusedField.value = value;
-  lastFocusedField.dispatchEvent(new Event('input', { bubbles: true }));
+  lastFocusedField.value = text;
+  lastFocusedField.dispatchEvent(new Event('input')); // Trigger any input listeners
 }

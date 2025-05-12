@@ -1,5 +1,5 @@
 // Script: HeaderEditor
-// Purpose: Parse a raw “Headers:” textarea into editable rows (including special Cookie parsing),
+// Purpose: Parse a raw "Headers:" textarea into editable rows (including special Cookie parsing),
 //          keep both representations (textarea and UI rows) in sync, and serialize back on submit.
 
 // We'll keep an array in JS to track the parsed headers
@@ -27,7 +27,7 @@ function parseCookieHeader(cookieString) {
       if (currentPair.trim()) {
         const [name, ...valueParts] = currentPair.trim().split('=');
         cookiePairs.push({
-          name:  name.trim(),
+          name: name.trim(),
           value: valueParts.join('=').trim().replace(/^"|"$/g, '')
         });
       }
@@ -40,7 +40,7 @@ function parseCookieHeader(cookieString) {
   if (currentPair.trim()) {
     const [name, ...valueParts] = currentPair.trim().split('=');
     cookiePairs.push({
-      name:  name.trim(),
+      name: name.trim(),
       value: valueParts.join('=').trim().replace(/^"|"$/g, '')
     });
   }
@@ -54,7 +54,7 @@ function parseCookieHeader(cookieString) {
  * For each line:
  *  - Ignores blank lines or lines without a colon.
  *  - Splits at the first colon to get key and value.
- *  - If the header is “Cookie”, calls parseCookieHeader for its sub-pairs.
+ *  - If the header is "Cookie", calls parseCookieHeader for its sub-pairs.
  * Finally, calls renderHeaders() to update the UI.
  */
 function parseHeaders() {
@@ -65,10 +65,16 @@ function parseHeaders() {
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;              // skip empty
+    
+    // Skip HTTP method line (e.g., "POST /path HTTP/1.1")
+    if (trimmed.match(/^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+/)) {
+      continue;
+    }
+    
     const colonIndex = trimmed.indexOf(':');
     if (colonIndex === -1) continue;     // skip malformed
 
-    const key   = trimmed.substring(0, colonIndex).trim();
+    const key = trimmed.substring(0, colonIndex).trim();
     const value = trimmed.substring(colonIndex + 1).trim();
     const entry = { key, value };
 
@@ -85,21 +91,22 @@ function parseHeaders() {
 /**
  * renderHeaders
  * -------------
- * Finds the first available container (editable or read-only) to display header rows.
- * Clears existing content, then for each entry:
+ * Renders the parsed headers in the suggestion list on the right card.
+ * For each entry:
  *  - If Cookie header, builds inputs for each cookie name/value and add/remove buttons.
  *  - Otherwise, builds inputs for key and value and a remove button.
- * Appends each row, then calls updateRawHeaders() to sync back to textarea if needed.
  */
 function renderHeaders() {
-  const previewDiv = document.getElementById('suggestion-list')
-                  || document.getElementById('editableHeaderPreview')
-                  || document.getElementById('readOnlyHeadersDisplay');
-  if (!previewDiv) {
-    console.error("No container found for header preview.");
-    return;
+  const suggestionList = document.getElementById('suggestion-list');
+  if (!suggestionList) return;
+
+  suggestionList.innerHTML = '';
+
+  // Update the suggestion text to show we're displaying headers
+  const suggestionText = document.getElementById('suggestionText');
+  if (suggestionText) {
+    suggestionText.textContent = 'Current Headers (click to edit):';
   }
-  previewDiv.innerHTML = '';
 
   headerEntries.forEach((entry, idx) => {
     const row = document.createElement('div');
@@ -109,7 +116,7 @@ function renderHeaders() {
       // Build HTML for each cookie pair
       const cookieHtml = entry.cookiePairs.map((cookie, cIdx) => `
         <div class="cookie-row">
-          <input type="text" class="cookie-key"   value="${cookie.name}"
+          <input type="text" class="cookie-key" value="${cookie.name}"
                  oninput="updateCookieKey(${idx}, ${cIdx}, this.value)">
           <input type="text" class="cookie-value" value="${cookie.value}"
                  oninput="updateCookieValue(${idx}, ${cIdx}, this.value)">
@@ -126,15 +133,26 @@ function renderHeaders() {
     } else {
       // Regular header row
       row.innerHTML = `
-        <input type="text" class="header-key"   value="${entry.key}"
+        <input type="text" class="header-key" value="${entry.key}"
                oninput="updateKey(${idx}, this.value)">
         <input type="text" class="header-value" value="${entry.value}"
                oninput="updateValue(${idx}, this.value)">
         <button type="button" onclick="removeHeader(${idx})">Remove</button>
       `;
     }
-    previewDiv.appendChild(row);
+    suggestionList.appendChild(row);
   });
+
+  // Add a button to add new headers at the bottom
+  const addButton = document.createElement('button');
+  addButton.className = 'add-header-btn';
+  addButton.textContent = '+ Add Header';
+  addButton.onclick = () => {
+    headerEntries.push({ key: 'New-Header', value: 'value' });
+    renderHeaders();
+    updateRawHeaders();
+  };
+  suggestionList.appendChild(addButton);
 
   updateRawHeaders();
 }
@@ -147,7 +165,7 @@ function renderHeaders() {
  */
 function updateRawHeaders() {
   const rawElem = document.getElementById('raw_headers');
-  if (document.activeElement === rawElem) return;
+  if (!rawElem || document.activeElement === rawElem) return;
 
   const lines = headerEntries.map(h => {
     if (h.key.toLowerCase() === 'cookie' && h.cookiePairs) {
@@ -161,27 +179,20 @@ function updateRawHeaders() {
   rawElem.value = lines.join('\n');
 }
 
-// Keep textarea and parsedHeaders in sync:
-// On blur, update the textarea from headerEntries.
-document.getElementById('raw_headers').addEventListener('blur', updateRawHeaders);
-// On input, reparses headers into headerEntries and rerenders rows.
-document.getElementById('raw_headers').addEventListener('input', parseHeaders);
-
-/**
- * Core row operations: remove or update header entries.
- * These always call updateRawHeaders (and sometimes renderHeaders) to keep both views in sync.
- */
-function removeHeader(index) {
-  headerEntries.splice(index, 1);
-  renderHeaders();
-}
+// Header manipulation functions
 function updateKey(index, newKey) {
   headerEntries[index].key = newKey;
   updateRawHeaders();
 }
+
 function updateValue(index, newValue) {
   headerEntries[index].value = newValue;
   updateRawHeaders();
+}
+
+function removeHeader(index) {
+  headerEntries.splice(index, 1);
+  renderHeaders();
 }
 
 /** Cookie-specific helpers **/
@@ -189,31 +200,36 @@ function updateCookieKey(headerIdx, cookieIdx, newName) {
   headerEntries[headerIdx].cookiePairs[cookieIdx].name = newName;
   updateRawHeaders();
 }
+
 function updateCookieValue(headerIdx, cookieIdx, newValue) {
   headerEntries[headerIdx].cookiePairs[cookieIdx].value = newValue;
   updateRawHeaders();
 }
+
 function removeCookie(headerIdx, cookieIdx) {
   headerEntries[headerIdx].cookiePairs.splice(cookieIdx, 1);
   renderHeaders();
 }
+
 function addCookie(headerIdx) {
-  headerEntries[headerIdx].cookiePairs.push({ name: '', value: '' });
+  headerEntries[headerIdx].cookiePairs.push({
+    name: 'new_cookie',
+    value: 'value'
+  });
   renderHeaders();
 }
 
-/**
- * Final sync on form submission:
- * Before sending, serialize headerEntries[] one last time into the textarea
- * so the server receives the up-to-date headers.
- */
-document.getElementById('create-endpoint-form').addEventListener('submit', () => {
-  const lines = headerEntries.map(h => {
-    if (h.key.toLowerCase() === 'cookie' && h.cookiePairs) {
-      const cookieString = h.cookiePairs.map(c => `${c.name}=${c.value}`).join('; ');
-      return `${h.key}: ${cookieString}`;
+// Initialize header parsing when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+  const rawHeadersTextarea = document.getElementById('raw_headers');
+  if (rawHeadersTextarea) {
+    // Set up event listeners
+    rawHeadersTextarea.addEventListener('input', parseHeaders);
+    rawHeadersTextarea.addEventListener('blur', updateRawHeaders);
+
+    // Initial parse if there's content
+    if (rawHeadersTextarea.value) {
+      parseHeaders();
     }
-    return `${h.key}: ${h.value}`;
-  });
-  document.getElementById('raw_headers').value = lines.join('\n');
+  }
 });
