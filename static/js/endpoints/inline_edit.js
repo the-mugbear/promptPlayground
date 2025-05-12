@@ -3,7 +3,10 @@
  */
 class InlineEditor {
   constructor() {
-    this.endpointId = document.querySelector('.endpoint-details')?.dataset.endpointId;
+    const endpointDetails = document.querySelector('.endpoint-details');
+    console.log('Found endpoint details element:', endpointDetails);
+    this.endpointId = endpointDetails?.dataset.endpointId;
+    console.log('Endpoint ID:', this.endpointId);
     this.setupEventListeners();
   }
 
@@ -149,7 +152,7 @@ class InlineEditor {
     document.querySelectorAll('.editable-field input, .editable-field textarea').forEach(input => {
       input.addEventListener('blur', () => this.handleFieldChange(input));
       input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === 'Enter' && !e.shiftKey && input.tagName !== 'TEXTAREA') { // Allow Enter in textarea unless Shift is held
           e.preventDefault();
           input.blur();
         }
@@ -166,6 +169,9 @@ class InlineEditor {
     field.classList.add('editing');
     input.value = span.textContent.trim();
     input.focus();
+    if (input.select) { // Select text in input for easy replacement
+        input.select();
+    }
   }
 
   async handleFieldChange(input) {
@@ -191,8 +197,11 @@ class InlineEditor {
         viewMode.textContent = newValue;
       } catch (error) {
         console.error('Failed to update field:', error);
-        alert('Failed to update field. Please try again.');
+        alert(`Failed to update field: ${error.message}`); // Show error message from server if available
       }
+    } else {
+        // If not confirmed, revert input to old value if needed, or just remove editing class
+        // viewMode.textContent = oldValue; // Not strictly necessary as DOM wasn't updated yet
     }
 
     field.classList.remove('editing');
@@ -208,9 +217,9 @@ class InlineEditor {
       dialog.innerHTML = `
         <h3>Confirm Change</h3>
         <div class="changes">
-          <p><strong>${fieldName}</strong></p>
-          <p><span class="old-value">${this.escapeHtml(oldValue)}</span></p>
-          <p><span class="new-value">${this.escapeHtml(newValue)}</span></p>
+          <p><strong>${this.escapeHtml(fieldName)}</strong></p>
+          <p>From: <span class="old-value">${this.escapeHtml(oldValue)}</span></p>
+          <p>To: <span class="new-value">${this.escapeHtml(newValue)}</span></p>
         </div>
         <div class="buttons">
           <button class="cancel-btn">Cancel</button>
@@ -221,15 +230,28 @@ class InlineEditor {
       overlay.appendChild(dialog);
       document.body.appendChild(overlay);
 
-      dialog.querySelector('.cancel-btn').addEventListener('click', () => {
-        document.body.removeChild(overlay);
-        resolve(false);
-      });
+      const confirmBtn = dialog.querySelector('.confirm-btn');
+      const cancelBtn = dialog.querySelector('.cancel-btn');
 
-      dialog.querySelector('.confirm-btn').addEventListener('click', () => {
+      const closeDialog = (confirmedStatus) => {
         document.body.removeChild(overlay);
-        resolve(true);
+        resolve(confirmedStatus);
+      };
+      
+      confirmBtn.addEventListener('click', () => closeDialog(true));
+      cancelBtn.addEventListener('click', () => closeDialog(false));
+      overlay.addEventListener('click', (e) => { // Close on overlay click
+        if (e.target === overlay) {
+            closeDialog(false);
+        }
       });
+      document.addEventListener('keydown', function escapeListener(e) { // Close on Escape key
+        if (e.key === 'Escape') {
+            closeDialog(false);
+            document.removeEventListener('keydown', escapeListener);
+        }
+      });
+      confirmBtn.focus(); // Focus the confirm button by default
     });
   }
 
@@ -244,11 +266,11 @@ class InlineEditor {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error during field update.' }));
       throw new Error(errorData.error || `Failed to update ${fieldName}`);
     }
 
-    return response.json();
+    return response.json().catch(() => ({})); // Return empty object if no JSON body on success
   }
 
   setupHeaderEditing() {
@@ -256,11 +278,11 @@ class InlineEditor {
     if (!headersBox) return;
 
     // Add header button
-    const addHeader = document.createElement('div');
-    addHeader.className = 'add-header';
-    addHeader.textContent = '+ Add Header';
-    addHeader.addEventListener('click', () => this.addNewHeader());
-    headersBox.appendChild(addHeader);
+    const addHeaderBtn = document.createElement('div');
+    addHeaderBtn.className = 'add-header';
+    addHeaderBtn.textContent = '+ Add Header';
+    addHeaderBtn.addEventListener('click', () => this.addNewHeader());
+    headersBox.appendChild(addHeaderBtn); // Append it after existing headers might be better UX
 
     // Make existing headers editable
     headersBox.querySelectorAll('.header-item').forEach(item => {
@@ -274,8 +296,8 @@ class InlineEditor {
     const actions = document.createElement('div');
     actions.className = 'header-actions';
     actions.innerHTML = `
-      <button class="edit-btn">Edit</button>
-      <button class="delete-btn">Delete</button>
+      <button class="edit-btn" title="Edit Header">Edit</button>
+      <button class="delete-btn" title="Delete Header">Delete</button>
     `;
 
     headerItem.appendChild(actions);
@@ -290,33 +312,46 @@ class InlineEditor {
       
       // Create a modal dialog for editing
       const modal = document.createElement('div');
-      modal.className = 'header-edit-modal';
+      modal.className = 'header-edit-modal dialog-overlay'; // Use dialog-overlay for consistent styling
       modal.innerHTML = `
-        <div class="modal-content">
+        <div class="modal-content confirmation-dialog">
           <h3>Edit Header</h3>
           <div class="form-group">
-            <label>Key:</label>
+            <label for="header-key-input">Key:</label>
             <input type="text" id="header-key-input" value="${this.escapeHtml(oldKey)}">
           </div>
           <div class="form-group">
-            <label>Value:</label>
+            <label for="header-value-input">Value:</label>
             <textarea id="header-value-input">${this.escapeHtml(oldValue)}</textarea>
           </div>
-          <div class="modal-actions">
+          <div class="modal-actions buttons">
             <button class="cancel-btn">Cancel</button>
-            <button class="save-btn">Save</button>
+            <button class="save-btn confirm-btn">Save</button>
           </div>
         </div>
       `;
 
       document.body.appendChild(modal);
+      const keyInput = modal.querySelector('#header-key-input');
+      keyInput.focus();
+      keyInput.select();
+
 
       // Function to remove modal
       const removeModal = () => {
         if (document.body.contains(modal)) {
           document.body.removeChild(modal);
+          document.removeEventListener('keydown', handleEscape);
         }
       };
+      
+      const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+          removeModal();
+        }
+      };
+      document.addEventListener('keydown', handleEscape);
+
 
       // Handle save
       modal.querySelector('.save-btn').addEventListener('click', async () => {
@@ -328,11 +363,10 @@ class InlineEditor {
           return;
         }
 
-        // Remove the edit modal first
-        removeModal();
+        removeModal(); // Remove edit modal before showing confirmation
 
         const confirmed = await this.showConfirmationDialog(
-          'Header',
+          'Header Update',
           `${oldKey}: ${oldValue}`,
           `${newKey}: ${newValue}`
         );
@@ -342,49 +376,47 @@ class InlineEditor {
             await this.handleHeaderEdit(headerItem, newKey, newValue);
           } catch (error) {
             console.error('Failed to update header:', error);
-            alert('Failed to update header. Please try again.');
+            alert(`Failed to update header: ${error.message}`);
           }
         }
       });
 
       // Handle cancel
       modal.querySelector('.cancel-btn').addEventListener('click', removeModal);
-
-      // Handle clicking outside the modal
-      modal.addEventListener('click', (e) => {
+      modal.addEventListener('click', (e) => { // Close on overlay click
         if (e.target === modal) {
-          removeModal();
+            removeModal();
         }
       });
-
-      // Handle escape key
-      const handleEscape = (e) => {
-        if (e.key === 'Escape') {
-          removeModal();
-          document.removeEventListener('keydown', handleEscape);
-        }
-      };
-      document.addEventListener('keydown', handleEscape);
     });
 
     actions.querySelector('.delete-btn').addEventListener('click', async (e) => {
       e.stopPropagation();
       const key = keySpan.textContent.replace(':', '').trim();
       const value = valueSpan.textContent.trim();
+      // *** MODIFICATION: Get headerId from dataset ***
+      const headerId = headerItem.dataset.headerId;
+
+      if (!headerId) {
+        alert('Error: Header ID not found for deletion.');
+        console.error('Header ID missing from dataset:', headerItem);
+        return;
+      }
 
       const confirmed = await this.showConfirmationDialog(
         'Delete Header',
         `${key}: ${value}`,
-        'Delete this header'
+        'Delete this header?' // More explicit confirmation message
       );
 
       if (confirmed) {
         try {
-          await this.deleteHeader(key);
+          // *** MODIFICATION: Pass headerId to deleteHeader ***
+          await this.deleteHeader(headerId); 
           headerItem.remove();
         } catch (error) {
           console.error('Failed to delete header:', error);
-          alert('Failed to delete header. Please try again.');
+          alert(`Failed to delete header: ${error.message}`);
         }
       }
     });
@@ -393,33 +425,45 @@ class InlineEditor {
   async addNewHeader() {
     // Create a modal dialog for adding
     const modal = document.createElement('div');
-    modal.className = 'header-edit-modal';
+    modal.className = 'header-edit-modal dialog-overlay'; // Use dialog-overlay
     modal.innerHTML = `
-      <div class="modal-content">
+      <div class="modal-content confirmation-dialog">
         <h3>Add Header</h3>
         <div class="form-group">
-          <label>Key:</label>
+          <label for="header-key-input">Key:</label>
           <input type="text" id="header-key-input">
         </div>
         <div class="form-group">
-          <label>Value:</label>
+          <label for="header-value-input">Value:</label>
           <textarea id="header-value-input"></textarea>
         </div>
-        <div class="modal-actions">
+        <div class="modal-actions buttons">
           <button class="cancel-btn">Cancel</button>
-          <button class="save-btn">Save</button>
+          <button class="save-btn confirm-btn">Save</button>
         </div>
       </div>
     `;
 
     document.body.appendChild(modal);
+    const keyInput = modal.querySelector('#header-key-input');
+    keyInput.focus();
+
 
     // Function to remove modal
     const removeModal = () => {
       if (document.body.contains(modal)) {
         document.body.removeChild(modal);
+        document.removeEventListener('keydown', handleEscape);
       }
     };
+    
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        removeModal();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+
 
     // Handle save
     modal.querySelector('.save-btn').addEventListener('click', async () => {
@@ -432,81 +476,123 @@ class InlineEditor {
       }
 
       try {
-        await this.updateHeader('', key, value);
+        const requestData = {
+          key: key,
+          value: value
+        };
+        console.log('Sending request data for new header:', requestData);
         
+        // *** MODIFICATION: Updated URL for creating header ***
+        const response = await fetch(`/endpoints/${this.endpointId}/headers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify(requestData)
+        });
+
+        console.log('Create header response status:', response.status);
+        console.log('Create header response headers:', Object.fromEntries(response.headers.entries()));
+        
+        const responseText = await response.text();
+        console.log('Raw response text from create header:', responseText);
+        
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Failed to parse response JSON from create header:', parseError);
+          throw new Error(`Invalid JSON response from server: ${responseText.substring(0, 100)}`); // Show snippet
+        }
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to create header');
+        }
+
         const headersBox = document.querySelector('.headers-box');
+        const addHeaderButton = headersBox.querySelector('.add-header'); // Find the add button
         const headerItem = document.createElement('div');
         headerItem.className = 'header-item';
+        // *** MODIFICATION: Ensure data.header and data.header.id exist ***
+        if (data.header && data.header.id) {
+            headerItem.dataset.headerId = data.header.id;
+        } else {
+            console.error("Header ID missing in response from server:", data);
+            alert("Error: Could not get header ID from server. Header may not function correctly for edits/deletes.");
+        }
         headerItem.innerHTML = `
           <span class="header-key">${this.escapeHtml(key)}:</span>
           <span class="header-value">${this.escapeHtml(value)}</span>
         `;
         
         this.makeHeaderEditable(headerItem);
-        headersBox.insertBefore(headerItem, headersBox.lastElementChild);
+        // Insert before the "Add Header" button for better UX
+        if (addHeaderButton) {
+            headersBox.insertBefore(headerItem, addHeaderButton);
+        } else {
+            headersBox.appendChild(headerItem); // Fallback
+        }
+
         // Check for JWT token in new header value
         this.updateTokenExpirationInfo(headerItem);
         removeModal();
       } catch (error) {
         console.error('Failed to add header:', error);
-        alert('Failed to add header. Please try again.');
+        alert(`Failed to add header: ${error.message}`);
       }
     });
 
     // Handle cancel
     modal.querySelector('.cancel-btn').addEventListener('click', removeModal);
-
-    // Handle clicking outside the modal
-    modal.addEventListener('click', (e) => {
+    modal.addEventListener('click', (e) => { // Close on overlay click
       if (e.target === modal) {
-        removeModal();
+          removeModal();
       }
     });
-
-    // Handle escape key
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') {
-        removeModal();
-        document.removeEventListener('keydown', handleEscape);
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
   }
 
   async handleHeaderEdit(headerItem, key, value) {
     try {
-      await this.updateHeader(key, key, value);
+      const headerId = headerItem.dataset.headerId;
+      if (!headerId) {
+        alert("Error: Cannot update header without an ID.");
+        return;
+      }
+      await this.updateHeader(headerId, key, value);
       const keySpan = headerItem.querySelector('.header-key');
       const valueSpan = headerItem.querySelector('.header-value');
-      keySpan.textContent = key + ':';
-      valueSpan.textContent = value;
+      keySpan.textContent = this.escapeHtml(key) + ':';
+      valueSpan.textContent = this.escapeHtml(value);
       // Update token info after editing
       this.updateTokenExpirationInfo(headerItem);
     } catch (error) {
-      console.error('Failed to update header:', error);
-      alert('Failed to update header. Please try again.');
+      console.error('Failed to update header (in handleHeaderEdit):', error);
+      // Alert is handled in updateHeader, or re-throw if specific handling is needed here
+      // alert('Failed to update header. Please try again.');
+      throw error; // Re-throw so the caller knows it failed
     }
   }
 
-  async updateHeader(oldKey, newKey, newValue) {
-    console.log('Updating header:', { oldKey, newKey, newValue });
+  async updateHeader(headerId, newKey, newValue) {
+    console.log('Updating header:', { headerId, newKey, newValue });
     try {
-      const response = await fetch(`/endpoints/${this.endpointId}/update_header`, {
+      // *** MODIFICATION: Updated URL and request body for updating header ***
+      const response = await fetch(`/endpoints/${this.endpointId}/headers/${headerId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest'
         },
-        body: JSON.stringify({
-          old_key: oldKey,
-          new_key: newKey,
-          new_value: newValue
+        body: JSON.stringify({ // header_id removed from body, now in URL
+          key: newKey,
+          value: newValue
         })
       });
 
-      console.log('Response status:', response.status);
-      const data = await response.json();
-      console.log('Response data:', data);
+      console.log('Update header response status:', response.status);
+      const data = await response.json().catch(() => ({ error: 'Unknown error during header update or invalid JSON response.' }));
+      console.log('Update header response data:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update header');
@@ -519,27 +605,40 @@ class InlineEditor {
     }
   }
 
-  async deleteHeader(key) {
-    console.log('Deleting header:', key);
+  // *** MODIFICATION: Parameter changed from key to headerId ***
+  async deleteHeader(headerId) { 
+    console.log('Deleting header with ID:', headerId);
     try {
-      const response = await fetch(`/endpoints/${this.endpointId}/delete_header`, {
+      // *** MODIFICATION: Updated URL and removed body for deleting header ***
+      const response = await fetch(`/endpoints/${this.endpointId}/headers/${headerId}`, {
         method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: JSON.stringify({ key })
+          // 'Content-Type' not needed for empty body DELETE
+        }
+        // No body for this request
       });
 
-      console.log('Response status:', response.status);
-      const data = await response.json();
-      console.log('Response data:', data);
+      console.log('Delete header response status:', response.status);
+      let data = {};
+      // For DELETE, a 204 No Content is a common successful response and will have no body.
+      // Other success statuses like 200 or 202 might have a body.
+      if (response.status !== 204 && response.headers.get("content-length") !== "0") {
+          try {
+            data = await response.json();
+          } catch (e) {
+            console.warn("Could not parse JSON from delete response, but status was ok (not 204). Status:", response.status, e);
+            // If response.ok is true but body is not JSON, it might be fine.
+          }
+      }
+      console.log('Delete header response data:', data);
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete header');
+        // Try to get error from data if it exists, otherwise a generic message
+        throw new Error(data.error || `Failed to delete header (status: ${response.status})`);
       }
 
-      return data;
+      return data; // Or true if no meaningful data is returned on success
     } catch (error) {
       console.error('Error deleting header:', error);
       throw error;
@@ -547,7 +646,11 @@ class InlineEditor {
   }
 
   escapeHtml(str) {
-    return String(str)
+    if (typeof str !== 'string') {
+        if (str === null || str === undefined) return '';
+        str = String(str);
+    }
+    return str
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
@@ -558,5 +661,7 @@ class InlineEditor {
 
 // Initialize the inline editor when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  new InlineEditor();
-}); 
+  if (document.querySelector('.endpoint-details')) { // Only init if on the right page
+    new InlineEditor();
+  }
+});

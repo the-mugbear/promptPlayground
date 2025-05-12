@@ -29,26 +29,48 @@ document.addEventListener("DOMContentLoaded", function() {
     // Check if token exists as a complete token (not part of another token)
     const hasToken = value.includes(token);
     
-    // Check if token is part of a valid JSON string value
-    const isInJsonString = value.includes(`"${token}"`) && 
-                          (value.includes(`"content": "${token}"`) || 
-                           value.includes(`"prompt": "${token}"`) ||
-                           value.includes(`"input": "${token}"`) ||
-                           value.includes(`"text": "${token}"`));
-    
-    console.log("Token found:", hasToken); // Debug log
-    console.log("Token is in JSON string:", isInJsonString); // Debug log
-    
-    if (!hasToken || (value.includes(`"${token}"`) && !isInJsonString)) {
+    if (!hasToken) {
       httpPayloadField.setCustomValidity(
-        "Your HTTP Payload must include the token: " + token + 
-        "\nNote: The token should be part of a JSON string value (e.g., in a 'content' or 'prompt' field)."
+        "Your HTTP Payload must include the token: " + token
       );
       return false;
-    } else {
-      httpPayloadField.setCustomValidity("");
-      return true;
     }
+
+    // If the token is between quotes, it must be part of a valid JSON field
+    if (value.includes(`"${token}"`) || value.includes(`'${token}'`)) {
+      try {
+        // Try to parse as JSON to validate structure
+        const jsonObj = JSON.parse(value);
+        
+        // Recursively search for the token in JSON values
+        function findTokenInObject(obj) {
+          for (const key in obj) {
+            const val = obj[key];
+            if (typeof val === 'string' && val.includes(token)) {
+              return true;
+            } else if (typeof val === 'object' && val !== null) {
+              if (findTokenInObject(val)) return true;
+            }
+          }
+          return false;
+        }
+        
+        if (!findTokenInObject(jsonObj)) {
+          httpPayloadField.setCustomValidity(
+            "The token must be part of a valid JSON string value field"
+          );
+          return false;
+        }
+      } catch (e) {
+        httpPayloadField.setCustomValidity(
+          "Invalid JSON format: " + e.message
+        );
+        return false;
+      }
+    }
+    
+    httpPayloadField.setCustomValidity("");
+    return true;
   }
 
   // 2) On form submission, validate that the payload contains the token
