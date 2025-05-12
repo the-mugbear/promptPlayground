@@ -26,29 +26,30 @@ document.addEventListener("DOMContentLoaded", function() {
     const value = httpPayloadField.value;
     console.log("Validating payload:", value); // Debug log
     
-    // Check if token exists as a complete token (not part of another token)
+    // Check if token exists in the payload
     const hasToken = value.includes(token);
     
-    // Check if token is part of a valid JSON string value
-    const isInJsonString = value.includes(`"${token}"`) && 
-                          (value.includes(`"content": "${token}"`) || 
-                           value.includes(`"prompt": "${token}"`) ||
-                           value.includes(`"input": "${token}"`) ||
-                           value.includes(`"text": "${token}"`));
-    
-    console.log("Token found:", hasToken); // Debug log
-    console.log("Token is in JSON string:", isInJsonString); // Debug log
-    
-    if (!hasToken || (value.includes(`"${token}"`) && !isInJsonString)) {
+    if (!hasToken) {
       httpPayloadField.setCustomValidity(
-        "Your HTTP Payload must include the token: " + token + 
-        "\nNote: The token should be part of a JSON string value (e.g., in a 'content' or 'prompt' field)."
+        "Your HTTP Payload must include the token: " + token
       );
       return false;
-    } else {
-      httpPayloadField.setCustomValidity("");
-      return true;
     }
+
+    // If the payload contains the token and looks like JSON, validate the JSON structure
+    if (value.trim().startsWith('{') || value.trim().startsWith('[')) {
+      try {
+        JSON.parse(value);
+      } catch (e) {
+        httpPayloadField.setCustomValidity(
+          "Invalid JSON format: " + e.message
+        );
+        return false;
+      }
+    }
+    
+    httpPayloadField.setCustomValidity("");
+    return true;
   }
 
   // 2) On form submission, validate that the payload contains the token

@@ -33,6 +33,11 @@ def manage_endpoints():
 def using_transformations():
     return render_template('help/using_transformations.html')
 
+# Guide on importing test suites
+@help_bp.route('/test_suite_import')
+def test_suite_import():
+    return render_template('help/test_suite_import.html')
+
 # Guide on adding new transformations and registering them for use in suite creation
 @help_bp.route('/adding_transformers')
 def adding_transformers():

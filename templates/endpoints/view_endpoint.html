@@ -144,7 +144,7 @@
             <div class="headers-list">
                 {% if endpoint.headers and endpoint.headers|length > 0 %}
                     {% for header in endpoint.headers %}
-                        <div class="header-item">
+                        <div class="header-item" data-header-id="{{ header.id }}">
                             <span class="header-key">{{ header.key }}:</span>
                             <span class="header-value">{{ header.value }}</span>
                         </div>

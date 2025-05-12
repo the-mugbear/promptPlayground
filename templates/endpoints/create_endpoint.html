@@ -2,6 +2,11 @@
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+  <style>
+    #suggestion-list {
+      max-height: none;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
@@ -219,7 +224,13 @@
         showLoading();
 
         try {
-          const formData = new FormData(testForm);
+          // Ensure form fields are synced before submission
+          const formData = new FormData(createForm);
+          formData.append('hostname', document.getElementById('hostname').value);
+          formData.append('endpoint', document.getElementById('endpoint').value);
+          formData.append('http_payload', document.getElementById('http_payload').value);
+          formData.append('raw_headers', document.getElementById('raw_headers').value);
+
           const response = await fetch("{{ url_for('endpoints_bp.test_endpoint') }}", {
             method: 'POST',
             body: formData,
@@ -229,18 +240,33 @@
           });
 
           const data = await response.json();
+          console.log('Test response:', data); // For debugging
 
-          if (response.ok) {
-            // Update test results
-            document.getElementById('testStatusCode').textContent = data.status_code;
-            document.getElementById('testPayload').textContent = data.payload;
-            document.getElementById('testHeadersSent').textContent = JSON.stringify(data.headers_sent, null, 2);
-            document.getElementById('testResponse').textContent = data.response;
-            testResults.style.display = 'block';
-            testResults.scrollIntoView({ behavior: 'smooth' });
-          } else {
-            showMessage(data.error || 'Failed to test endpoint');
-          }
+          // Show test results section
+          testResults.style.display = 'block';
+
+          // Update status code
+          const statusCode = document.getElementById('testStatusCode');
+          statusCode.textContent = data.status_code || 'N/A';
+          statusCode.className = data.status_code >= 200 && data.status_code < 300 ? 'success' : 'error';
+
+          // Update what was sent
+          document.getElementById('testPayload').textContent = 
+            JSON.stringify(data.payload_sent || {}, null, 2);
+
+          // Update headers sent
+          document.getElementById('testHeadersSent').textContent = 
+            JSON.stringify(data.headers_sent || {}, null, 2);
+
+          // Update response
+          document.getElementById('testResponse').textContent = 
+            typeof data.response_data === 'object' 
+              ? JSON.stringify(data.response_data, null, 2) 
+              : data.response_data || '';
+
+          // Scroll to results
+          testResults.scrollIntoView({ behavior: 'smooth' });
+
         } catch (error) {
           showMessage('An error occurred while testing the endpoint');
           console.error('Error:', error);

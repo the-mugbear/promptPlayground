@@ -1,6 +1,40 @@
 {% extends "base.html" %}
 {% block title %}Create Prompt Filter{% endblock %}
 
+{% block head %}
+  <style>
+    .preview-section {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: #1a1a1a;
+      border-radius: 4px;
+    }
+    .preview-section h3 {
+      margin-top: 0;
+      color: #00FF41;
+    }
+    .character-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .character-box {
+      padding: 0.25rem 0.5rem;
+      background-color: #2a2a2a;
+      border: 1px solid #00FF41;
+      border-radius: 3px;
+      color: #00FF41;
+      font-family: monospace;
+    }
+    .character-box.comma {
+      background-color: #1a1a1a;
+      border: 1px solid #00FF41;
+      color: #00FF41;
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
   <div class="form-card">
@@ -12,8 +46,14 @@
       </div>
       <div class="form-group">
         <label for="invalid_characters">Invalid Characters</label>
-        <input type="text" name="invalid_characters" id="invalid_characters" placeholder="e.g. @, #, $, %" >
-        <small>Separate multiple characters with commas.</small>
+        <input type="text" name="invalid_characters" id="invalid_characters" placeholder="Enter characters to filter (spaces will separate them)">
+        <small>Enter any characters you want to filter out. Use spaces to separate multiple characters.</small>
+      </div>
+      <div class="preview-section">
+        <h3>Character Preview</h3>
+        <div id="characterPreview" class="character-preview">
+          <p>Enter characters above to see them here...</p>
+        </div>
       </div>
       <div class="form-group">
         <label for="words_to_replace">Words to Replace</label>
@@ -24,4 +64,39 @@
     </form>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const invalidCharsInput = document.getElementById('invalid_characters');
+  const previewContainer = document.getElementById('characterPreview');
+
+  function updatePreview() {
+    const input = invalidCharsInput.value;
+    if (!input) {
+      previewContainer.innerHTML = '<p>Enter characters above to see them here...</p>';
+      return;
+    }
+
+    // Split only by spaces, preserving all other characters including commas
+    const characters = input.split(/\s+/).filter(char => char);
+    
+    if (characters.length === 0) {
+      previewContainer.innerHTML = '<p>Enter characters above to see them here...</p>';
+      return;
+    }
+
+    // Create character boxes
+    previewContainer.innerHTML = characters.map(char => {
+      const isComma = char === ',';
+      return `<div class="character-box ${isComma ? 'comma' : ''}">${char}</div>`;
+    }).join('');
+  }
+
+  // Update preview on input
+  invalidCharsInput.addEventListener('input', updatePreview);
+  
+  // Initial preview update
+  updatePreview();
+});
+</script>
 {% endblock %}

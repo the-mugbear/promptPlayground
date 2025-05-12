@@ -1,14 +1,17 @@
-"""
-Endpoints blueprint for managing API endpoints and their configurations.
-This module serves as the entry point for all endpoint-related routes.
-"""
-
+# app/endpoints/__init__.py
 from flask import Blueprint
 
-endpoints_bp = Blueprint('endpoints_bp', __name__, url_prefix='/endpoints')
+# Define the Blueprint
+# All routes defined in other files in this package will be registered with this blueprint
+endpoints_bp = Blueprint(
+    'endpoints_bp',
+    __name__,
+    url_prefix='/endpoints'
+)
 
-# Import all route modules
-from . import core
-from . import manual_test
-from . import headers
-from . import testing 
+# Import routes from other modules in this package to register them
+# These imports must be at the bottom to avoid circular dependencies with endpoints_bp
+from . import views_core
+from . import api
+from . import views_testing
+from . import views_manual_test
