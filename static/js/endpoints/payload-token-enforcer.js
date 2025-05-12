@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const value = httpPayloadField.value;
     console.log("Validating payload:", value); // Debug log
     
-    // Check if token exists as a complete token (not part of another token)
+    // Check if token exists in the payload
     const hasToken = value.includes(token);
     
     if (!hasToken) {
@@ -36,31 +36,10 @@ document.addEventListener("DOMContentLoaded", function() {
       return false;
     }
 
-    // If the token is between quotes, it must be part of a valid JSON field
-    if (value.includes(`"${token}"`) || value.includes(`'${token}'`)) {
+    // If the payload contains the token and looks like JSON, validate the JSON structure
+    if (value.trim().startsWith('{') || value.trim().startsWith('[')) {
       try {
-        // Try to parse as JSON to validate structure
-        const jsonObj = JSON.parse(value);
-        
-        // Recursively search for the token in JSON values
-        function findTokenInObject(obj) {
-          for (const key in obj) {
-            const val = obj[key];
-            if (typeof val === 'string' && val.includes(token)) {
-              return true;
-            } else if (typeof val === 'object' && val !== null) {
-              if (findTokenInObject(val)) return true;
-            }
-          }
-          return false;
-        }
-        
-        if (!findTokenInObject(jsonObj)) {
-          httpPayloadField.setCustomValidity(
-            "The token must be part of a valid JSON string value field"
-          );
-          return false;
-        }
+        JSON.parse(value);
       } catch (e) {
         httpPayloadField.setCustomValidity(
           "Invalid JSON format: " + e.message

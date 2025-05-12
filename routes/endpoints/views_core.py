@@ -2,6 +2,7 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload # Ensure this is imported if used for eager loading
+import json
 
 from extensions import db # Assuming extensions.py is in 'app'
 from models.model_Endpoints import Endpoint, APIHeader
@@ -114,18 +115,13 @@ def handle_create_endpoint():
                                    raw_headers=form_data["raw_headers"],
                                    flash_error=error_msg)
 
-        # Validation 3: Check if {{INJECT_PROMPT}} is directly quoted (example)
-        # (Ensure your original logic from endpoints.py for this validation is here)
-        if '"{{INJECT_PROMPT}}"' in form_data["payload"] and not any(
-            pattern in form_data["payload"]
-            for pattern in [
-                '"content": "{{INJECT_PROMPT}}"',
-                '"prompt": "{{INJECT_PROMPT}}"',
-                '"input": "{{INJECT_PROMPT}}"',
-                '"text": "{{INJECT_PROMPT}}"'
-            ]
-        ):
-            error_msg = "The {{INJECT_PROMPT}} token should be part of a JSON string value (e.g., in a 'content' or 'prompt' field)."
+        # Validation 3: Ensure payload is valid JSON if it looks like JSON
+        try:
+            payload_str = form_data["payload"].strip()
+            if payload_str.startswith('{') or payload_str.startswith('['):
+                json.loads(payload_str)
+        except json.JSONDecodeError as e:
+            error_msg = f"Invalid JSON format: {str(e)}"
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'error': error_msg, 'field_errors': {'http_payload': error_msg}}), 400
             flash(error_msg, "error")
@@ -147,7 +143,7 @@ def handle_create_endpoint():
             # user_id=current_user.id # If you have user association
         )
         db.session.add(endpoint)
-        db.session.commit() # Commit to get endpoint.id for headers
+        db.session.commit()
 
         # Process headers if provided
         if form_data["raw_headers"]:
