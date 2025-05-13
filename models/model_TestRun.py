@@ -11,7 +11,7 @@ class TestRun(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
     status = db.Column(db.String(50), default="pending")
     run_serially = db.Column(db.Boolean, default=False, nullable=False, server_default='false')
-    
+
     endpoint_id = db.Column(
         db.Integer,
         db.ForeignKey("endpoints.id", ondelete="SET NULL"),
