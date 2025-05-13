@@ -8,7 +8,7 @@ class TestRunAttempt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     test_run_id = db.Column(
         db.Integer, 
-        db.ForeignKey('test_runs.id', name='fk_test_run_attempt_test_run_id'),
+        db.ForeignKey('test_runs.id', name='fk_test_run_attempt_test_run_id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
@@ -25,6 +25,7 @@ class TestRunAttempt(db.Model):
     
     # Relationships
     test_run = db.relationship('TestRun', back_populates='attempts')
+
     executions = db.relationship(
         'TestExecution',
         back_populates='attempt',

@@ -219,7 +219,7 @@ def handle_create_test_run():
         new_run = TestRun(
             name=run_name,
             endpoint_id=endpoint_id,
-            status='pending',
+            status='not_started',
             user_id=current_user.id
         )
         db.session.add(new_run)

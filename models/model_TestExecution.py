@@ -9,11 +9,11 @@ class TestExecution(db.Model):
     # Reference to TestRunAttempt now
     test_run_attempt_id = db.Column(
         db.Integer, 
-        db.ForeignKey('test_run_attempts.id', name='fk_test_execution_run_attempt_id'),
+        db.ForeignKey('test_run_attempts.id', name='fk_test_execution_run_attempt_id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
-    test_case_id = db.Column(db.Integer, db.ForeignKey('test_cases.id'), nullable=False)
+    test_case_id = db.Column(db.Integer, db.ForeignKey('test_cases.id', ondelete='SET NULL'), nullable=False)
     
     status = db.Column(db.String(50), default="pending")
     sequence = db.Column(db.Integer, nullable=False)

@@ -63,7 +63,12 @@ document.addEventListener("DOMContentLoaded", function() {
  */
 function fetchAndShowSuggestions(key) {
   if (!SUGGESTIONS) {
-    fetch('/endpoints/get_suggestions')
+    fetch('/endpoints/get_suggestions', {
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-CSRFToken": csrfToken
+      }
+    })
       .then(res => res.json())
       .then(data => {
         SUGGESTIONS = data;  // e.g. { hostnames: [...], paths: [...], payloads: [...] }

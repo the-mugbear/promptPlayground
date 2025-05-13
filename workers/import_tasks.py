@@ -35,14 +35,14 @@ from huggingface_hub import HfApi, HfFolder # For token usage
 
 
 # Attempt to import services - handle gracefully if they don't exist in worker context initially
-try:
-    from hf_ingestor.services import create_test_case
-    from hf_ingestor.classifier import nist_classify
-except ImportError as e:
-    print(f"WARN: Could not import services in celery_tasks: {e}. Define dummy functions.")
-    # Define dummy functions if needed for testing, or ensure modules are importable
-    def create_test_case(**kwargs): print("WARN: Using dummy create_test_case"); return None
-    def nist_classify(prompt): print("WARN: Using dummy nist_classify"); return {"response_text": "{}"}
+# try:
+#     from hf_ingestor.services import create_test_case
+#     from hf_ingestor.classifier import nist_classify
+# except ImportError as e:
+#     print(f"WARN: Could not import services in celery_tasks: {e}. Define dummy functions.")
+#     # Define dummy functions if needed for testing, or ensure modules are importable
+#     def create_test_case(**kwargs): print("WARN: Using dummy create_test_case"); return None
+#     def nist_classify(prompt): print("WARN: Using dummy nist_classify"); return {"response_text": "{}"}
 
 # --- Helper Functions (Adapted from app.py) ---
 # Note: These run within the Celery task's app context provided by ContextTask

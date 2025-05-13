@@ -3,6 +3,11 @@
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/test_suites/list_test_suites.css') }}">
+  <script>
+    // Add CSRF token to all AJAX requests
+    const csrfToken = "{{ csrf_token() }}";
+  </script>
+  
 {% endblock %}
 
 {% block content %}
@@ -83,6 +88,7 @@
             </a>
 
             <form action="{{ url_for('test_suites_bp.delete_test_suite', suite_id=suite.id) }}" method="POST" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
               <button 
                 type="submit" 
                 onclick="return confirm('Are you sure you want to delete Test Suite #{{ suite.id }}?');"
@@ -229,7 +235,8 @@ async function importSingleSuite(data) {
     const response = await fetch('/test_suites/import_suite', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
       },
       body: JSON.stringify(data)
     });
@@ -280,7 +287,8 @@ async function importSelectedSuites() {
     const response = await fetch('/test_suites/import_suite', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
       },
       body: JSON.stringify(selectedImportData)
     });

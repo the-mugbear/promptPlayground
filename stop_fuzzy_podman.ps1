@@ -6,55 +6,60 @@ Write-Host "Stopping and removing containerized development environment via Podm
 $ComposeFile = "docker-compose.yml" # Your compose file name
 # --------------------
 
-# Get the directory where this script is located
-$ScriptDirectory = $PSScriptRoot
-# Write-Host "Detected project directory: $ScriptDirectory" # Optional
-
-# Navigate to the project directory
+# Navigate to the script directory
 try {
-    Set-Location -Path $ScriptDirectory -ErrorAction Stop
-    # Write-Host "Ensured current directory is: $(Get-Location)" # Optional
+    Set-Location -Path $PSScriptRoot -ErrorAction Stop
 } catch {
-    Write-Error "Failed to change directory to '$ScriptDirectory'. Exiting."
+    Write-Error "Failed to change directory to '$PSScriptRoot'. Exiting."
     Exit 1
 }
 
 # --- Activate Virtual Environment (Optional) ---
-# Primarily for ensuring 'podman-compose' is found
-$VenvActivateScript = Join-Path -Path $ScriptDirectory -ChildPath ".venv\Scripts\Activate.ps1"
+$VenvActivateScript = Join-Path -Path $PSScriptRoot -ChildPath ".venv\Scripts\Activate.ps1"
 if (Test-Path $VenvActivateScript) {
     Write-Host "Activating virtual environment: $VenvActivateScript" -ForegroundColor DarkGray
     try {
         . $VenvActivateScript
-        # Write-Host "Virtual environment activated." -ForegroundColor DarkGray
     } catch {
-        Write-Warning "Failed to activate virtual environment. Ensure 'podman-compose' is in your system PATH if not installed in venv."
+        Write-Warning "Failed to activate virtual environment. Ensure 'podman-compose' is in your PATH."
     }
 } elseif (-not (Get-Command podman-compose -ErrorAction SilentlyContinue)) {
-    Write-Error "Command 'podman-compose' not found. Please install it ('pip install podman-compose') or ensure venv is activated."
+    Write-Error "Command 'podman-compose' not found. Please install it or activate your venv."
     Exit 1
 }
 # ---------------------------------------------
 
-# --- Check if Compose file exists ---
+# Check for compose file
 if (-not (Test-Path $ComposeFile)) {
     Write-Error "Compose file '$ComposeFile' not found in directory '$(Get-Location)'. Exiting."
     Exit 1
 }
-# -----------------------------------
 
-# --- Stop services using Podman Compose ---
-Write-Host "Stopping and removing services defined in '$ComposeFile'..."
+# Prompt: remove volumes?
+$volInput = Read-Host "Do you want to remove volumes as well? [y/N]"
+if ($volInput -match '^[Yy]') {
+    $volumesFlag = "--volumes"
+    Write-Host "→ Volumes will be removed." -ForegroundColor Yellow
+} else {
+    $volumesFlag = ""
+    Write-Host "→ Volumes will be preserved." -ForegroundColor Yellow
+}
+
+# Stop services using Podman Compose
+Write-Host "Stopping and removing services defined in '$ComposeFile'..." -ForegroundColor Yellow
+
 try {
-    # 'down' stops containers, and removes containers, networks, volumes, and images created by 'up'.
-    # Add --volumes to also remove named volumes declared in the 'volumes' section of the Compose file and anonymous volumes attached to containers.
-    # Add --remove-orphans to remove containers for services not defined in the Compose file.
-    podman-compose -f $ComposeFile down --volumes --remove-orphans
+    # Build argument list dynamically
+    $args = @("-f", $ComposeFile, "down")
+    if ($volumesFlag) { $args += $volumesFlag }
+    $args += "--remove-orphans"
+
+    podman-compose @args
+
     Write-Host "Application stack has been stopped and removed." -ForegroundColor Green
 } catch {
     Write-Error "Failed to stop services with podman-compose. Error: $($_.Exception.Message)"
     Exit 1
 }
-# -----------------------------------------
 
 Write-Host "Script finished." -ForegroundColor Green

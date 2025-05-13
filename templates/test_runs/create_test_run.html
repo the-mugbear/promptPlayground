@@ -3,6 +3,10 @@
 
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <script>
+    // Add CSRF token to all AJAX requests
+    const csrfToken = "{{ csrf_token() }}";
+  </script>
   <style>
     /* Ensure header key/value pairs are side by side */
     .headers-container .header-row {
@@ -23,6 +27,7 @@
   <div class="left-card">
     <h2>Test Run Details</h2>
     <form id="createRunForm" action="{{ url_for('test_runs_bp.handle_create_test_run') }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       
       <!-- Run Name -->
       <div class="form-group">

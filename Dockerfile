@@ -33,4 +33,5 @@ ENV FLASK_RUN_HOST=0.0.0.0
 # Command to run the application using Gunicorn (for the web server)
 # This will be overridden for the celery worker in the compose file
 # Use a reasonable number of workers (e.g., 2*CPU + 1)
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "fuzzy_prompts:create_app()"]
+# CMD ["gunicorn", "--bind", "0.0.0.0:8000", "fuzzy_prompts:create_app()"]
+CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "fuzzy_prompts:app", "--bind", "0.0.0.0:8000", "--log-level", "debug"]

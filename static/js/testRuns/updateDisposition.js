@@ -28,7 +28,8 @@ document.addEventListener("DOMContentLoaded", function() {
             method: "POST",
             body: formData,
             headers: {
-              "X-Requested-With": "XMLHttpRequest"  // Allows the server to identify this as an AJAX request.
+              "X-Requested-With": "XMLHttpRequest",  // Allows the server to identify this as an AJAX request.
+              "X-CSRFToken": csrfToken  // Add CSRF token to headers
             }
           })
           .then(response => {

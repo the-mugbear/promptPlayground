@@ -15,7 +15,10 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       
       fetch(url, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        headers: { 
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': csrfToken // Add CSRF token to headers
+        }
       })
       .then(response => response.text())
       .then(html => {

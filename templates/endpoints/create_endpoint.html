@@ -31,6 +31,7 @@
       id="create-endpoint-form"
       style="margin-bottom: 1rem;"
     >
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group">
         <label for="name">Endpoint Name</label>
         <input 

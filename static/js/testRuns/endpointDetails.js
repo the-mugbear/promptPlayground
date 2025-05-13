@@ -7,7 +7,11 @@ document.addEventListener("DOMContentLoaded", function() {
         const endpointId = e.target.value;
         if (!endpointId) return;
         try {
-          const resp = await fetch(`/endpoints/${endpointId}/json`);
+          const resp = await fetch(`/endpoints/${endpointId}/json`, {
+            headers: {
+              'X-CSRFToken': csrfToken // Add CSRF token to headers
+            }
+          });
           const data = await resp.json();
           // populate payload
           const payloadTextarea = document.getElementById('endpointPayload');

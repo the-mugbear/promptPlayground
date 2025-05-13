@@ -1,41 +1,46 @@
 # celery_app.py
-from celery import Celery
+from celery import Celery, Task
 import os
+import logging # Add logging
 
-# Define Celery instance here
-# Use environment variables for broker/backend defaults if possible
+logger = logging.getLogger(__name__) # Get a logger for this module too
+
 celery = Celery(
     'fuzzy_prompts',
-    broker=os.getenv('CELERY_BROKER_URL', 'amqp://guest:guest@localhost:5672//'), # Default to AMQP
-    backend=os.getenv('CELERY_RESULT_BACKEND'), # Default to None - rely on .env
-    include=[
-        'workers.execution_tasks',
-        'workers.import_tasks'
-        ]
+    broker=os.getenv('CELERY_BROKER_URL', 'amqp://guest:guest@localhost:5672//'),
+    backend=os.getenv('CELERY_RESULT_BACKEND', 'rpc://'),
+    include=['workers.execution_tasks', 'workers.import_tasks']
 )
 
-# Create a custom Task base class that pushes app context
-class ContextTask(celery.Task):
-    abstract = True # Prevent this from being registered as an independent task
-    _flask_app = None # Optional: Cache the app instance per worker process
+celery.conf.update(
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+    timezone=os.environ.get('CELERY_TIMEZONE', 'UTC'),
+    enable_utc=True,
+)
 
-    # Use a property to create the app on first access within a worker process
+class ContextTask(Task):
+    abstract = True
+    _cached_flask_app = None
+
     @property
-    def flask_app(self):
-        if self._flask_app is None:
-            print("Flask app not cached in worker, creating context...")
-            # Import the factory function *here* to avoid circular imports at module level
+    def flask_app(self): # Renamed from 'app'
+        if ContextTask._cached_flask_app is None:
+            logger.info("ContextTask: Flask app instance not cached by worker, creating new...")
             from fuzzy_prompts import create_app
-            self._flask_app = create_app()
-            print("Flask app created for Celery context.")
-        return self._flask_app
+            app_instance = create_app()
+            logger.info(f"ContextTask: create_app() returned type: {type(app_instance)}")
+            if not hasattr(app_instance, 'app_context'):
+                 logger.critical(f"CRITICAL ERROR in ContextTask: create_app() did not return Flask app. Got: {type(app_instance)}")
+            ContextTask._cached_flask_app = app_instance
+            logger.info("ContextTask: Flask app instance created and cached by worker.")
+        return ContextTask._cached_flask_app
 
-    # Override __call__ to wrap task execution in app context
     def __call__(self, *args, **kwargs):
-        with self.flask_app.app_context():
-            # print(f"Executing task {self.name} within Flask app context") # Optional debug print
-            return self.run(*args, **kwargs)
+        # logger.info(f"ContextTask: Task {self.name} (ID: {self.request.id if self.request else 'N/A'}) entering __call__.")
+        with self.flask_app.app_context(): # Use the renamed property
+            # logger.info(f"ContextTask: Task {self.name} (ID: {self.request.id if self.request else 'N/A'}) has app context. Calling super().__call__...")
+            return super().__call__(*args, **kwargs) # CRITICAL: Call parent's __call__
 
-# Set the custom class as the default Task base for this Celery instance
 celery.Task = ContextTask
-# -----------------------------------

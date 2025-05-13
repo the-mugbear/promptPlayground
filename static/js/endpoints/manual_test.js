@@ -32,7 +32,10 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const res  = await fetch(form.action, {
         method: "POST",
-        headers: { "X-Requested-With": "XMLHttpRequest" },
+        headers: { 
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRFToken": csrfToken
+        },
         body: new FormData(form)
       });
       const json = await res.json();

@@ -7,7 +7,10 @@ document.addEventListener("DOMContentLoaded", function() {
         e.preventDefault();
         const url = e.target.getAttribute("href");
         fetch(url, {
-          headers: { "X-Requested-With": "XMLHttpRequest" }
+          headers: { 
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": csrfToken
+          }
         })
         .then(response => response.text())
         .then(html => {
