@@ -1,5 +1,4 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
-from flask_login import login_required
 from extensions import db
 from models.model_TestCase import TestCase
 from datetime import datetime
@@ -34,7 +33,6 @@ def list_test_cases():
     )
 
 @test_cases_bp.route('/', methods=['POST'])
-@login_required # <-- PROTECT
 def create_test_case_api():
     """
     POST /test_cases -> For JSON API style creation
@@ -61,7 +59,6 @@ def get_test_case(case_id):
 # SERVICES
 # ********************************
 @test_cases_bp.route('/<int:case_id>', methods=['PUT'])
-@login_required # <-- PROTECT
 def update_test_case(case_id):
     """
     PUT /test_cases/<id> -> Update an existing test case
@@ -73,7 +70,6 @@ def update_test_case(case_id):
     return jsonify({"message": "Test case updated"}), 200
 
 @test_cases_bp.route('/<int:case_id>', methods=['DELETE'])
-@login_required # <-- PROTECT
 def delete_test_case(case_id):
     """
     DELETE /test_cases/<id> -> Delete a specific test case
@@ -86,7 +82,6 @@ def delete_test_case(case_id):
 
 # Now for a form-based approach:
 @test_cases_bp.route('/create', methods=['GET'])
-@login_required # <-- PROTECT
 def create_test_case_form():
     """
     GET /test_cases/create -> Show an HTML form to create a test case
@@ -94,7 +89,6 @@ def create_test_case_form():
     return render_template('test_cases/create_test_case.html')
 
 @test_cases_bp.route('/create', methods=['POST'])
-@login_required # <-- PROTECT
 def handle_create_test_case_form():
     # Get the test case prompt (you might want to rename the form field to "prompt")
     prompt = request.form.get('prompt') or request.form.get('new_test_cases')

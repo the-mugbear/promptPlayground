@@ -12,15 +12,13 @@ from models.model_TestCase import TestCase
 from models.model_TestSuite import TestSuite # Assuming you have this model
 from models.model_Dialogue import Dialogue
 # Import db instance if not already imported
-from extensions import db 
-from flask_login import login_required
+from extensions import db
 report_bp = Blueprint('report_bp', __name__, url_prefix='/reports')
 
 # ********************************
 # ROUTES
 # ********************************
 @report_bp.route('/report', methods=['GET'])
-@login_required 
 def report():
     """
     Renders a page with a dropdown of endpoints.
@@ -32,7 +30,6 @@ def report():
 # SERVICES
 # ********************************
 @report_bp.route('/report_ajax/<int:endpoint_id>', methods=['GET'])
-@login_required 
 def report_ajax(endpoint_id):
     endpoint = Endpoint.query.get_or_404(endpoint_id)
     # Query test runs associated with the endpoint
@@ -140,7 +137,6 @@ def report_ajax(endpoint_id):
 
 
 @report_bp.route('/disposition_view/<context_type>/<int:context_id>/<status>')
-@login_required 
 def disposition_view(context_type, context_id, status):
     """
     Displays TestExecutions filtered by context (endpoint/run) and status,

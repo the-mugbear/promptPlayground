@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, send_from_directory, flash, redirect, url_for
-from flask_login import login_required
+from utils.decorators import admin_required
 from models.model_TestCase import TestCase
 from extensions import db
 from sqlalchemy import text 
@@ -78,7 +78,7 @@ def download_extension():
     return send_from_directory('static', 'POSTInspector.xpi', as_attachment=True)
 
 @help_bp.route('/purge')
-@login_required
+@admin_required
 def purge():
     orphaned_test_cases = TestCase.query.filter(~TestCase.test_suites.any()).all()
     count = len(orphaned_test_cases)
@@ -92,28 +92,28 @@ def purge():
     return redirect(url_for('help_bp.index'))
 
 # --- NEW ROUTE for VACUUM ---
-@help_bp.route('/vacuum', methods=['POST']) # Use POST to prevent accidental execution
-@login_required
-def vacuum_database():
-    """
-    Executes the VACUUM command on the SQLite database.
-    """
-    print("Attempting to VACUUM database...") # Add logging
-    try:
-        # Get the underlying SQLAlchemy engine
-        engine = db.engine 
-        # Execute the VACUUM command directly
-        # Using 'with engine.connect()' ensures connection is closed
-        with engine.connect() as connection:
-             # Need transaction for VACUUM in some contexts
-             with connection.begin():
-                 connection.execute(text("VACUUM"))
+# @help_bp.route('/vacuum', methods=['POST']) # Use POST to prevent accidental execution
+# @admin_required
+# def vacuum_database():
+#     """
+#     Executes the VACUUM command on the SQLite database.
+#     """
+#     print("Attempting to VACUUM database...") # Add logging
+#     try:
+#         # Get the underlying SQLAlchemy engine
+#         engine = db.engine 
+#         # Execute the VACUUM command directly
+#         # Using 'with engine.connect()' ensures connection is closed
+#         with engine.connect() as connection:
+#              # Need transaction for VACUUM in some contexts
+#              with connection.begin():
+#                  connection.execute(text("VACUUM"))
         
-        flash("Database VACUUM command executed successfully. Unused space has been reclaimed.", "success")
-        print("VACUUM command completed.")
-    except Exception as e:
-        db.session.rollback() # Rollback any potential session state issues
-        flash(f"Error executing VACUUM command: {str(e)}", "error")
-        print(f"Error during VACUUM: {e}")
+#         flash("Database VACUUM command executed successfully. Unused space has been reclaimed.", "success")
+#         print("VACUUM command completed.")
+#     except Exception as e:
+#         db.session.rollback() # Rollback any potential session state issues
+#         flash(f"Error executing VACUUM command: {str(e)}", "error")
+#         print(f"Error during VACUUM: {e}")
     
-    return redirect(url_for('help_bp.index')) # Redirect back to the help index
+#     return redirect(url_for('help_bp.index')) # Redirect back to the help index

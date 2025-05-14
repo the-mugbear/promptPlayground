@@ -4,6 +4,7 @@ from extensions import db
 from models.model_Invitation import Invitation
 from models.model_User import ROLE_ADMIN, ROLE_USER # Import roles
 from utils.decorators import admin_required 
+from forms import InvitationForm # Import the new form
 import datetime
 
 admin_bp = Blueprint(
@@ -14,7 +15,7 @@ admin_bp = Blueprint(
 
 # --- Protect ALL routes in this blueprint ---
 @admin_bp.before_request
-@admin_required # Apply decorator to all requests in this blueprint
+@admin_required 
 def before_request():
     """Protects all admin routes."""
     pass # Decorator handles the logic
@@ -33,15 +34,14 @@ def list_invitations():
 # --- Create Invitation Route ---
 @admin_bp.route('/invitations/create', methods=['GET', 'POST'])
 def create_invitation():
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip() or None # Optional email
-        role = request.form.get('role', ROLE_USER)
-        notes = request.form.get('notes', '').strip() or None
-        expires_days = request.form.get('expires_days', type=int) # Optional expiry
+    form = InvitationForm()
+    form.role.choices = [(ROLE_USER, 'User'), (ROLE_ADMIN, 'Admin')]
 
-        if role not in [ROLE_USER, ROLE_ADMIN]: # Basic validation
-             flash(f"Invalid role specified: {role}", "error")
-             return redirect(url_for('admin_bp.create_invitation'))
+    if form.validate_on_submit():
+        email = form.email.data.strip() if form.email.data else None
+        role = form.role.data
+        notes = form.notes.data.strip() if form.notes.data else None
+        expires_days = form.expires_days.data
 
         expires_at = None
         if expires_days is not None and expires_days > 0:
@@ -67,9 +67,7 @@ def create_invitation():
             flash(f"Error creating invitation: {e}", "error")
             current_app.logger.error(f"Invitation creation failed: {e}")
 
-
-    # GET request: Show the form
-    available_roles = [ROLE_USER, ROLE_ADMIN] # Define roles available in form
-    return render_template('admin/create_invitation.html', available_roles=available_roles)
+    # GET request or form validation failed: Show the form
+    return render_template('admin/create_invitation.html', form=form)
 
 # --- TODO: Add routes to revoke/delete invitations if needed ---

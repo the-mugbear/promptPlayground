@@ -18,38 +18,60 @@
         <div class="two-column-container">
             <div class="left-card">
                 <form action="{{ url_for('admin_bp.create_invitation') }}" method="post">
+                    {{ form.hidden_tag() }}
+                    
                     <div class="form-group">
-                        <label for="email">Restrict to Email (Optional):</label>
-                        <input type="email" id="email" name="email" placeholder="user@example.com">
+                        {{ form.email.label(class="form-label") }}
+                        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="user@example.com") }}
+                        {% if form.email.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.email.errors %}
+                                    <span>{{ error }}</span><br>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                         <div class="form-text text-muted-color">If left blank, anyone with the code can use it.</div>
                     </div>
                     
                     <div class="form-group">
-                        <label for="role">Assign Role to New User:</label>
-                        <select id="role" name="role">
-                            {% for role in available_roles %}
-                                <option value="{{ role }}" {% if role == 'user' %}selected{% endif %}>
-                                    {{ role.capitalize() }}
-                                </option>
-                            {% endfor %}
-                        </select>
+                        {{ form.role.label(class="form-label") }}
+                        {{ form.role(class="form-control" + (" is-invalid" if form.role.errors else "")) }}
+                        {% if form.role.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.role.errors %}
+                                    <span>{{ error }}</span><br>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                     
                     <div class="form-group">
-                        <label for="expires_days">Expires In (Days - Optional):</label>
-                        <input type="number" id="expires_days" name="expires_days" min="1" 
-                               style="max-width: 150px;">
+                        {{ form.expires_days.label(class="form-label") }}
+                        {{ form.expires_days(class="form-control" + (" is-invalid" if form.expires_days.errors else ""), style="max-width: 150px;", min="1") }}
+                        {% if form.expires_days.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.expires_days.errors %}
+                                    <span>{{ error }}</span><br>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                         <div class="form-text text-muted-color">Leave blank for no expiry.</div>
                     </div>
                     
                     <div class="form-group">
-                        <label for="notes">Notes (Optional):</label>
-                        <textarea id="notes" name="notes" rows="3" 
-                                  placeholder="E.g., For marketing team access"></textarea>
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control" + (" is-invalid" if form.notes.errors else ""), rows="3", placeholder="E.g., For marketing team access") }}
+                        {% if form.notes.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.notes.errors %}
+                                    <span>{{ error }}</span><br>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                         <div class="form-text text-muted-color">Internal notes for admin reference.</div>
                     </div>
                     
-                    <button type="submit">Generate Invitation</button>
+                    {{ form.submit(class="btn btn-primary") }}
                 </form>
             </div>
             

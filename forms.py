@@ -1,7 +1,7 @@
 # forms.py
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Email, EqualTo, ValidationError
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, IntegerField, TextAreaField
+from wtforms.validators import DataRequired, Email, EqualTo, ValidationError, Optional
 from models.model_User import User # Import your User model
 
 class LoginForm(FlaskForm):
@@ -42,3 +42,16 @@ class RegistrationForm(FlaskForm):
         user = User.query.filter_by(email=email.data).first()
         if user is not None:
             raise ValidationError('Email address already registered. Please use a different one.')
+
+class InvitationForm(FlaskForm):
+    """Form for creating new invitations."""
+    email = StringField('Email', validators=[
+        Optional(),
+        Email(message="Please enter a valid email address.")
+    ])
+    role = SelectField('Role', validators=[
+        DataRequired(message="Role is required.")
+    ])
+    expires_days = IntegerField('Expires In (Days)', validators=[Optional()])
+    notes = TextAreaField('Notes', validators=[Optional()])
+    submit = SubmitField('Generate Invitation')

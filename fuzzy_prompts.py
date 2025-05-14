@@ -2,7 +2,8 @@
 
 import os
 import json
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask_login import current_user
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 
@@ -26,20 +27,19 @@ from routes.test_cases import test_cases_bp
 from routes.test_suites import test_suites_bp
 from routes.test_runs import test_runs_bp
 from routes.prompt_filter import prompt_filter_bp
-from routes.reports import report_bp # Assuming 'report_bp' is correct, not 'reports_bp'
+from routes.reports import report_bp 
 from routes.help import help_bp
 from routes.testing_grounds import testing_grounds_bp
-from routes.dialogues import dialogue_bp # Corrected to 'dialogue_bp'
+from routes.dialogues import dialogue_bp
 from routes.attacks.evil_agent import evil_agent_bp
 from routes.attacks.best_of_n import best_of_n_bp
+from routes.utilities.utils import utils_bp
 
 # --- Import CLI commands blueprint/registration function ---
-# Assuming commands.py defines a blueprint 'bp'
 from commands import bp as commands_bp
 
 # --- Import SocketIO event handlers (create this file next) ---
 import socket_events
-
 
 # === Configuration Class ===
 class Config:
@@ -168,7 +168,7 @@ def create_app(config_object=Config): # Pass the class itself
 
     # --- Register Blueprints ---
     app.register_blueprint(core_bp)
-    app.register_blueprint(auth_bp) # Assuming auth_bp has url_prefix defined within itself
+    app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(endpoints_bp)
@@ -176,13 +176,14 @@ def create_app(config_object=Config): # Pass the class itself
     app.register_blueprint(test_suites_bp)
     app.register_blueprint(test_runs_bp)
     app.register_blueprint(prompt_filter_bp)
-    app.register_blueprint(report_bp) # Corrected 'report_bp'
+    app.register_blueprint(report_bp)
     app.register_blueprint(help_bp)
     app.register_blueprint(testing_grounds_bp)
-    app.register_blueprint(dialogue_bp) # Corrected 'dialogue_bp'
+    app.register_blueprint(dialogue_bp) 
     app.register_blueprint(evil_agent_bp)
     app.register_blueprint(best_of_n_bp)
-    app.register_blueprint(commands_bp) # Register commands blueprint
+    app.register_blueprint(commands_bp) 
+    app.register_blueprint(utils_bp)
 
     # --- Application-Level Error Handlers ---
     @app.errorhandler(500)
@@ -195,6 +196,38 @@ def create_app(config_object=Config): # Pass the class itself
     def page_not_found(error):
         app.logger.info(f'Page not found: {request.url}')
         return render_template('errors/404.html', error=error), 404
+    
+    # Defines a whitelist of public blueprints and endpoints
+    @app.before_request
+    def require_login_globally():
+        
+        public_blueprints = {
+            'auth_bp',
+            'utils_bp'
+        }
+        public_endpoints = {
+            'static',
+            'auth_bp.login',
+            'auth_bp.register_with_code',
+            'core_bp.index'   # if you want your home page public
+        }
+
+        # Grab the current request’s blueprint and endpoint
+        bp = request.blueprint   # e.g. 'auth_bp', 'test_runs_bp', or None
+        ep = request.endpoint    # e.g. 'auth_bp.login', 'test_runs_bp.view_test_run'
+
+        # If not in a public blueprint *and* not in a public endpoint
+        if not current_user.is_authenticated \
+        and bp not in public_blueprints \
+        and ep not in public_endpoints:
+            # For JSON / AJAX clients, return 401 JSON
+            if (request.is_json 
+                or request.headers.get('X-Requested-With')=='XMLHttpRequest'
+                or request.accept_mimetypes.best=='application/json'):
+                return jsonify(error='authentication_required'), 401
+
+            # Otherwise redirect to your login
+            return redirect(url_for('auth_bp.login', next=request.url))
 
     # --- User Loader configuration (moved login_manager.init_app above) ---
     # login_manager.login_view = 'auth_bp.login' # Set this on the login_manager instance in extensions.py

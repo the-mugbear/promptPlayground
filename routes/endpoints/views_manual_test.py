@@ -16,7 +16,7 @@ from . import endpoints_bp
 def manual_test():
     if request.method == 'GET':
         history = ManualTestRecord.query.order_by(ManualTestRecord.created_at.desc()).all()
-        return render_template('manual_test.html',
+        return render_template('endpoints/manual_test.html',
                                payload_templates=PAYLOAD_TEMPLATES, # Pass for selection
                                transform_params=TRANSFORM_PARAM_CONFIG,
                                history=history)
@@ -71,4 +71,4 @@ def manual_test():
             }
         })
     else:
-        return redirect(url_for('.manual_test')) # Redirect back to the GET view
+        return redirect(url_for('manual_test')) # Redirect back to the GET view

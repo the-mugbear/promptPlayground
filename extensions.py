@@ -5,13 +5,13 @@ from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from flask_cors import CORS
 from flask_socketio import SocketIO # Make sure this is here
-
+# --- Initialize extensions ---
 db = SQLAlchemy()
-migrate = Migrate() # Instantiated here
-login_manager = LoginManager() # Instantiated here
+migrate = Migrate() 
+login_manager = LoginManager() 
 csrf = CSRFProtect()
 cors = CORS()
-socketio = SocketIO() # Instantiated here
+socketio = SocketIO() 
 
 # It's good practice to set these here if they are static for the login_manager instance
 # Ensure 'auth_bp.login' correctly resolves to your login route.

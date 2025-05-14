@@ -162,7 +162,6 @@ def register_with_code(code):
 
 # --- Logout Route ---
 @auth_bp.route('/logout')
-@login_required # Ensures that only logged-in users can access this route
 def logout():
     """Handles user logout.
     Logs the user out and redirects to the login page.

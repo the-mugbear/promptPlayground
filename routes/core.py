@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, abort, request, redirect, flash, url_for
-from flask_login import login_required, current_user
+from flask_login import current_user
 from extensions import db
 from models.model_Reference import Reference  # Updated import
 from models.model_TestRun import TestRun
@@ -78,7 +78,6 @@ def visual(effect):
     return render_template(f"testing_grounds/{effect}.html")
 
 @core_bp.route('/dataset/create', methods=['GET', 'POST'])
-@login_required
 def create_dataset_reference():
     if request.method == 'POST':
         name = request.form.get('name')
