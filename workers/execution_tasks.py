@@ -27,11 +27,12 @@ from services.transformers.registry import apply_transformation # Your import
 # Get a logger for this module
 logger = py_logging.getLogger(__name__)
 
-PARALLEL_BATCH_SIZE = 20 # You can tune this
+PARALLEL_BATCH_SIZE = 8 # You can tune this
 
 # --- Helper Function to Emit SocketIO Events ---
 def emit_run_update(run_id, event_name, data):
     room_name = f'test_run_{run_id}'
+    logger.info(f"EmitHelper (Celery Worker): Attempting to emit SocketIO event. Event: '{event_name}', Room: '{room_name}', RunID: {run_id}, Data: {str(data)[:300]}...")
     try:
         # Assuming socketio instance is correctly configured with message_queue for Celery
         socketio.emit(event_name, data, room=room_name, namespace='/')
@@ -232,20 +233,24 @@ def orchestrate_test_run_task(self, test_run_id):
             final_prompt_for_subtask = processed_prompt
             logger.info(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Final processed prompt for subtask: '{final_prompt_for_subtask[:100]}...'")
             
+            current_sequence_number = i # Use the enumeration index as the sequence number (0-based)
+                                       # Or i + 1 if you want 1-based sequence numbers
+
             # Inside orchestrate_test_run_task, before single_case_sig = ...
             logger.info(f"Orchestrator: Preparing to call execute_single_test_case_task with:"
                         f" test_run_attempt_id={current_run_attempt_id},"
                         f" test_case_id={current_test_case_id},"
                         f" endpoint_id={endpoint.id if endpoint else None},"
-                        f" prompt_text='{final_prompt_for_subtask[:50]}...'") # Log first 50 chars
-
+                        f" prompt_text='{final_prompt_for_subtask[:50]}...', " 
+                        f" sequence_num={current_sequence_number}")
 
             # Make sure execute_single_test_case_task is defined in this module or imported
             single_case_sig = execute_single_test_case_task.s(
                 test_run_attempt_id=current_run_attempt_id,
                 test_case_id=current_test_case_id,
                 endpoint_id=endpoint.id,
-                prompt_text=final_prompt_for_subtask
+                prompt_text=final_prompt_for_subtask,
+                sequence_num=current_sequence_number
             )
 
             if test_run.run_serially:
@@ -450,68 +455,109 @@ def execute_single_test_case_task(self, test_run_attempt_id, test_case_id, endpo
             # timeout=120, verify=True # Default values from function signature
         )
         
-        disposition = 'pass' if status_code_from_replay is not None and 200 <= status_code_from_replay < 300 else 'fail'
+        status_code_int = None
+        if status_code_from_replay is not None:
+            try:
+                status_code_int = int(status_code_from_replay)
+            except ValueError:
+                logger.warning(f"SingleCaseTask {task_id_str}: Could not convert status_code '{status_code_from_replay}' to int.")
+                # Decide how to handle this - perhaps treat as an error or a specific non-success code
+                disposition = 'error' # Or 'fail', depending on desired logic for non-integer status
+
+        if status_code_int is not None: # Check if conversion was successful
+            disposition = 'pass' if 200 <= status_code_int < 300 else 'fail'
+        elif not error_message_from_replay: # If no int status code AND no other error, it's ambiguous
+            disposition = 'error' # Default if status_code couldn't be processed and no other specific error
+
         # If error_message_from_replay is populated, it might indicate a connection error etc.
-        # even if status_code is None.
-        if error_message_from_replay and not status_code_from_replay: # e.g. connection error
-            disposition = 'error' # A more specific status for non-HTTP errors
+        # even if status_code is None or non-integer.
+        if error_message_from_replay and status_code_int is None: # e.g. connection error or bad status
+            disposition = 'error' # A more specific status for non-HTTP success
 
         execution_record = TestExecution(
             test_run_attempt_id=test_run_attempt_id,
             test_case_id=test_case_id,
-            prompt_sent=prompt_text, # Store the human-readable prompt that was injected
-            payload_sent=final_http_payload_to_send, # Store the actual JSON string sent
-            response_received=json.dumps(response_data) if isinstance(response_data, dict) else str(response_data), # Handle if response_data is already a string
-            status_code=status_code_from_replay,
-            error_message=error_message_from_replay, # Store error message from replay function
+            sequence=sequence_num,
+            processed_prompt=prompt_text,       # CORRECTED Model Field Name
+            request_payload=final_http_payload_to_send, # CORRECTED Model Field Name
+            response_data=str(response_data), # Ensure it's a string
+            status_code=status_code_int,        # Use the converted integer
+            error_message=error_message_from_replay, # Use the error message from replay
             status=disposition,
-            started_at=datetime.utcnow(), # Should be closer to actual request start
+            started_at=request_start_time,
             finished_at=datetime.utcnow()
         )
+
         db.session.add(execution_record)
         db.session.commit()
         logger.info(f"SingleCaseTask {task_id_str}: TestExecution {execution_record.id} created. Status {disposition}.")
         return {'status': 'SUCCESS', 'execution_id': execution_record.id, 'test_case_id': test_case_id, 'disposition': disposition}
 
-    except Exception as e_single:
-        logger.error(f"SingleCaseTask {task_id_str}: Error for AttID:{test_run_attempt_id}, TCID:{test_case_id}: {e_single}", exc_info=True)
-        if db.session.is_active: 
-            db.session.rollback()
+
+    except Exception as e_single: # This is where the QueuePool error (or others) would be caught
+        request_finished_at_on_error = datetime.utcnow() 
+
+        # Log the primary error that occurred
+        logger.error(f"SingleCaseTask {task_id_str}: Error for AttID:{test_run_attempt_id}, TCID:{test_case_id}, Seq:{sequence_num}: {e_single}", exc_info=True)
         
+        # Attempt to rollback the session if it's active and the error might have left it in a bad state
+        try:
+            if db.session.is_active:
+                db.session.rollback()
+        except Exception as db_rollback_err:
+            logger.error(f"SingleCaseTask {task_id_str}: Exception during session rollback: {db_rollback_err}", exc_info=True)
+
         # Attempt to create a failed/errored TestExecution record
-        if test_run_attempt_id and test_case_id:
+        if test_run_attempt_id and test_case_id: # Ensure these IDs are available
             try:
-                prompt_val_for_error = prompt_text if 'prompt_text' in locals() else "Error: prompt_text not set"
+                prompt_val_for_error = prompt_text if 'prompt_text' in locals() and prompt_text is not None else "Error: prompt_text not set"
                 payload_val_for_error = final_http_payload_to_send if 'final_http_payload_to_send' in locals() and final_http_payload_to_send is not None else "Error: payload not set"
+                
+                response_text_for_error_record = None
+                if 'response_data_dict' in locals() and response_data_dict and isinstance(response_data_dict, dict):
+                    response_text_for_error_record = str(response_data_dict.get("response_text", ""))
+
+                error_execution_status_code = None
+                if 'status_code_int' in locals() and status_code_int is not None:
+                    error_execution_status_code = status_code_int
+                elif 'status_code_from_replay' in locals() and isinstance(status_code_from_replay, int):
+                    error_execution_status_code = status_code_from_replay
 
                 error_execution = TestExecution(
                     test_run_attempt_id=test_run_attempt_id,
                     test_case_id=test_case_id,
-                    sequence=sequence_num, # Pass sequence if available
-
-                    processed_prompt=prompt_val_for_error,  # USE CORRECT FIELD NAME
-                    request_payload=payload_val_for_error, # USE CORRECT FIELD NAME
-                    # response_data might be null or could contain partial error info if applicable
-                    # status_code would likely be null if error is before/during request
-                    
-                    status='error', 
-                    error_message=str(e_single)[:2000], # Store the main exception message here
-                    
-                    started_at=request_start_time, 
-                    finished_at=request_finished_at_on_error 
+                    sequence=sequence_num if 'sequence_num' in locals() else None,
+                    processed_prompt=prompt_val_for_error,
+                    request_payload=payload_val_for_error,
+                    response_data=response_text_for_error_record,
+                    status_code=error_execution_status_code,
+                    status='error',
+                    error_message=str(e_single)[:2000], # Log the actual exception that occurred
+                    started_at=request_start_time, # This should be defined at the start of the task's try block
+                    finished_at=request_finished_at_on_error # Now defined
                 )
                 db.session.add(error_execution)
                 db.session.commit()
-                logger.info(f"SingleCaseTask {task_id_str}: Created ERROR TestExecution ID {error_execution.id} for TCID:{test_case_id}, Seq:{sequence_num}.")
+                logger.info(f"SingleCaseTask {task_id_str}: Created ERROR TestExecution ID {error_execution.id} for TCID:{test_case_id}, Seq:{sequence_num if 'sequence_num' in locals() else 'N/A'}.")
             except Exception as db_error_on_fail_log:
-                logger.error(f"SingleCaseTask {task_id_str}: CRITICAL - Could not save ERROR TestExecution for TCID:{test_case_id}, Seq:{sequence_num}. DB error: {db_error_on_fail_log}", exc_info=True)
-                if db.session.is_active:
-                    db.session.rollback()
+                # Log if saving the error record itself fails
+                logger.error(f"SingleCaseTask {task_id_str}: CRITICAL - Could not save ERROR TestExecution for TCID:{test_case_id}, Seq:{sequence_num if 'sequence_num' in locals() else 'N/A'}. DB error: {db_error_on_fail_log}", exc_info=True)
+                # Attempt a final rollback if the error save failed
+                try:
+                    if db.session.is_active:
+                        db.session.rollback()
+                except Exception:
+                    pass # Avoid further errors during cleanup
         
-        return {'status': 'FAILED', 'reason': str(e_single), 'test_case_id': test_case_id}
+        # Return failure status for the Celery task
+        return {'status': 'FAILED', 'reason': str(e_single), 'test_case_id': test_case_id, 'disposition': 'error'}
     finally:
-        if db.session and db.session.is_active:
-            db.session.remove()
+        # Ensure session is always removed
+        if db.session and db.session.is_active: # Check if session exists and is active
+             try:
+                 db.session.remove()
+             except Exception as e_remove:
+                 logger.error(f"SingleCaseTask {task_id_str}: Error during final db.session.remove(): {e_remove}", exc_info=True)
 
 
 # --- Callback Task for Parallel Batches ---

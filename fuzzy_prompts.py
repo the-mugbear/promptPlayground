@@ -63,6 +63,11 @@ class Config:
         SQLALCHEMY_DATABASE_URI = f'postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # In your Flask app config (e.g., config.py or app initialization)
+    SQLALCHEMY_POOL_SIZE = 15  # Or higher, depending on your needs
+    SQLALCHEMY_MAX_OVERFLOW = 30 # Or higher
+    SQLALCHEMY_POOL_TIMEOUT = 30  # Default is 30 seconds, can be adjusted
+
     # Celery Configuration (pointing to RabbitMQ)
     CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'amqp://guest:guest@localhost:5672//')
     CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'rpc://') # RabbitMQ RPC for results
