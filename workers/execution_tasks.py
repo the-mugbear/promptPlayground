@@ -394,6 +394,7 @@ def execute_single_test_case_task(self, test_run_attempt_id, test_case_id, endpo
     status_code_from_replay = None 
     error_message_from_replay = None
     response_data_from_replay = None
+    error_message_from_http_call = None
 
     try:
         test_run_attempt = db.session.get(TestRunAttempt, test_run_attempt_id)
@@ -447,7 +448,7 @@ def execute_single_test_case_task(self, test_run_attempt_id, test_case_id, endpo
         #              f"http_payload (first 100 chars)='{final_http_payload_to_send[:100]}...', "
         #              f"raw_headers='{raw_headers_str_for_replay.replace(chr(10), '\\n')}'")
 
-        response_data, status_code_from_replay, error_message_from_replay = replay_post_request(
+        result_dict = replay_post_request(
             hostname=endpoint_obj.hostname,
             endpoint_path=endpoint_obj.endpoint,    # CORRECTED: Using 'endpoint_path'
             http_payload=final_http_payload_to_send, # Pass the processed string payload
@@ -455,44 +456,75 @@ def execute_single_test_case_task(self, test_run_attempt_id, test_case_id, endpo
             # timeout=120, verify=True # Default values from function signature
         )
         
-        status_code_int = None
-        if status_code_from_replay is not None:
-            try:
-                status_code_int = int(status_code_from_replay)
-            except ValueError:
-                logger.warning(f"SingleCaseTask {task_id_str}: Could not convert status_code '{status_code_from_replay}' to int.")
-                # Decide how to handle this - perhaps treat as an error or a specific non-success code
-                disposition = 'error' # Or 'fail', depending on desired logic for non-integer status
+        if result_dict:
+            actual_status_code = result_dict.get("status_code") # This should be an int or None
+            actual_response_body = result_dict.get("response_text") # This is a string (body or error details)
 
-        if status_code_int is not None: # Check if conversion was successful
-            disposition = 'pass' if 200 <= status_code_int < 300 else 'fail'
-        elif not error_message_from_replay: # If no int status code AND no other error, it's ambiguous
-            disposition = 'error' # Default if status_code couldn't be processed and no other specific error
+            if actual_status_code is not None: # Indicates HTTP call itself likely completed
+                disposition = 'pass' if 200 <= actual_status_code < 300 else 'fail'
+                # If it failed but replay_post_request put an error message in response_text,
+                # that message will be stored in actual_response_body.
+                # If it was a requests.RequestException, actual_status_code is None,
+                # and actual_response_body contains the error_details.
+            else: # actual_status_code is None, implies an error caught by replay_post_request
+                disposition = 'error'
+                error_message_from_http_call = actual_response_body # The 'response_text' from error return is the error detail
+        else:
+            logger.error(f"SingleCaseTask {task_id_str}: replay_post_request returned None or empty.")
+            error_message_from_http_call = "Request service returned no result."
+            disposition = 'error'
 
-        # If error_message_from_replay is populated, it might indicate a connection error etc.
-        # even if status_code is None or non-integer.
-        if error_message_from_replay and status_code_int is None: # e.g. connection error or bad status
-            disposition = 'error' # A more specific status for non-HTTP success
+        # The 'Saving execution_record' log showed ResponseData='status_code'.
+        # This happened because the old unpacking was wrong.
+        # With correct unpacking, actual_response_body should now hold the true response or error string.
+
+        logger.info(f"SingleCaseTask {task_id_str}: Preparing to save execution_record. "
+                    f"TC_ID={test_case_id}, "
+                    f"ActualStatusCode={actual_status_code}, "
+                    f"ActualResponseBody='{str(actual_response_body)[:200]}...', "
+                    f"Disposition='{disposition}', "
+                    f"ErrorMessageFromHttpCall='{str(error_message_from_http_call)[:100]}'")
 
         execution_record = TestExecution(
             test_run_attempt_id=test_run_attempt_id,
             test_case_id=test_case_id,
             sequence=sequence_num,
-            processed_prompt=prompt_text,       # CORRECTED Model Field Name
-            request_payload=final_http_payload_to_send, # CORRECTED Model Field Name
-            response_data=str(response_data), # Ensure it's a string
-            status_code=status_code_int,        # Use the converted integer
-            error_message=error_message_from_replay, # Use the error message from replay
+            processed_prompt=prompt_text,
+            request_payload=final_http_payload_to_send,
+            response_data=str(actual_response_body) if actual_response_body is not None else None,
+            status_code=actual_status_code, # This is now correctly the integer status code or None
+            error_message=error_message_from_http_call, # Populated if disposition is 'error' from HTTP call stage
             status=disposition,
             started_at=request_start_time,
             finished_at=datetime.utcnow()
         )
 
+        logger.info(f"Saving execution_record: ID={execution_record.id if execution_record else 'New'}, TC_ID={execution_record.test_case_id if execution_record else 'N/A'}, "
+                    f"ResponseData='{str(execution_record.response_data)[:200]}' " # Log first 200 chars
+                    f"StatusCode={execution_record.status_code}, Status='{execution_record.status}'")
         db.session.add(execution_record)
         db.session.commit()
         logger.info(f"SingleCaseTask {task_id_str}: TestExecution {execution_record.id} created. Status {disposition}.")
-        return {'status': 'SUCCESS', 'execution_id': execution_record.id, 'test_case_id': test_case_id, 'disposition': disposition}
 
+        # Emit update after successful save
+        try:
+            if test_run_attempt: # Ensure attempt object is loaded
+                 run_id_for_emit = test_run_attempt.test_run_id
+                 emit_data = {
+                     'test_run_id': run_id_for_emit,
+                     'test_case_id': execution_record.test_case_id,
+                     'attempt_number': test_run_attempt.attempt_number,
+                     'execution_id': execution_record.id,
+                     'response_data': execution_record.response_data, # Send the saved data
+                     'status': execution_record.status,
+                     'status_code': execution_record.status_code,
+                     'error_message': execution_record.error_message
+                 }
+                 emit_run_update(run_id_for_emit, 'execution_result_update', emit_data)
+        except Exception as e_emit:
+            logger.error(f"SingleCaseTask {task_id_str}: Failed to emit execution_result_update. Error: {e_emit}", exc_info=True)
+
+        return {'status': 'SUCCESS', 'execution_id': execution_record.id, 'test_case_id': test_case_id, 'disposition': disposition}
 
     except Exception as e_single: # This is where the QueuePool error (or others) would be caught
         request_finished_at_on_error = datetime.utcnow() 

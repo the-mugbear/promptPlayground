@@ -4,6 +4,10 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/endpoints/inline_edit.css') }}">
+<script>
+    // Add CSRF token for AJAX requests
+    const csrfToken = "{{ csrf_token() }}";
+</script>
 <style>
     .endpoint-header {
         display: flex;

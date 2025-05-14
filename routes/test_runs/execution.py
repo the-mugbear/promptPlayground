@@ -47,7 +47,7 @@ def start_test_run(test_run_id):
     # Also handles if it was 'not_started' to ensure a clean slate for progress fields
     if test_run.status in ['completed', 'failed', 'cancelled', 'not_started']:
         # Clear previous attempts when starting a fresh full run
-        TestRunAttempt.query.filter_by(test_run_id=test_run_id).delete()
+        # TestRunAttempt.query.filter_by(test_run_id=test_run_id).delete()
         
         test_run.status = 'not_started' # Will be set to 'pending'/'running' by this function/orchestrator
         test_run.progress_current = 0

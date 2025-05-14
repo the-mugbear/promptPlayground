@@ -260,7 +260,8 @@ class InlineEditor {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': csrfToken  // Add CSRF token
       },
       body: JSON.stringify({ [fieldName]: value })
     });
@@ -487,7 +488,8 @@ class InlineEditor {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
           },
           body: JSON.stringify(requestData)
         });
@@ -577,14 +579,14 @@ class InlineEditor {
   async updateHeader(headerId, newKey, newValue) {
     console.log('Updating header:', { headerId, newKey, newValue });
     try {
-      // *** MODIFICATION: Updated URL and request body for updating header ***
       const response = await fetch(`/endpoints/${this.endpointId}/headers/${headerId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': csrfToken
         },
-        body: JSON.stringify({ // header_id removed from body, now in URL
+        body: JSON.stringify({
           key: newKey,
           value: newValue
         })
@@ -609,14 +611,12 @@ class InlineEditor {
   async deleteHeader(headerId) { 
     console.log('Deleting header with ID:', headerId);
     try {
-      // *** MODIFICATION: Updated URL and removed body for deleting header ***
       const response = await fetch(`/endpoints/${this.endpointId}/headers/${headerId}`, {
         method: 'DELETE',
         headers: {
-          'X-Requested-With': 'XMLHttpRequest'
-          // 'Content-Type' not needed for empty body DELETE
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': csrfToken
         }
-        // No body for this request
       });
 
       console.log('Delete header response status:', response.status);

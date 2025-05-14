@@ -276,7 +276,7 @@
                                     <tr class="border-t hover:bg-gray-50" data-attempt="{{ attempt.attempt_number }}" data-status="{{ attempt.status }}">
                                         <td class="px-4 py-2">{{ attempt.attempt_number }}</td>
                                         <td class="px-4 py-2">
-                                            <div class="code-block json-response">{{ attempt.response }}</div>
+                                            <div class="code-block json-response">{{ attempt.response | prettyjson }}</div> 
                                         </td>
                                         <td class="px-4 py-2">
                                             <form method="POST" action="{{ url_for('test_runs_bp.update_execution_status', execution_id=attempt.execution_id) }}" class="update-status-form">
