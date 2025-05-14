@@ -3,6 +3,10 @@
 
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <script>
+    // Add CSRF token to all AJAX requests
+    const csrfToken = "{{ csrf_token() }}";
+  </script>
   <style>
     /* Moved styles here and adapted to existing classes */
     .test-case-card {
@@ -60,6 +64,7 @@
   <div class="left-card">
     <h2>Create Test Suite</h2>
     <form id="create-suite-form" action="{{ url_for('test_suites_bp.create_test_suite') }}" method="POST" data-preview-url="/test_suites/preview_transform">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <div class="form-group">
         <label for="description">Description</label>
         <input type="text" id="description" name="description" required placeholder="A brief description of the suite">

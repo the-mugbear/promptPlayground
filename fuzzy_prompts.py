@@ -90,11 +90,35 @@ def load_user_callback(user_id): # Renamed to avoid conflict if 'load_user' is a
         # It's better to log to app.logger once app context is available
         print(f"Error loading user {user_id}: {e}")
         return None
+    
+# Define the formatting function outside the context processor
+# so it can be used by both the context processor and for filter registration.
+def _format_timedelta_helper(delta_obj): # Renamed slightly to avoid confusion
+    if not isinstance(delta_obj, timedelta):
+        return "N/A"
+    total_seconds = int(delta_obj.total_seconds())
+    
+    if total_seconds < 0: # Handle negative timedeltas gracefully
+        return "Invalid (negative)"
+        
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    
+    if hours > 0:
+        return f"{hours:02d}h {minutes:02d}m {seconds:02d}s"
+    elif minutes > 0:
+        return f"{minutes:02d}m {seconds:02d}s"
+    return f"{seconds:02d}s"
 
 # === Application Factory ===
 def create_app(config_object=Config): # Pass the class itself
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_object) # Load config from the class
+
+    # Register your custom filter
+    # The first argument is the function, the second is the name used in templates
+    app.add_template_filter(_format_timedelta_helper, 'format_timedelta_custom')
+
 
     # --- Create instance folder and UPLOAD_FOLDER if they don't exist ---
     try:
@@ -170,23 +194,6 @@ def create_app(config_object=Config): # Pass the class itself
     # --- User Loader configuration (moved login_manager.init_app above) ---
     # login_manager.login_view = 'auth_bp.login' # Set this on the login_manager instance in extensions.py
     # login_manager.login_message_category = 'info' # Set this on the login_manager instance in extensions.py
-
-    @app.context_processor
-    def utility_processor():
-        def format_timedelta_for_jinja(delta_obj): # Distinct name
-            if not isinstance(delta_obj, timedelta): return "N/A"
-            total_seconds = int(delta_obj.total_seconds())
-            hours, remainder = divmod(total_seconds, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            if hours > 0:
-                return f"{hours:02d}h {minutes:02d}m {seconds:02d}s"
-            elif minutes > 0:
-                return f"{minutes:02d}m {seconds:02d}s"
-            return f"{seconds:02d}s"
-        return dict(
-            utcnow=datetime.now(timezone.utc), 
-            format_timedelta_custom=format_timedelta_for_jinja # This makes it available as a filter
-        )
 
     return app
 

@@ -36,6 +36,15 @@ class ContextTask(Task):
             ContextTask._cached_flask_app = app_instance
             logger.info("ContextTask: Flask app instance created and cached by worker.")
         return ContextTask._cached_flask_app
+    
+    # STUB FUNCTION TO FIX AN ISSUE, CERTAINLY WON'T BITE ME IN THE ASS LATER
+    def is_revoked(self):
+        """
+        Stub to satisfy tasks calling self.is_revoked().
+        Celery doesn’t expose an in-task revoke check by default;
+        this always returns False unless you override it.
+        """
+        return getattr(self.request, 'revoked', False)
 
     def __call__(self, *args, **kwargs):
         # logger.info(f"ContextTask: Task {self.name} (ID: {self.request.id if self.request else 'N/A'}) entering __call__.")

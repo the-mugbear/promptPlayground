@@ -5,7 +5,11 @@ import logging
 from datetime import datetime
 from celery import shared_task, group, chord # Removed chain as it's not used by orchestrator directly
 from celery.exceptions import SoftTimeLimitExceeded, TaskRevokedError
-import logging # Import the logging module
+from celery_app import celery
+import logging as py_logging # Use a different alias to avoid conflict if 'logger' is module-level
+
+simple_task_logger = py_logging.getLogger(__name__ + ".simple_test_task")
+
 
 from extensions import db, socketio
 from models.model_TestRun import TestRun
@@ -14,13 +18,14 @@ from models.model_TestCase import TestCase
 from models.model_TestRunAttempt import TestRunAttempt
 from models.model_Endpoints import Endpoint # Ensure this is the correct model name (vs. Endpoints)
 from models.model_PromptFilter import PromptFilter
+from models.model_TestExecution import TestExecution
 from sqlalchemy import func
 
 from services.common.http_request_service import replay_post_request # Your import
 from services.transformers.registry import apply_transformation # Your import
 
 # Get a logger for this module
-logger = logging.getLogger(__name__)
+logger = py_logging.getLogger(__name__)
 
 PARALLEL_BATCH_SIZE = 20 # You can tune this
 
@@ -36,220 +41,303 @@ def emit_run_update(run_id, event_name, data):
     except Exception as e:
         logger.error(f"EmitHelper: FAILED to emit SocketIO event '{event_name}' for run {run_id}. Error: {e}", exc_info=True)
 
+@celery.task(bind=True)
+def simple_test_task(self):
+    simple_task_logger.info(f"SimpleTestTask: self is {type(self)}")
+    simple_task_logger.info(f"SimpleTestTask: self.request is {self.request}")
+    simple_task_logger.info(f"SimpleTestTask: Does self have is_revoked? {'YES' if hasattr(self, 'is_revoked') else 'NO'}")
+    try:
+        if self.is_revoked(): # This is the critical check
+            simple_task_logger.info("SimpleTestTask: I was revoked.")
+            return "REVOKED"
+        else:
+            simple_task_logger.info("SimpleTestTask: I was not revoked.")
+            return "NOT REVOKED"
+    except AttributeError as e:
+        simple_task_logger.error(f"SimpleTestTask: AttributeError! {e}", exc_info=True)
+        # Also log the type of self here again for clarity in error
+        simple_task_logger.error(f"SimpleTestTask: self type at error is {type(self)}")
+        return "ERROR"
+    except Exception as e:
+        simple_task_logger.error(f"SimpleTestTask: General Exception! {e}", exc_info=True)
+        return "GENERAL ERROR"
 
 # --- Orchestrator Task ---
-@shared_task(bind=True, acks_late=True, name='tasks.orchestrate_test_run')
+@celery.task(bind=True, acks_late=True, name='tasks.orchestrate_test_run')
 def orchestrate_test_run_task(self, test_run_id):
-    logger.info(f"Orchestrator {self.request.id}: Starting for TestRun ID: {test_run_id}")
+    logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Starting orchestration.")
     test_run = None
-    active_chord_result = None
 
     try:
-        # It's often better to work with a detached object or re-fetch frequently in long tasks
-        # to avoid detached instance errors if the session is managed per request/task.
-        # For now, db.session.get should work if the session remains valid or is handled by a custom task base class.
         test_run = db.session.get(TestRun, test_run_id)
         if not test_run:
-            logger.error(f"Orchestrator {self.request.id}: TestRun {test_run_id} not found. Aborting.")
+            logger.error(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: TestRun not found. Aborting.")
             return {'status': 'FAILED', 'reason': f'TestRun {test_run_id} not found'}
 
-        # --- Initial Setup ---
         test_run.celery_task_id = self.request.id
         test_run.start_time = datetime.utcnow()
         test_run.end_time = None
         test_run.progress_current = 0
 
         all_test_cases_for_run = []
-        if not test_run.test_suites or not any(list(ts.test_cases) for ts in test_run.test_suites):
-            logger.warning(f"Orchestrator {self.request.id}: TestRun {test_run_id} has no test suites or no test cases in them.")
+        if not test_run.test_suites or not any(ts.test_cases for ts in test_run.test_suites): # Simplified check
+            logger.warning(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: No test suites or test cases found.")
             test_run.progress_total = 0
         else:
             for test_suite in test_run.test_suites:
-                for tc in test_suite.test_cases:
+                for tc_model in test_suite.test_cases:
                     all_test_cases_for_run.append({
-                        'test_case_id': tc.id,
-                        'prompt_text': tc.prompt
+                        'test_case_id': tc_model.id,
+                        'prompt_text': tc_model.prompt
                     })
             test_run.progress_total = len(all_test_cases_for_run)
 
         if test_run.progress_total == 0:
-            logger.info(f"Orchestrator {self.request.id}: TestRun {test_run_id} - No test cases. Marking completed.")
-            test_run.status = 'completed'
+            test_run.status = 'completed' # Or 'skipped' or 'empty' depending on your desired states
             test_run.end_time = datetime.utcnow()
             db.session.commit()
             emit_run_update(test_run_id, 'run_completed', test_run.get_status_data())
-            return {'status': 'COMPLETED', 'reason': 'No test cases'}
+            logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: No test cases. Marked {test_run.status}.")
+            return {'status': test_run.status.upper(), 'reason': 'No test cases'}
 
         test_run.status = 'running'
         db.session.commit()
-        logger.info(f"Orchestrator {self.request.id}: TestRun {test_run_id} now 'running'. Total cases: {test_run.progress_total}.")
+        logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Status 'running'. Total cases: {test_run.progress_total}.")
         emit_run_update(test_run_id, 'progress_update', test_run.get_status_data())
 
-        endpoint = db.session.get(Endpoint, test_run.endpoint_id) if test_run.endpoint_id else None
+        endpoint = db.session.get(Endpoint, test_run.endpoint_id)
         if not endpoint:
-            logger.error(f"Orchestrator {self.request.id}: Endpoint not found for TestRun {test_run_id}. Failing run.")
-            raise ValueError(f"Endpoint not found for TestRun {test_run_id}") # This will go to the general exception handler
+            logger.error(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Endpoint ID {test_run.endpoint_id} not found.")
+            raise ValueError(f"Endpoint not found for TestRun {test_run_id}")
 
-        filters_for_subtasks = []
-        if test_run.filters: # Assuming test_run.filters relation is loaded
-            for pf in test_run.filters:
-                filters_for_subtasks.append({'id': pf.id, 'type': pf.type, 'config': pf.config})
+        run_level_filters_data = []
+        if test_run.filters: # These are PromptFilter instances
+            for pf_instance in test_run.filters:
+                run_level_filters_data.append({
+                    'id': pf_instance.id,
+                    'name': pf_instance.name,
+                    'invalid_characters': pf_instance.invalid_characters,
+                    'words_to_replace': pf_instance.words_to_replace
+                })
+        logger.debug(f"Orchestrator TR_ID:{test_run_id}: Prepared {len(run_level_filters_data)} run-level filters.")
 
-        current_batch_signatures = []
-        # Create ONE TestRunAttempt for this entire orchestration pass
         current_run_attempt = TestRunAttempt(
             test_run_id=test_run.id,
             attempt_number=(db.session.query(func.max(TestRunAttempt.attempt_number)).filter_by(test_run_id=test_run.id).scalar() or 0) + 1,
-            status='running', # This attempt is now running
-            started_at=datetime.utcnow()
+            status='running', started_at=datetime.utcnow()
         )
         db.session.add(current_run_attempt)
-        db.session.flush() # To get current_run_attempt.id for sub-tasks
+        db.session.flush()
         current_run_attempt_id = current_run_attempt.id
-        logger.info(f"Orchestrator {self.request.id}: Created TestRunAttempt ID {current_run_attempt_id} for TestRun {test_run_id}.")
-        db.session.commit() # Commit the new attempt
+        db.session.commit()
+        logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Created TestRunAttempt ID {current_run_attempt_id}.")
 
-        for i, case_data in enumerate(all_test_cases_for_run):
-            # Pause/Cancel Check
-            current_db_status = db.session.query(TestRun.status).filter_by(id=test_run_id).scalar()
-            while current_db_status == 'pausing' or current_db_status == 'paused':
-                if current_db_status == 'pausing':
+        current_batch_signatures = []
+        for i, case_data_from_loop in enumerate(all_test_cases_for_run):
+            # --- Pause/Cancel Check Loop ---
+            while True: # Loop to handle pausing state
+                # Ensure self.is_revoked() calls the stub in ContextTask or actual Celery method
+                if self.is_revoked():
+                    logger.warning(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Task revoked during case processing.")
+                    raise TaskRevokedError("Task revoked by external signal")
+
+                # Fetch current status directly from DB to reflect external changes
+                current_db_status_for_case = db.session.query(TestRun.status).filter_by(id=test_run_id).scalar()
+                if current_db_status_for_case == 'cancelling':
+                    logger.warning(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Cancellation requested.")
+                    raise ValueError("Run cancellation requested.")
+                
+                if current_db_status_for_case == 'pausing':
                     db.session.query(TestRun).filter_by(id=test_run_id).update({'status': 'paused'})
                     db.session.commit()
-                    test_run.status = 'paused'
+                    test_run.status = 'paused' # Update local object
                     emit_run_update(test_run_id, 'run_paused', test_run.get_status_data())
-                    logger.info(f"Orchestrator {self.request.id}: TestRun {test_run_id} PAUSED.")
-                time.sleep(3)
-                if self.is_revoked(): raise TaskRevokedError()
-                current_db_status = db.session.query(TestRun.status).filter_by(id=test_run_id).scalar()
-                if current_db_status == 'cancelling':
-                    logger.warning(f"Orchestrator {self.request.id}: Cancellation requested during pause for TR:{test_run_id}")
-                    raise ValueError("Run cancellation requested during pause.")
-                if current_db_status == 'running':
-                    logger.info(f"Orchestrator {self.request.id}: TestRun {test_run_id} RESUMING.")
-                    test_run.status = 'running'
-                    emit_run_update(test_run_id, 'run_resuming', test_run.get_status_data())
-                    break
-            
-            if self.is_revoked(): raise TaskRevokedError()
-            if current_db_status == 'cancelling': raise ValueError("Run cancellation requested.")
+                    logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Run PAUSED.")
+                
+                if current_db_status_for_case == 'paused':
+                    time.sleep(3) # Check every 3 seconds while paused
+                    continue # Re-check revocation and status
+                
+                # If status is 'running' or any other, break pause loop and proceed
+                if current_db_status_for_case == 'running' and test_run.status == 'paused': # Check if it was previously paused by this task
+                     logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Run RESUMING.")
+                     test_run.status = 'running' # Update local object
+                     emit_run_update(test_run_id, 'run_resuming', test_run.get_status_data())
+                break # Exit pause loop
 
-            transformed_prompt = apply_transformation(case_data['prompt_text'], filters_for_subtasks)
+            current_test_case_id = case_data_from_loop['test_case_id']
+            processed_prompt = case_data_from_loop['prompt_text']
+            logger.info(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Original prompt: '{processed_prompt[:100]}...'")
+
+            # --- 1. Apply TestCase-specific Transformations ---
+            test_case_instance = db.session.get(TestCase, current_test_case_id)
+            if test_case_instance and test_case_instance.transformations:
+                case_transformations_list = test_case_instance.transformations
+                if isinstance(case_transformations_list, list):
+                    logger.debug(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Found {len(case_transformations_list)} TestCase transformations.")
+                    for t_info in case_transformations_list:
+                        if not isinstance(t_info, dict):
+                            logger.warning(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Skipping non-dict transformation item: {t_info}")
+                            continue
+                        
+                        transform_type = t_info.get('type')
+                        params_for_transform_apply = None
+                        if 'config' in t_info and isinstance(t_info['config'], dict):
+                            params_for_transform_apply = t_info['config']
+                        elif 'value' in t_info: # Support for simpler {"type": "...", "value": "..."} structure
+                            params_for_transform_apply = {'value': t_info['value']}
+                        
+                        # Handle transformations that might not need explicit params from TestCase.transformations
+                        # if they use defaults or no params (e.g. base64_encode)
+                        if transform_type and params_for_transform_apply is None:
+                            params_for_transform_apply = {} # Pass empty dict if config/value missing but type exists
+
+                        if transform_type:
+                            try:
+                                logger.debug(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Applying TC transform '{transform_type}' with params {params_for_transform_apply}.")
+                                processed_prompt = apply_transformation(transform_type, processed_prompt, params_for_transform_apply)
+                                logger.debug(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Prompt after TC transform '{transform_type}': '{processed_prompt[:100]}...'")
+                            except Exception as trans_exc:
+                                logger.warning(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Error applying TestCase transformation '{transform_type}': {trans_exc}", exc_info=True)
+                        else:
+                            logger.warning(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Skipping TestCase transformation due to missing type: original_info='{t_info}'")
+                else:
+                    logger.warning(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: TestCase.transformations is not a list. Value: {case_transformations_list}")
+            else:
+                logger.debug(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: No TestCase-specific transformations.")
+
+            # --- 2. Apply TestRun-level Filters ---
+            if run_level_filters_data:
+                logger.debug(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Applying {len(run_level_filters_data)} TestRun filters.")
+                for filter_entry in run_level_filters_data:
+                    filter_name = filter_entry.get('name', 'Unnamed Filter')
+                    invalid_chars = filter_entry.get('invalid_characters')
+                    words_map = filter_entry.get('words_to_replace')
+                    try:
+                        if invalid_chars and isinstance(invalid_chars, str):
+                            logger.debug(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Applying Run filter '{filter_name}': removing chars '{invalid_chars}'.")
+                            for char_to_remove in invalid_chars:
+                                processed_prompt = processed_prompt.replace(char_to_remove, "")
+                        if words_map and isinstance(words_map, dict):
+                            logger.debug(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Applying Run filter '{filter_name}': replacing words.")
+                            for word, replacement in words_map.items():
+                                processed_prompt = processed_prompt.replace(word, replacement)
+                        if invalid_chars or (words_map and isinstance(words_map, dict)): # Log only if action taken
+                            logger.debug(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Prompt after Run filter '{filter_name}': '{processed_prompt[:100]}...'")
+                    except Exception as filter_exc:
+                        logger.warning(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Error applying TestRun filter '{filter_name}': {filter_exc}", exc_info=True)
+            else:
+                logger.debug(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: No TestRun-level filters.")
+
+            final_prompt_for_subtask = processed_prompt
+            logger.info(f"Orchestrator TR_ID:{test_run_id}, TC_ID:{current_test_case_id}: Final processed prompt for subtask: '{final_prompt_for_subtask[:100]}...'")
             
+            # Inside orchestrate_test_run_task, before single_case_sig = ...
+            logger.info(f"Orchestrator: Preparing to call execute_single_test_case_task with:"
+                        f" test_run_attempt_id={current_run_attempt_id},"
+                        f" test_case_id={current_test_case_id},"
+                        f" endpoint_id={endpoint.id if endpoint else None},"
+                        f" prompt_text='{final_prompt_for_subtask[:50]}...'") # Log first 50 chars
+
+
+            # Make sure execute_single_test_case_task is defined in this module or imported
             single_case_sig = execute_single_test_case_task.s(
-                test_run_attempt_id=current_run_attempt_id, # Pass the ID of the single attempt for this run
-                test_case_id=case_data['test_case_id'],
+                test_run_attempt_id=current_run_attempt_id,
+                test_case_id=current_test_case_id,
                 endpoint_id=endpoint.id,
-                prompt_text=transformed_prompt,
-                # http_method and headers can be passed if they are dynamic per case,
-                # or sub-task can fetch endpoint and derive them. For now, assume endpoint details are stable.
-                # http_method_override = endpoint.http_method, 
-                # headers_override_json = json.dumps({h.key: h.value for h in endpoint.api_headers}) if endpoint.api_headers else None
+                prompt_text=final_prompt_for_subtask
             )
 
             if test_run.run_serially:
-                logger.info(f"Orchestrator {self.request.id}: Executing case {case_data['test_case_id']} serially for TR:{test_run_id}.")
+                # ... (serial execution logic as you had, ensuring db.session.refresh(test_run) after commit) ...
+                logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Executing TC_ID:{current_test_case_id} serially.")
                 try:
-                    result = single_case_sig.delay().get(timeout=360) # Increased timeout
-                    # For serial, the sub-task creates TestExecution. Orchestrator updates TestRun progress.
+                    result = single_case_sig.delay().get(timeout=360) 
                     db.session.query(TestRun).filter_by(id=test_run_id).update(
-                        {TestRun.progress_current: TestRun.progress_current + 1},
-                        synchronize_session=False
-                    )
+                        {TestRun.progress_current: TestRun.progress_current + 1}, synchronize_session=False)
                     db.session.commit()
                     db.session.refresh(test_run)
                     emit_run_update(test_run_id, 'progress_update', test_run.get_status_data())
                     if result and result.get('status') == 'FAILED':
-                        logger.warning(f"Orchestrator: Serial sub-task for case {case_data['test_case_id']} (TR:{test_run_id}) FAILED: {result.get('reason')}")
-                except Exception as e_serial_subtask:
-                    logger.error(f"Orchestrator {self.request.id}: Error in serial sub-task for case {case_data['test_case_id']} (TR:{test_run_id}): {e_serial_subtask}", exc_info=True)
+                        logger.warning(f"Orchestrator: Serial sub-task for TC_ID:{current_test_case_id} FAILED: {result.get('reason')}")
+                except Exception as e_serial:
+                    logger.error(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Error/Timeout in serial sub-task for TC_ID:{current_test_case_id}: {e_serial}", exc_info=True)
                     db.session.query(TestRun).filter_by(id=test_run_id).update(
-                        {TestRun.progress_current: TestRun.progress_current + 1}, # Count as processed
-                        synchronize_session=False
-                    )
+                        {TestRun.progress_current: TestRun.progress_current + 1}, synchronize_session=False) # Count as processed
                     db.session.commit()
                     db.session.refresh(test_run)
                     emit_run_update(test_run_id, 'progress_update', test_run.get_status_data())
             else: # Parallel
                 current_batch_signatures.append(single_case_sig)
-                if len(current_batch_signatures) == PARALLEL_BATCH_SIZE or \
+                if len(current_batch_signatures) >= PARALLEL_BATCH_SIZE or \
                    (i == len(all_test_cases_for_run) - 1 and current_batch_signatures):
-                    logger.info(f"Orchestrator {self.request.id}: Launching parallel batch of {len(current_batch_signatures)} for TR:{test_run_id}.")
-                    callback_sig = handle_batch_completion_task.s(
-                        test_run_id=test_run_id,
-                        num_cases_in_batch=len(current_batch_signatures)
-                    )
-                    active_chord_result = chord(group(current_batch_signatures), callback_sig).apply_async()
-                    logger.info(f"Orchestrator {self.request.id}: Batch chord {active_chord_result.id} launched for TR:{test_run_id}.")
+                    logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Launching parallel batch of {len(current_batch_signatures)}.")
+                    # Make sure handle_batch_completion_task is defined or imported
+                    callback_sig = handle_batch_completion_task.s(test_run_id=test_run_id, num_cases_in_batch=len(current_batch_signatures))
+                    # Ensure chord and group are imported from celery
+                    from celery import chord, group 
+                    active_chord = chord(group(current_batch_signatures), callback_sig).apply_async()
+                    logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Batch chord {active_chord.id} launched.")
                     current_batch_signatures = []
-
-                    # Non-blocking wait for chord with checks. The orchestrator does not block here for each chord.
-                    # It continues dispatching other chords if any.
-                    # The final "wait for parallel progress" loop at the end handles ensuring all are done.
-                    # If cancellation is needed, revoking the 'active_chord_result' can stop its callback.
-                    # Revoking individual tasks in the group is more complex and usually not done from orchestrator
-                    # unless it stores all sub-task IDs, which is feasible but adds more state.
         
-        # --- Finalization ---
+        # --- Finalization Loop for Parallel Runs ---
         if not test_run.run_serially:
-            timeout_seconds = 180  # Max wait for parallel batches to report back
+            # ... (finalization loop for parallel runs, similar to what you had, ensuring db.session.refresh(test_run) inside) ...
+            # ... and checks for self.is_revoked() and current_db_status_final_loop ...
+            timeout_seconds = 180 
             sleep_interval = 5
-            logger.info(f"Orchestrator {self.request.id}: Entering final wait loop for parallel progress on TR:{test_run_id}.")
+            logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Entering final wait loop for parallel progress.")
+            db.session.refresh(test_run) # Initial refresh before loop
             while timeout_seconds > 0:
-                db.session.refresh(test_run)
                 if test_run.progress_current >= test_run.progress_total:
-                    logger.info(f"Orchestrator {self.request.id}: All parallel progress accounted for on TR:{test_run_id}.")
+                    logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: All parallel progress accounted for.")
                     break
-                
-                current_db_status_final = db.session.query(TestRun.status).filter_by(id=test_run_id).scalar()
-                if self.is_revoked() or current_db_status_final == 'cancelling':
-                    logger.warning(f"Orchestrator {self.request.id}: Revoked/Cancelled during final progress wait for TR:{test_run_id}.")
-                    raise TaskRevokedError("Revoked/Cancelled during final progress wait")
-                if current_db_status_final == 'pausing' or current_db_status_final == 'paused':
-                     logger.info(f"Orchestrator {self.request.id}: Pause signal during final wait for TR:{test_run_id}. Holding.")
-                     time.sleep(sleep_interval)
-                     timeout_seconds -= sleep_interval # Still decrement timeout during pause
-                     continue
-
-                logger.info(f"Orchestrator {self.request.id}: Still waiting for parallel progress for TR:{test_run_id}. Have {test_run.progress_current}/{test_run.progress_total}. Timeout in {timeout_seconds}s")
+                if self.is_revoked():
+                    logger.warning(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Revoked during final progress wait.")
+                    raise TaskRevokedError("Revoked during final progress wait")
+                current_db_status_final_loop = db.session.query(TestRun.status).filter_by(id=test_run_id).scalar()
+                if current_db_status_final_loop == 'cancelling':
+                    logger.warning(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Cancellation signal during final progress wait.")
+                    raise ValueError("Run cancellation requested during final wait")
+                # (Handle 'pausing'/'paused' states here as in the per-case loop if necessary)
+                logger.info(f"Orchestrator TR_ID:{test_run_id}: Waiting for parallel. Progress: {test_run.progress_current}/{test_run.progress_total}. Timeout in {timeout_seconds}s")
                 time.sleep(sleep_interval)
                 timeout_seconds -= sleep_interval
-            
-            db.session.refresh(test_run)
+                db.session.refresh(test_run)
             if test_run.progress_current < test_run.progress_total:
-                logger.warning(f"Orchestrator {self.request.id}: WARNING - TR:{test_run_id} timed out waiting for full parallel progress. Reached {test_run.progress_current}/{test_run.progress_total}.")
-                # If it times out, it will likely be marked 'failed' in the final status check.
+                logger.warning(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: TIMEOUT waiting for full parallel progress. Reached {test_run.progress_current}/{test_run.progress_total}.")
 
-        final_db_status_end = db.session.query(TestRun.status).filter_by(id=test_run_id).scalar()
-        if self.is_revoked() or final_db_status_end == 'cancelling':
-            if final_db_status_end != 'cancelled': # Ensure it's not already marked 'cancelled' by another process
+        # --- Final Status Determination ---
+        db.session.refresh(test_run) # Get final state
+        final_status_check_on_db = db.session.query(TestRun.status).filter_by(id=test_run_id).scalar()
+
+        if self.is_revoked() or final_status_check_on_db == 'cancelling':
+            if final_status_check_on_db != 'cancelled': # Avoid double update if already cancelled
                 db.session.query(TestRun).filter_by(id=test_run_id).update({'status': 'cancelled', 'end_time': datetime.utcnow()})
                 db.session.commit()
             test_run.status = 'cancelled'
             emit_run_update(test_run_id, 'run_cancelled', test_run.get_status_data())
-            logger.info(f"Orchestrator {self.request.id}: TR:{test_run_id} finalized as CANCELLED.")
-            return {'status': 'CANCELLED'}
+            logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Finalized as CANCELLED.")
+            return {'status': 'CANCELLED', 'reason': 'Task revoked or run cancelled'}
         else:
-            # Check if all progress made, otherwise mark as failed if incomplete but not cancelled
-            if test_run.progress_current < test_run.progress_total:
-                logger.error(f"Orchestrator {self.request.id}: TR:{test_run_id} did not complete all test cases ({test_run.progress_current}/{test_run.progress_total}). Marking as FAILED.")
-                test_run.status = 'failed'
-            else:
-                logger.info(f"Orchestrator {self.request.id}: TR:{test_run_id} all cases processed. Marking COMPLETED.")
+            if test_run.progress_current >= test_run.progress_total:
                 test_run.status = 'completed'
+            else: # Should only happen if timed out in parallel, or serial had issues not caught
+                test_run.status = 'failed'
+                logger.error(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Finalizing as FAILED due to incomplete progress ({test_run.progress_current}/{test_run.progress_total}).")
             
             test_run.end_time = datetime.utcnow()
-            # Ensure progress_current reflects actual processed or total if completed
             if test_run.status == 'completed':
-                test_run.progress_current = test_run.progress_total
+                test_run.progress_current = test_run.progress_total # Ensure consistency
             
             db.session.commit()
             emit_event_name = 'run_completed' if test_run.status == 'completed' else 'run_failed'
             emit_run_update(test_run_id, emit_event_name, test_run.get_status_data())
+            logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Finalized as {test_run.status.upper()}.")
             return {'status': test_run.status.upper()}
 
-    except (TaskRevokedError, SoftTimeLimitExceeded) as e_revoke:
-        logger.warning(f"Orchestrator {self.request.id}: Task for TR:{test_run_id} REVOKED or TIMED OUT. Type: {type(e_revoke).__name__}")
+    except (TaskRevokedError, SoftTimeLimitExceeded) as e_revoke_timeout:
+        logger.warning(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Task REVOKED or TIMED OUT: {type(e_revoke_timeout).__name__}")
         if test_run:
             current_status = db.session.query(TestRun.status).filter_by(id=test_run_id).scalar()
             if current_status not in ['failed', 'completed', 'cancelled']:
@@ -257,26 +345,21 @@ def orchestrate_test_run_task(self, test_run_id):
                 db.session.commit()
                 test_run.status = 'cancelled'
                 emit_run_update(test_run_id, 'run_cancelled', test_run.get_status_data())
-        return {'status': 'REVOKED', 'reason': str(e_revoke)}
-
+        return {'status': 'REVOKED', 'reason': str(e_revoke_timeout)}
     except ValueError as ve:
-        logger.error(f"Orchestrator {self.request.id}: ValueError for TR:{test_run_id}: {ve}", exc_info=True)
+        logger.error(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: ValueError: {ve}")
         if test_run:
-            final_status_on_error = 'failed'
-            if "cancel" in str(ve).lower():
-                final_status_on_error = 'cancelled'
-            
+            error_status = 'cancelled' if "cancel" in str(ve).lower() else 'failed'
             current_status = db.session.query(TestRun.status).filter_by(id=test_run_id).scalar()
-            if current_status not in ['failed', 'completed', 'cancelled']: # Avoid overwriting a more definitive state
-                db.session.query(TestRun).filter_by(id=test_run_id).update({'status': final_status_on_error, 'end_time': datetime.utcnow()})
+            if current_status not in ['failed', 'completed', 'cancelled']:
+                db.session.query(TestRun).filter_by(id=test_run_id).update({'status': error_status, 'end_time': datetime.utcnow()})
                 db.session.commit()
-                test_run.status = final_status_on_error
-                emit_event = 'run_cancelled' if final_status_on_error == 'cancelled' else 'run_failed'
+                test_run.status = error_status
+                emit_event = 'run_cancelled' if error_status == 'cancelled' else 'run_failed'
                 emit_run_update(test_run_id, emit_event, test_run.get_status_data())
-        return {'status': 'FAILED', 'reason': str(ve)}
-        
+        return {'status': error_status.upper() if test_run else 'FAILED', 'reason': str(ve)}
     except Exception as e_general:
-        logger.error(f"Orchestrator {self.request.id}: UNEXPECTED ERROR for TR:{test_run_id}: {e_general}", exc_info=True)
+        logger.error(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: UNEXPECTED ERROR: {e_general}", exc_info=True)
         if test_run:
             current_status = db.session.query(TestRun.status).filter_by(id=test_run_id).scalar()
             if current_status not in ['failed', 'completed', 'cancelled']:
@@ -289,67 +372,142 @@ def orchestrate_test_run_task(self, test_run_id):
         if db.session and db.session.is_active:
             db.session.remove()
 
-
 # --- Single Test Case Execution Task ---
 # This task now needs to create TestExecution records linked to a TestRunAttempt.
 # The TestRunAttempt ID should be passed to it by the orchestrator.
-@shared_task(bind=True, acks_late=True, name='tasks.execute_single_case')
-def execute_single_test_case_task(self, test_run_attempt_id, test_case_id, endpoint_id, prompt_text):
-    logger.info(f"SingleCaseTask {self.request.id}: AttID:{test_run_attempt_id}, TCID:{test_case_id}")
-    execution = None # Initialize for broader scope
+@celery.task(bind=True, acks_late=True, name='tasks.execute_single_case')
+def execute_single_test_case_task(self, test_run_attempt_id, test_case_id, endpoint_id, prompt_text, sequence_num): 
+    # prompt_text here is the final, fully transformed and filtered prompt from orchestrator
+    
+    task_id_str = self.request.id if hasattr(self, 'request') and self.request else 'NO_REQ_ID_CTX_TASK'
+    logger.info(f"SingleCaseTask {task_id_str}: AttID:{test_run_attempt_id}, TCID:{test_case_id}")
+    
+    execution_record = None 
+    final_http_payload_to_send = None
+    request_start_time = datetime.utcnow()
+    # Define variables that might be used in error handling early if possible
+    status_code_from_replay = None 
+    error_message_from_replay = None
+    response_data_from_replay = None
+
     try:
-        # Fetch parent attempt to ensure it exists and for context if needed
         test_run_attempt = db.session.get(TestRunAttempt, test_run_attempt_id)
-        test_case = db.session.get(TestCase, test_case_id)
-        endpoint = db.session.get(Endpoint, endpoint_id)
+        test_case_obj = db.session.get(TestCase, test_case_id) # Renamed to avoid conflict with 'test_case' module
+        endpoint_obj = db.session.get(Endpoint, endpoint_id) # Renamed to avoid conflict
 
-        if not test_run_attempt:
-            logger.error(f"SingleCaseTask {self.request.id}: TestRunAttempt {test_run_attempt_id} not found.")
-            return {'status': 'FAILED', 'reason': f"Parent TestRunAttempt {test_run_attempt_id} not found", 'test_case_id': test_case_id}
-        if not test_case:
-            logger.error(f"SingleCaseTask {self.request.id}: TestCase {test_case_id} not found.")
-            return {'status': 'FAILED', 'reason': f"TestCase {test_case_id} not found", 'test_case_id': test_case_id}
-        if not endpoint:
-            logger.error(f"SingleCaseTask {self.request.id}: Endpoint {endpoint_id} not found.")
-            return {'status': 'FAILED', 'reason': f"Endpoint {endpoint_id} not found", 'test_case_id': test_case_id}
+        if not test_run_attempt or not test_case_obj or not endpoint_obj:
+            missing = []
+            if not test_run_attempt: missing.append(f"TestRunAttempt {test_run_attempt_id}")
+            if not test_case_obj: missing.append(f"TestCase {test_case_id}")
+            if not endpoint_obj: missing.append(f"Endpoint {endpoint_id}")
+            reason = f"Required objects not found: {', '.join(missing)}."
+            logger.error(f"SingleCaseTask {task_id_str}: {reason}")
+            return {'status': 'FAILED', 'reason': reason, 'test_case_id': test_case_id}
 
-        # HTTP request logic
-        payload = {"prompt": prompt_text} # Prompt_text is already transformed by orchestrator
-        http_method = endpoint.http_method.upper() if endpoint.http_method else 'POST'
-        headers = {h.key: h.value for h in endpoint.api_headers} if endpoint.api_headers else {}
-        if 'Content-Type' not in headers and http_method in ['POST', 'PUT', 'PATCH']:
-             headers['Content-Type'] = 'application/json'
+        # --- Payload Preparation using endpoint_obj.http_payload as template ---
+        if endpoint_obj.http_payload: # This is your payload template string
+            payload_template_str = endpoint_obj.http_payload
+            try:
+                # Escape the received prompt_text for safe insertion into a JSON string template
+                escaped_prompt_content = json.dumps(prompt_text)[1:-1] # Removes outer quotes
 
-        response_data, status_code, error_message = replay_post_request( # Using your replay_post_request
-            hostname=endpoint.hostname, # Assuming replay_post_request takes hostname and path separately
-            path=endpoint.endpoint, # Assuming replay_post_request takes hostname and path separately
-            payload=payload, # It should handle json.dumps if necessary
-            headers_str="\n".join(f"{k}: {v}" for k, v in headers.items()) # Assuming replay_post_request takes headers_str
+                if "{{INJECT_PROMPT}}" in payload_template_str:
+                    final_http_payload_to_send = payload_template_str.replace("{{INJECT_PROMPT}}", escaped_prompt_content)
+                else:
+                    logger.warning(f"SingleCaseTask {task_id_str}: Placeholder '{{INJECT_PROMPT}}' not found in endpoint.http_payload for Endpoint ID {endpoint_obj.id}. Using payload template as is.")
+                    final_http_payload_to_send = payload_template_str
+            except Exception as payload_prep_exc:
+                logger.error(f"SingleCaseTask {task_id_str}: Error preparing payload using template for Endpoint ID {endpoint_obj.id}: {payload_prep_exc}", exc_info=True)
+                # Create a failed TestExecution here before returning
+                # (See more detailed error handling below)
+                raise # Re-raise to be caught by the main try-except
+        else:
+            # No template on endpoint, default to simple {"prompt": prompt_text}
+            logger.warning(f"SingleCaseTask {task_id_str}: No http_payload template found on Endpoint ID {endpoint_obj.id}. Defaulting to simple {{'prompt': ...}} payload.")
+            final_http_payload_to_send = json.dumps({"prompt": prompt_text})
+        
+        if final_http_payload_to_send is None:
+             logger.critical(f"SingleCaseTask {task_id_str}: final_http_payload_to_send is None before HTTP request. This should not happen.")
+             raise ValueError("Payload construction resulted in None")
+        
+        # Prepare headers from endpoint_obj.headers (which are APIHeader instances)
+        headers_dict = {h.key: h.value for h in endpoint_obj.headers} if endpoint_obj.headers else {}
+        # The replay_post_request function handles default Content-Type if not present.
+        
+        # Convert headers dict to the newline-separated string format replay_post_request expects
+        raw_headers_str_for_replay = "\n".join(f"{k}: {v}" for k, v in headers_dict.items())
+
+        # logger.debug(f"SingleCaseTask {task_id_str}: Calling replay_post_request with: "
+        #              f"hostname='{endpoint_obj.hostname}', endpoint_path='{endpoint_obj.endpoint}', "
+        #              f"http_payload (first 100 chars)='{final_http_payload_to_send[:100]}...', "
+        #              f"raw_headers='{raw_headers_str_for_replay.replace(chr(10), '\\n')}'")
+
+        response_data, status_code_from_replay, error_message_from_replay = replay_post_request(
+            hostname=endpoint_obj.hostname,
+            endpoint_path=endpoint_obj.endpoint,    # CORRECTED: Using 'endpoint_path'
+            http_payload=final_http_payload_to_send, # Pass the processed string payload
+            raw_headers=raw_headers_str_for_replay   # Pass the formatted headers string
+            # timeout=120, verify=True # Default values from function signature
         )
-        disposition = 'pass' if status_code and 200 <= status_code < 300 else 'fail'
+        
+        disposition = 'pass' if status_code_from_replay is not None and 200 <= status_code_from_replay < 300 else 'fail'
+        # If error_message_from_replay is populated, it might indicate a connection error etc.
+        # even if status_code is None.
+        if error_message_from_replay and not status_code_from_replay: # e.g. connection error
+            disposition = 'error' # A more specific status for non-HTTP errors
 
-        # Create TestExecution record linked to the TestRunAttempt
-        execution = TestExecution(
+        execution_record = TestExecution(
             test_run_attempt_id=test_run_attempt_id,
             test_case_id=test_case_id,
-            prompt_sent=prompt_text,
-            response_received=json.dumps(response_data) if response_data is not None else None,
-            status_code=status_code,
-            error_message=error_message,
-            status=disposition, # TestExecution's status (disposition)
-            started_at=datetime.utcnow(), # This task's start time
-            finished_at=datetime.utcnow() # Mark finished immediately
+            prompt_sent=prompt_text, # Store the human-readable prompt that was injected
+            payload_sent=final_http_payload_to_send, # Store the actual JSON string sent
+            response_received=json.dumps(response_data) if isinstance(response_data, dict) else str(response_data), # Handle if response_data is already a string
+            status_code=status_code_from_replay,
+            error_message=error_message_from_replay, # Store error message from replay function
+            status=disposition,
+            started_at=datetime.utcnow(), # Should be closer to actual request start
+            finished_at=datetime.utcnow()
         )
-        db.session.add(execution)
+        db.session.add(execution_record)
         db.session.commit()
-        logger.info(f"SingleCaseTask {self.request.id}: TestExecution {execution.id} created for Attempt:{test_run_attempt_id}, TC:{test_case_id} with status {disposition}.")
-        return {'status': 'SUCCESS', 'execution_id': execution.id, 'test_case_id': test_case_id, 'disposition': disposition}
+        logger.info(f"SingleCaseTask {task_id_str}: TestExecution {execution_record.id} created. Status {disposition}.")
+        return {'status': 'SUCCESS', 'execution_id': execution_record.id, 'test_case_id': test_case_id, 'disposition': disposition}
 
     except Exception as e_single:
-        logger.error(f"SingleCaseTask {self.request.id}: Error for AttID:{test_run_attempt_id}, TC:{test_case_id}: {e_single}", exc_info=True)
-        if db.session.is_active: # Check before rollback
-             db.session.rollback()
-        # We still need to return a dict that the orchestrator/chord callback can understand as a failure
+        logger.error(f"SingleCaseTask {task_id_str}: Error for AttID:{test_run_attempt_id}, TCID:{test_case_id}: {e_single}", exc_info=True)
+        if db.session.is_active: 
+            db.session.rollback()
+        
+        # Attempt to create a failed/errored TestExecution record
+        if test_run_attempt_id and test_case_id:
+            try:
+                prompt_val_for_error = prompt_text if 'prompt_text' in locals() else "Error: prompt_text not set"
+                payload_val_for_error = final_http_payload_to_send if 'final_http_payload_to_send' in locals() and final_http_payload_to_send is not None else "Error: payload not set"
+
+                error_execution = TestExecution(
+                    test_run_attempt_id=test_run_attempt_id,
+                    test_case_id=test_case_id,
+                    sequence=sequence_num, # Pass sequence if available
+
+                    processed_prompt=prompt_val_for_error,  # USE CORRECT FIELD NAME
+                    request_payload=payload_val_for_error, # USE CORRECT FIELD NAME
+                    # response_data might be null or could contain partial error info if applicable
+                    # status_code would likely be null if error is before/during request
+                    
+                    status='error', 
+                    error_message=str(e_single)[:2000], # Store the main exception message here
+                    
+                    started_at=request_start_time, 
+                    finished_at=request_finished_at_on_error 
+                )
+                db.session.add(error_execution)
+                db.session.commit()
+                logger.info(f"SingleCaseTask {task_id_str}: Created ERROR TestExecution ID {error_execution.id} for TCID:{test_case_id}, Seq:{sequence_num}.")
+            except Exception as db_error_on_fail_log:
+                logger.error(f"SingleCaseTask {task_id_str}: CRITICAL - Could not save ERROR TestExecution for TCID:{test_case_id}, Seq:{sequence_num}. DB error: {db_error_on_fail_log}", exc_info=True)
+                if db.session.is_active:
+                    db.session.rollback()
+        
         return {'status': 'FAILED', 'reason': str(e_single), 'test_case_id': test_case_id}
     finally:
         if db.session and db.session.is_active:
@@ -357,7 +515,7 @@ def execute_single_test_case_task(self, test_run_attempt_id, test_case_id, endpo
 
 
 # --- Callback Task for Parallel Batches ---
-@shared_task(bind=True, name='tasks.handle_batch_completion')
+@celery.task(bind=True, acks_late=True, name='tasks.handle_batch_completion')
 def handle_batch_completion_task(self, results, test_run_id, num_cases_in_batch):
     logger.info(f"BatchCallback {self.request.id}: TR:{test_run_id}. BatchSize:{num_cases_in_batch}. ResultsRcvd:{len(results)}")
     test_run = None

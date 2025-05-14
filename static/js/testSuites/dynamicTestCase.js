@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
 
-    // re‑render each card’s preview/order
+    // re‑render each card's preview/order
     document.querySelectorAll('.test-case-card').forEach(card => {
       const idx = parseInt(card.dataset.index, 10);
       const tc  = testCases[idx];
@@ -298,7 +298,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
     fetch(previewUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
       body: JSON.stringify({ lines: [line], transformations: types, params })
     })
     .then(r => r.ok ? r.json() : Promise.reject(r.status))

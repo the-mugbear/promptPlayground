@@ -14,11 +14,20 @@ class TestExecution(db.Model):
         index=True
     )
     test_case_id = db.Column(db.Integer, db.ForeignKey('test_cases.id', ondelete='SET NULL'), nullable=False)
-    
-    status = db.Column(db.String(50), default="pending")
     sequence = db.Column(db.Integer, nullable=False)
+
+    # What was sent
+    processed_prompt = db.Column(db.Text, nullable=True)
+    request_payload = db.Column(db.Text, nullable=True)
+
+    # What was received
     response_data = db.Column(db.Text, nullable=True)
-    
+    status_code = db.Column(db.Integer, nullable=True)
+    error_message = db.Column(db.Text, nullable=True) # Specific errors during request/response handling
+
+    # Outcome
+    status = db.Column(db.String(50), default="pending") # 'pass', 'fail', 'error', 'pending'
+
     started_at = db.Column(db.DateTime(timezone=True), nullable=True)
     finished_at = db.Column(db.DateTime(timezone=True), nullable=True)
     
