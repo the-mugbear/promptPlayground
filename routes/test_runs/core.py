@@ -239,28 +239,28 @@ def handle_create_test_run():
                 new_run.filters.append(pf)
 
         # Create initial test run attempt
-        new_attempt = TestRunAttempt(
-            test_run=new_run,
-            attempt_number=1,
-            current_sequence=0,
-            status='pending'
-        )
-        db.session.add(new_attempt)
-        db.session.flush()
+        # new_attempt = TestRunAttempt(
+        #     test_run=new_run,
+        #     attempt_number=1,
+        #     current_sequence=0,
+        #     status='pending'
+        # )
+        # db.session.add(new_attempt)
+        # db.session.flush()
 
         # Create pending test executions for each test case
-        execution_records = []
-        seq = 0
-        for suite in new_run.test_suites:
-            for tc in suite.test_cases:
-                execution_records.append(TestExecution(
-                    test_run_attempt_id=new_attempt.id,
-                    test_case_id=tc.id,
-                    sequence=seq,
-                    status='pending'
-                ))
-                seq += 1
-        db.session.add_all(execution_records)
+        # execution_records = []
+        # seq = 0
+        # for suite in new_run.test_suites:
+        #     for tc in suite.test_cases:
+        #         execution_records.append(TestExecution(
+        #             test_run_attempt_id=new_attempt.id,
+        #             test_case_id=tc.id,
+        #             sequence=seq,
+        #             status='pending'
+        #         ))
+        #         seq += 1
+        # db.session.add_all(execution_records)
 
         db.session.commit()
         flash("Test run created successfully!", "success")

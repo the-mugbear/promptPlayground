@@ -42,27 +42,6 @@ def emit_run_update(run_id, event_name, data):
     except Exception as e:
         logger.error(f"EmitHelper: FAILED to emit SocketIO event '{event_name}' for run {run_id}. Error: {e}", exc_info=True)
 
-@celery.task(bind=True)
-def simple_test_task(self):
-    simple_task_logger.info(f"SimpleTestTask: self is {type(self)}")
-    simple_task_logger.info(f"SimpleTestTask: self.request is {self.request}")
-    simple_task_logger.info(f"SimpleTestTask: Does self have is_revoked? {'YES' if hasattr(self, 'is_revoked') else 'NO'}")
-    try:
-        if self.is_revoked(): # This is the critical check
-            simple_task_logger.info("SimpleTestTask: I was revoked.")
-            return "REVOKED"
-        else:
-            simple_task_logger.info("SimpleTestTask: I was not revoked.")
-            return "NOT REVOKED"
-    except AttributeError as e:
-        simple_task_logger.error(f"SimpleTestTask: AttributeError! {e}", exc_info=True)
-        # Also log the type of self here again for clarity in error
-        simple_task_logger.error(f"SimpleTestTask: self type at error is {type(self)}")
-        return "ERROR"
-    except Exception as e:
-        simple_task_logger.error(f"SimpleTestTask: General Exception! {e}", exc_info=True)
-        return "GENERAL ERROR"
-
 # --- Orchestrator Task ---
 @celery.task(bind=True, acks_late=True, name='tasks.orchestrate_test_run')
 def orchestrate_test_run_task(self, test_run_id):
@@ -378,219 +357,30 @@ def orchestrate_test_run_task(self, test_run_id):
             db.session.remove()
 
 # --- Single Test Case Execution Task ---
-# This task now needs to create TestExecution records linked to a TestRunAttempt.
-# The TestRunAttempt ID should be passed to it by the orchestrator.
 @celery.task(bind=True, acks_late=True, name='tasks.execute_single_case')
-def execute_single_test_case_task(self, test_run_attempt_id, test_case_id, endpoint_id, prompt_text, sequence_num): 
-    # prompt_text here is the final, fully transformed and filtered prompt from orchestrator
-    
-    task_id_str = self.request.id if hasattr(self, 'request') and self.request else 'NO_REQ_ID_CTX_TASK'
-    logger.info(f"SingleCaseTask {task_id_str}: AttID:{test_run_attempt_id}, TCID:{test_case_id}")
-    
-    execution_record = None 
-    final_http_payload_to_send = None
-    request_start_time = datetime.utcnow()
-    # Define variables that might be used in error handling early if possible
-    status_code_from_replay = None 
-    error_message_from_replay = None
-    response_data_from_replay = None
-    error_message_from_http_call = None
+def execute_single_test_case_task(self, test_run_attempt_id, test_case_id, endpoint_id, prompt_text, sequence_num):
+    task_id = self.request.id
+    logger.info(f"SingleCaseTask {task_id}: Start TCID={test_case_id}, Seq={sequence_num}")
 
     try:
-        test_run_attempt = db.session.get(TestRunAttempt, test_run_attempt_id)
-        test_case_obj = db.session.get(TestCase, test_case_id) # Renamed to avoid conflict with 'test_case' module
-        endpoint_obj = db.session.get(Endpoint, endpoint_id) # Renamed to avoid conflict
+        attempt, case, endpoint = fetch_objects(test_run_attempt_id, test_case_id, endpoint_id)
+        payload = build_payload(endpoint.http_payload, prompt_text)  
+        status_code, body, error = call_endpoint(endpoint, payload)  
+        record = create_execution_record(attempt, case, sequence_num, payload, status_code, body, error)
+        db.session.add(record); db.session.commit()
 
-        if not test_run_attempt or not test_case_obj or not endpoint_obj:
-            missing = []
-            if not test_run_attempt: missing.append(f"TestRunAttempt {test_run_attempt_id}")
-            if not test_case_obj: missing.append(f"TestCase {test_case_id}")
-            if not endpoint_obj: missing.append(f"Endpoint {endpoint_id}")
-            reason = f"Required objects not found: {', '.join(missing)}."
-            logger.error(f"SingleCaseTask {task_id_str}: {reason}")
-            return {'status': 'FAILED', 'reason': reason, 'test_case_id': test_case_id}
+        emit_execution_update(attempt, record)
+        return {"status":"SUCCESS","execution_id":record.id,"test_case_id":case.id,"disposition":record.status}
 
-        # --- Payload Preparation using endpoint_obj.http_payload as template ---
-        if endpoint_obj.http_payload: # This is your payload template string
-            payload_template_str = endpoint_obj.http_payload
-            try:
-                # Escape the received prompt_text for safe insertion into a JSON string template
-                escaped_prompt_content = json.dumps(prompt_text)[1:-1] # Removes outer quotes
+    except Exception as ex:
+        db.session.rollback()
+        record = create_error_record(locals(), ex)
+        db.session.add(record); db.session.commit()
+        emit_execution_update(attempt, record)
+        return {"status":"FAILED","reason":str(ex),"test_case_id":test_case_id,"disposition":"error"}
 
-                if "{{INJECT_PROMPT}}" in payload_template_str:
-                    final_http_payload_to_send = payload_template_str.replace("{{INJECT_PROMPT}}", escaped_prompt_content)
-                else:
-                    logger.warning(f"SingleCaseTask {task_id_str}: Placeholder '{{INJECT_PROMPT}}' not found in endpoint.http_payload for Endpoint ID {endpoint_obj.id}. Using payload template as is.")
-                    final_http_payload_to_send = payload_template_str
-            except Exception as payload_prep_exc:
-                logger.error(f"SingleCaseTask {task_id_str}: Error preparing payload using template for Endpoint ID {endpoint_obj.id}: {payload_prep_exc}", exc_info=True)
-                # Create a failed TestExecution here before returning
-                # (See more detailed error handling below)
-                raise # Re-raise to be caught by the main try-except
-        else:
-            # No template on endpoint, default to simple {"prompt": prompt_text}
-            logger.warning(f"SingleCaseTask {task_id_str}: No http_payload template found on Endpoint ID {endpoint_obj.id}. Defaulting to simple {{'prompt': ...}} payload.")
-            final_http_payload_to_send = json.dumps({"prompt": prompt_text})
-        
-        if final_http_payload_to_send is None:
-             logger.critical(f"SingleCaseTask {task_id_str}: final_http_payload_to_send is None before HTTP request. This should not happen.")
-             raise ValueError("Payload construction resulted in None")
-        
-        # Prepare headers from endpoint_obj.headers (which are APIHeader instances)
-        headers_dict = {h.key: h.value for h in endpoint_obj.headers} if endpoint_obj.headers else {}
-        # The replay_post_request function handles default Content-Type if not present.
-        
-        # Convert headers dict to the newline-separated string format replay_post_request expects
-        raw_headers_str_for_replay = "\n".join(f"{k}: {v}" for k, v in headers_dict.items())
-
-        # logger.debug(f"SingleCaseTask {task_id_str}: Calling replay_post_request with: "
-        #              f"hostname='{endpoint_obj.hostname}', endpoint_path='{endpoint_obj.endpoint}', "
-        #              f"http_payload (first 100 chars)='{final_http_payload_to_send[:100]}...', "
-        #              f"raw_headers='{raw_headers_str_for_replay.replace(chr(10), '\\n')}'")
-
-        result_dict = replay_post_request(
-            hostname=endpoint_obj.hostname,
-            endpoint_path=endpoint_obj.endpoint,    # CORRECTED: Using 'endpoint_path'
-            http_payload=final_http_payload_to_send, # Pass the processed string payload
-            raw_headers=raw_headers_str_for_replay   # Pass the formatted headers string
-            # timeout=120, verify=True # Default values from function signature
-        )
-        
-        if result_dict:
-            actual_status_code = result_dict.get("status_code") # This should be an int or None
-            actual_response_body = result_dict.get("response_text") # This is a string (body or error details)
-
-            if actual_status_code is not None: # Indicates HTTP call itself likely completed
-                disposition = 'pass' if 200 <= actual_status_code < 300 else 'fail'
-                # If it failed but replay_post_request put an error message in response_text,
-                # that message will be stored in actual_response_body.
-                # If it was a requests.RequestException, actual_status_code is None,
-                # and actual_response_body contains the error_details.
-            else: # actual_status_code is None, implies an error caught by replay_post_request
-                disposition = 'error'
-                error_message_from_http_call = actual_response_body # The 'response_text' from error return is the error detail
-        else:
-            logger.error(f"SingleCaseTask {task_id_str}: replay_post_request returned None or empty.")
-            error_message_from_http_call = "Request service returned no result."
-            disposition = 'error'
-
-        # The 'Saving execution_record' log showed ResponseData='status_code'.
-        # This happened because the old unpacking was wrong.
-        # With correct unpacking, actual_response_body should now hold the true response or error string.
-
-        logger.info(f"SingleCaseTask {task_id_str}: Preparing to save execution_record. "
-                    f"TC_ID={test_case_id}, "
-                    f"ActualStatusCode={actual_status_code}, "
-                    f"ActualResponseBody='{str(actual_response_body)[:200]}...', "
-                    f"Disposition='{disposition}', "
-                    f"ErrorMessageFromHttpCall='{str(error_message_from_http_call)[:100]}'")
-
-        execution_record = TestExecution(
-            test_run_attempt_id=test_run_attempt_id,
-            test_case_id=test_case_id,
-            sequence=sequence_num,
-            processed_prompt=prompt_text,
-            request_payload=final_http_payload_to_send,
-            response_data=str(actual_response_body) if actual_response_body is not None else None,
-            status_code=actual_status_code, # This is now correctly the integer status code or None
-            error_message=error_message_from_http_call, # Populated if disposition is 'error' from HTTP call stage
-            status=disposition,
-            started_at=request_start_time,
-            finished_at=datetime.utcnow()
-        )
-
-        logger.info(f"Saving execution_record: ID={execution_record.id if execution_record else 'New'}, TC_ID={execution_record.test_case_id if execution_record else 'N/A'}, "
-                    f"ResponseData='{str(execution_record.response_data)[:200]}' " # Log first 200 chars
-                    f"StatusCode={execution_record.status_code}, Status='{execution_record.status}'")
-        db.session.add(execution_record)
-        db.session.commit()
-        logger.info(f"SingleCaseTask {task_id_str}: TestExecution {execution_record.id} created. Status {disposition}.")
-
-        # Emit update after successful save
-        try:
-            if test_run_attempt: # Ensure attempt object is loaded
-                 run_id_for_emit = test_run_attempt.test_run_id
-                 emit_data = {
-                     'test_run_id': run_id_for_emit,
-                     'test_case_id': execution_record.test_case_id,
-                     'attempt_number': test_run_attempt.attempt_number,
-                     'execution_id': execution_record.id,
-                     'response_data': execution_record.response_data, # Send the saved data
-                     'status': execution_record.status,
-                     'status_code': execution_record.status_code,
-                     'error_message': execution_record.error_message
-                 }
-                 emit_run_update(run_id_for_emit, 'execution_result_update', emit_data)
-        except Exception as e_emit:
-            logger.error(f"SingleCaseTask {task_id_str}: Failed to emit execution_result_update. Error: {e_emit}", exc_info=True)
-
-        return {'status': 'SUCCESS', 'execution_id': execution_record.id, 'test_case_id': test_case_id, 'disposition': disposition}
-
-    except Exception as e_single: # This is where the QueuePool error (or others) would be caught
-        request_finished_at_on_error = datetime.utcnow() 
-
-        # Log the primary error that occurred
-        logger.error(f"SingleCaseTask {task_id_str}: Error for AttID:{test_run_attempt_id}, TCID:{test_case_id}, Seq:{sequence_num}: {e_single}", exc_info=True)
-        
-        # Attempt to rollback the session if it's active and the error might have left it in a bad state
-        try:
-            if db.session.is_active:
-                db.session.rollback()
-        except Exception as db_rollback_err:
-            logger.error(f"SingleCaseTask {task_id_str}: Exception during session rollback: {db_rollback_err}", exc_info=True)
-
-        # Attempt to create a failed/errored TestExecution record
-        if test_run_attempt_id and test_case_id: # Ensure these IDs are available
-            try:
-                prompt_val_for_error = prompt_text if 'prompt_text' in locals() and prompt_text is not None else "Error: prompt_text not set"
-                payload_val_for_error = final_http_payload_to_send if 'final_http_payload_to_send' in locals() and final_http_payload_to_send is not None else "Error: payload not set"
-                
-                response_text_for_error_record = None
-                if 'response_data_dict' in locals() and response_data_dict and isinstance(response_data_dict, dict):
-                    response_text_for_error_record = str(response_data_dict.get("response_text", ""))
-
-                error_execution_status_code = None
-                if 'status_code_int' in locals() and status_code_int is not None:
-                    error_execution_status_code = status_code_int
-                elif 'status_code_from_replay' in locals() and isinstance(status_code_from_replay, int):
-                    error_execution_status_code = status_code_from_replay
-
-                error_execution = TestExecution(
-                    test_run_attempt_id=test_run_attempt_id,
-                    test_case_id=test_case_id,
-                    sequence=sequence_num if 'sequence_num' in locals() else None,
-                    processed_prompt=prompt_val_for_error,
-                    request_payload=payload_val_for_error,
-                    response_data=response_text_for_error_record,
-                    status_code=error_execution_status_code,
-                    status='error',
-                    error_message=str(e_single)[:2000], # Log the actual exception that occurred
-                    started_at=request_start_time, # This should be defined at the start of the task's try block
-                    finished_at=request_finished_at_on_error # Now defined
-                )
-                db.session.add(error_execution)
-                db.session.commit()
-                logger.info(f"SingleCaseTask {task_id_str}: Created ERROR TestExecution ID {error_execution.id} for TCID:{test_case_id}, Seq:{sequence_num if 'sequence_num' in locals() else 'N/A'}.")
-            except Exception as db_error_on_fail_log:
-                # Log if saving the error record itself fails
-                logger.error(f"SingleCaseTask {task_id_str}: CRITICAL - Could not save ERROR TestExecution for TCID:{test_case_id}, Seq:{sequence_num if 'sequence_num' in locals() else 'N/A'}. DB error: {db_error_on_fail_log}", exc_info=True)
-                # Attempt a final rollback if the error save failed
-                try:
-                    if db.session.is_active:
-                        db.session.rollback()
-                except Exception:
-                    pass # Avoid further errors during cleanup
-        
-        # Return failure status for the Celery task
-        return {'status': 'FAILED', 'reason': str(e_single), 'test_case_id': test_case_id, 'disposition': 'error'}
     finally:
-        # Ensure session is always removed
-        if db.session and db.session.is_active: # Check if session exists and is active
-             try:
-                 db.session.remove()
-             except Exception as e_remove:
-                 logger.error(f"SingleCaseTask {task_id_str}: Error during final db.session.remove(): {e_remove}", exc_info=True)
-
+        db.session.remove()
 
 # --- Callback Task for Parallel Batches ---
 @celery.task(bind=True, acks_late=True, name='tasks.handle_batch_completion')
@@ -637,3 +427,63 @@ def handle_batch_completion_task(self, results, test_run_id, num_cases_in_batch)
     finally:
         if db.session and db.session.is_active:
             db.session.remove()
+
+
+def fetch_objects(attempt_id, case_id, endpoint_id):
+    attempt  = db.session.get(TestRunAttempt, attempt_id)
+    case     = db.session.get(TestCase, case_id)
+    endpoint = db.session.get(Endpoint, endpoint_id)
+    missing = [n for n,o in [("Attempt",attempt),("Case",case),("Endpoint",endpoint)] if not o]
+    if missing:
+        raise ValueError(f"Missing: {', '.join(missing)}")
+    return attempt, case, endpoint
+
+def build_payload(template, prompt):
+    if not template:
+        return json.dumps({"prompt": prompt})
+    injected = json.dumps(prompt)[1:-1]
+    if "{{INJECT_PROMPT}}" in template:
+        return template.replace("{{INJECT_PROMPT}}", injected)
+    raise ValueError("Payload template missing placeholder")
+
+def call_endpoint(endpoint, payload):
+    headers = {h.key: h.value for h in endpoint.headers or []}
+    result = replay_post_request(endpoint.hostname, endpoint.endpoint, payload, "\n".join(f"{k}: {v}" for k,v in headers.items()))
+    if not result:
+        return None, None, "No response from HTTP service"
+    code = result.get("status_code")
+    body = result.get("response_text")
+    if code is None:
+        return None, None, body
+    return code, body, None
+
+def create_execution_record(attempt, case, seq, payload, status_code, body, error_msg):
+    disposition = ("pass" if status_code and 200<=status_code<300 else
+                   "fail" if status_code else
+                   "error")
+    return TestExecution(
+        test_run_attempt_id=attempt.id,
+        test_case_id=case.id,
+        sequence=seq,
+        processed_prompt=None,         # or move into args
+        request_payload=payload,
+        response_data=body,
+        status_code=status_code,
+        error_message=error_msg,
+        status=disposition,
+        started_at=attempt.started_at, # or track time earlier
+        finished_at=datetime.utcnow()
+    )
+
+def emit_execution_update(attempt, record):
+    data = {
+      "test_run_id": attempt.test_run_id,
+      "test_case_id": record.test_case_id,
+      "attempt_number": attempt.attempt_number,
+      "execution_id": record.id,
+      "response_data": record.response_data,
+      "status": record.status,
+      "status_code": record.status_code,
+      "error_message": record.error_message
+    }
+    emit_run_update(attempt.test_run_id, "execution_result_update", data)

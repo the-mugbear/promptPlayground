@@ -127,6 +127,8 @@
                 </div>
             </div>
 
+            <div id="run-log"></div>
+
             <!-- Prompt Filters -->
             <div style="margin-bottom:8px;">
                 <strong>Prompt Filters:</strong>
@@ -273,7 +275,11 @@
                             </thead>
                             <tbody>
                                 {% for attempt in item.attempts %}
-                                    <tr class="border-t hover:bg-gray-50" data-attempt="{{ attempt.attempt_number }}" data-status="{{ attempt.status }}">
+                                    <tr id="exec-{{ attempt.execution_id }}"
+                                    class="border-t hover:bg-gray-50"
+                                    data-attempt="{{ attempt.attempt_number }}"
+                                    data-status="{{ attempt.status }}">
+                                        
                                         <td class="px-4 py-2">{{ attempt.attempt_number }}</td>
                                         <td class="px-4 py-2">
                                             <div class="code-block json-response">{{ attempt.response | prettyjson }}</div> 
@@ -290,6 +296,7 @@
                                                 </select>
                                             </form>
                                         </td>
+
                                     </tr>
                                 {% endfor %}
                             </tbody>
@@ -305,20 +312,22 @@
 {% endblock %}
 
 {% block scripts %}
-{{ super() }} 
 
-{# --- Socket.IO Client Library --- #}
+<!-- {# --- Socket.IO Client Library --- #} -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-{# --- Custom JavaScript for Test Run Monitoring --- #}
-<script src="{{ url_for('static', filename='js/testRuns/runMonitor.js') }}"></script>
 
-{# Your existing JS for this page, if any (e.g., for modals, tooltips) #}
-<script src="{{ url_for('static', filename='js/testRuns/filterAttempts.js') }}"></script>
-{# <script src="{{ url_for('static', filename='js/testRuns/updateDisposition.js') }}"></script> #}
-{# <script src="{{ url_for('static', filename='js/testRuns/pagination.js') }}"></script> #}
 <!-- For sick donuts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{{ url_for('static', filename='js/testRuns/donut.js') }}"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script defer src="{{ url_for('static', filename='js/testRuns/donut.js') }}"></script>
+
+
+<!-- {# --- Custom JavaScript for Test Run Monitoring --- #} -->
+<script defersrc="{{ url_for('static', filename='js/testRuns/runMonitor.js') }}"></script>
+
+
+<script defer src="{{ url_for('static', filename='js/testRuns/filterAttempts.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/testRuns/updateDisposition.js') }}"></script> 
+<script defer src="{{ url_for('static', filename='js/testRuns/pagination.js') }}"></script> 
 
 <script>
     // Live duration updater

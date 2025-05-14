@@ -37,8 +37,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // The Socket.IO server URL will be the same as the page's origin by default.
     // If your Socket.IO server is elsewhere, you need to specify: const socket = io('http://yourserver.com');
     const socket = io({
-        transports: ['websocket', 'polling'] // Explicitly define transports
-    });
+        transports:['websocket','polling'],
+        reconnection: true,
+        reconnectionDelayMax: 10000,   // up to 10 s
+      });
 
     socket.on('connect', () => {
         console.log(`Socket.IO connected: ${socket.id} for TestRun ID: ${testRunId}`);
@@ -172,6 +174,38 @@ document.addEventListener('DOMContentLoaded', () => {
         alert(`Server Error: ${data.message}`); // Simple alert for now
     });
 
+    socket.on('execution_result_update', data => {
+        const log = document.getElementById('run-log');
+        log.insertAdjacentHTML('beforeend',
+        `<p>[… Case ${data.test_case_id} …]</p>`);
+        const row = document.getElementById(`exec-${data.execution_id}`);
+        if (row) {
+          // Update status cell
+          row.dataset.status = data.status;
+          row.querySelector('select[name=status]').value = data.status;
+      
+          // Update response JSON
+          const codeBlock = row.querySelector('.json-response');
+          codeBlock.textContent = JSON.stringify(data.response_data, null, 2);
+      
+          // Optionally, highlight the row
+          row.classList.add(data.status === 'passed' ? 'bg-green-50'
+                         : data.status === 'failed' ? 'bg-red-50'
+                         : '');
+        }
+
+        // Increment the donut chart slice
+        if (window.cumulativeChart) {
+            const ds = window.cumulativeChart.data.datasets[0].data;
+            if (data.status === 'passed')       ds[0] += 1;
+            else if (data.status === 'failed')  ds[1] += 1;
+            else if (data.status === 'skipped') ds[2] += 1;
+            else if (data.status === 'pending_review') ds[3] += 1;
+            window.cumulativeChart.update();
+        }
+        });
+            
+
 
     // --- Client Emitted Event Handlers (Button Clicks) ---
     if (pauseButton) {
@@ -273,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 progressBar.classList.add('bg-secondary'); // Or bg-warning
             }
         }
-    }
+    }      
 
     function updateButtonStates(status) {
         // Hide all control buttons by default, then show based on status

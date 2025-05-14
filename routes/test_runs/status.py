@@ -33,7 +33,7 @@ def update_execution_status(execution_id):
     new_status = request.form.get('new_status')
     
     if not new_status:
-        if request.is_xhr:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': 'Missing new_status parameter'}), 400
         flash('Missing new_status parameter', 'error')
         return redirect(url_for('test_runs_bp.view_test_run', run_id=execution.test_run_attempt.test_run_id))
@@ -42,14 +42,14 @@ def update_execution_status(execution_id):
         execution.status = new_status
         db.session.commit()
         
-        if request.is_xhr:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'message': 'Status updated successfully'})
         flash('Status updated successfully', 'success')
         return redirect(url_for('test_runs_bp.view_test_run', run_id=execution.test_run_attempt.test_run_id))
         
     except Exception as e:
         db.session.rollback()
-        if request.is_xhr:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': str(e)}), 500
         flash(f'Error updating status: {str(e)}', 'error')
         return redirect(url_for('test_runs_bp.view_test_run', run_id=execution.test_run_attempt.test_run_id)) 
