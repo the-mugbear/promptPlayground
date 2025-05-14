@@ -30,16 +30,16 @@ def update_execution_status(execution_id):
             Redirect to test run view with success/error message
     """
     execution = TestExecution.query.get_or_404(execution_id)
-    new_status = request.form.get('new_status')
+    requested_status = request.form.get('status')
     
-    if not new_status:
+    if not requested_status:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': 'Missing new_status parameter'}), 400
         flash('Missing new_status parameter', 'error')
         return redirect(url_for('test_runs_bp.view_test_run', run_id=execution.test_run_attempt.test_run_id))
     
     try:
-        execution.status = new_status
+        execution.status = requested_status
         db.session.commit()
         
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
