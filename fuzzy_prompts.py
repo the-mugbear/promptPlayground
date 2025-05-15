@@ -209,25 +209,46 @@ def create_app(config_object=Config): # Pass the class itself
             'static',
             'auth_bp.login',
             'auth_bp.register_with_code',
-            'core_bp.index'   # if you want your home page public
         }
 
         # Grab the current request’s blueprint and endpoint
         bp = request.blueprint   # e.g. 'auth_bp', 'test_runs_bp', or None
-        ep = request.endpoint    # e.g. 'auth_bp.login', 'test_runs_bp.view_test_run'
+        endpoint  = request.endpoint    # e.g. 'auth_bp.login', 'test_runs_bp.view_test_run'
 
-        # If not in a public blueprint *and* not in a public endpoint
-        if not current_user.is_authenticated \
-        and bp not in public_blueprints \
-        and ep not in public_endpoints:
-            # For JSON / AJAX clients, return 401 JSON
-            if (request.is_json 
-                or request.headers.get('X-Requested-With')=='XMLHttpRequest'
-                or request.accept_mimetypes.best=='application/json'):
-                return jsonify(error='authentication_required'), 401
+        # Logging for every request
+        print(f"--- Request Start ---")
+        print(f"Path: {request.path}, Method: {request.method}")
+        print(f"Endpoint: {endpoint}, Blueprint: {bp}")
+        print(f"Content-Type: {request.content_type}, is_json: {request.is_json}")
+        print(f"X-Requested-With: {request.headers.get('X-Requested-With')}")
+        print(f"User Authenticated: {current_user.is_authenticated}")
+        # ------------------------
 
-            # Otherwise redirect to your login
-            return redirect(url_for('auth_bp.login', next=request.url))
+        is_public_route = (bp in public_blueprints) or (endpoint in public_endpoints)
+        if endpoint == 'static': # Static files are always public
+            is_public_route = True
+        print(f"Is Public Route? {is_public_route}")
+
+        if not current_user.is_authenticated and not is_public_route:
+            print(f"User NOT authenticated for PROTECTED endpoint: {endpoint}")
+
+            is_ajax_request = (
+                (request.content_type and 'application/json' in request.content_type.lower()) or
+                request.is_json or
+                request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+                (request.accept_mimetypes.best and 'application/json' in request.accept_mimetypes.best.lower())
+            )
+            print(f"Determined is_ajax_request: {is_ajax_request}")
+
+            if is_ajax_request:
+                print("Returning 401 JSON for AJAX")
+                return jsonify(message='Authentication required. Please log in.', error_code='AUTH_REQUIRED'), 401
+            else:
+                print(f"Redirecting to login for non-AJAX from: {request.url}")
+                return redirect(url_for('auth_bp.login', next=request.url))
+
+        print(f"--- Request Allowed (User Auth: {current_user.is_authenticated}, Public: {is_public_route}) ---")
+        # If we reach here, the request proceeds to the view function or next before_request handler.
 
     # --- User Loader configuration (moved login_manager.init_app above) ---
     # login_manager.login_view = 'auth_bp.login' # Set this on the login_manager instance in extensions.py

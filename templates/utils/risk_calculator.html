@@ -1,161 +1,431 @@
 {% extends "base.html" %}
-{% from "_formhelpers.html" import render_field, render_radio_field, render_select_field %}
+{% from "partials/_formhelpers.html" import render_field, render_radio_field, render_select_field %}
 
 {% block title %}{{ title }}{% endblock %}
 
 {% block head %}
     {{ super() }}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}"> {# Assuming you have a forms.css #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities/risk_calculator.css') }}">
     <style>
-        .risk-calculator-container {
-            max-width: 900px;
-            margin: 20px auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        .copy-button.copied {
+            background-color: var(--success-color, #28a745);
+            border-color: var(--success-color, #28a745);
+            color: white;
         }
-        .form-section {
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
+        .copy-button.copied:hover {
+            background-color: var(--success-color-darker, #218838);
+            border-color: var(--success-color-darker, #1e7e34);
         }
-        .form-section:last-child {
-            border-bottom: none;
+        /* AITC Description Area */
+        #aitcDescriptionArea {
+            padding: 0.75rem 1rem;                              /* Padding */
+            margin-top: 0.5rem;                                 /* Space above */
+            min-height: 70px;                                   /* Minimum height */
         }
-        .form-section h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
-            color: #333;
-            border-bottom: 2px solid var(--primary-color, #007bff);
-            padding-bottom: 5px;
+        #aitcDescriptionArea h6 { /* Styling for the label inside description */
+            font-size: 1rem; 
+            color: var(--text-color, #212529);
+            margin-bottom: 0.25rem;
         }
-        .results-section {
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+        #aitcDescriptionArea p { /* Styling for the description text */
+            font-size: 0.875rem;
+            color: var(--text-color-secondary, #6c757d);
+            margin-bottom: 0;
         }
-        .results-section h3 {
-            margin-top: 0;
-            color: var(--primary-color, #007bff);
-        }
-        .score-display {
-            font-size: 2em;
-            font-weight: bold;
-            color: #d9534f; /* Default to red, change based on score */
-        }
-        .score-low { color: #5cb85c; }
-        .score-medium { color: #f0ad4e; }
-        .score-high { color: #d9534f; }
-        .score-critical { color: #800000; } /* Darker red for critical */
-
-        /* Style for radio buttons to be more compact if needed */
-        .form-group-radio div { display: flex; flex-wrap: wrap; gap: 15px; }
-        .form-group-radio label { margin-right: 0; } /* WTForms might add its own label wrapper */
-        .form-group-radio input[type="radio"] { margin-right: 5px; }
-
     </style>
 {% endblock %}
 
 {% block content %}
-<div class="risk-calculator-container">
-    <h1 class="mb-4">{{ title }}</h1>
-    <p class="text-muted">Select the appropriate values for each metric to calculate a conceptual risk score.</p>
+<div class="content-card">
+    <div class="risk-calculator-container">
+        <h1 class="mb-4">{{ title }}</h1>
+        <p class="text-muted-color mb-4">Select the appropriate values for each metric. Results will update automatically.</p>
 
-    <form method="POST" action="{{ url_for('utils_bp.risk_calculator') }}" novalidate>
-        {{ form.hidden_tag() }} {# CSRF token #}
+        <form id="riskCalculatorForm" novalidate>
+            {{ form.hidden_tag() }} {# CSRF token #}
 
-        <div class="form-section">
-            <h3>Base Metrics</h3>
-            <div class="row">
-                <div class="col-md-6">
-                    {{ render_radio_field(form.attack_vector, class="form-check-input") }}
+            <div class="form-section">
+                <h3>Base Metrics</h3>
+                <div class="row g-3 mb-2"> 
+                    <div class="col-md-6 col-sm-12 position-relative">
+                        {{ render_radio_field(form.attack_vector, class="form-check-input") }}
+                        <div class="invalid-feedback-ajax" id="error-attack_vector"></div>
+                    </div>
+                    <div class="col-md-6 col-sm-12 position-relative">
+                        {{ render_radio_field(form.privileges_required, class="form-check-input") }}
+                        <div class="invalid-feedback-ajax" id="error-privileges_required"></div>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    {{ render_radio_field(form.privileges_required, class="form-check-input") }}
+                <div class="row g-3"> 
+                    <div class="col-md-6 col-sm-12 position-relative">
+                        {{ render_radio_field(form.attack_complexity, class="form-check-input") }}
+                        <div class="invalid-feedback-ajax" id="error-attack_complexity"></div>
+                    </div>
+                    <div class="col-md-6 col-sm-12 position-relative">
+                        {{ render_radio_field(form.user_interaction, class="form-check-input") }}
+                        <div class="invalid-feedback-ajax" id="error-user_interaction"></div>
+                    </div>
                 </div>
             </div>
-            <div class="row mt-3">
-                <div class="col-md-6">
-                    {{ render_radio_field(form.attack_complexity, class="form-check-input") }}
+
+            <div class="form-section">
+                <h3>Impact Metrics</h3>
+                <div class="row g-3">
+                    <div class="col-12 position-relative"> 
+                        {{ render_select_field(form.aitc) }}
+                        <div class="invalid-feedback-ajax" id="error-aitc"></div>
+                        <div id="aitcDescriptionArea" style="display: none;">
+                            {## Content will be populated by JavaScript ##}
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    {{ render_radio_field(form.user_interaction, class="form-check-input") }}
+                <div class="row g-3 mt-3"> 
+                    <div class="col-md-6 col-sm-12 position-relative">
+                        {{ render_select_field(form.characteristic_impact) }}
+                        <div class="invalid-feedback-ajax" id="error-characteristic_impact"></div>
+                    </div>
+                    <div class="col-md-6 col-sm-12 position-relative">
+                        {{ render_select_field(form.legal_impact) }}
+                        <div class="invalid-feedback-ajax" id="error-legal_impact"></div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="form-section">
-            <h3>Impact Metrics</h3>
-             <div class="row">
-                <div class="col-md-12">
-                    {{ render_select_field(form.aitc, class="form-select") }}
-                </div>
+            <div class="mt-3">
+                 <span id="calculationSpinner" class="ms-2" style="display: none;">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    Calculating...
+                </span>
             </div>
-            <div class="row mt-3">
-                <div class="col-md-6">
-                    {{ render_select_field(form.characteristic_impact, class="form-select") }}
-                </div>
-                <div class="col-md-6">
-                    {{ render_select_field(form.legal_impact, class="form-select") }}
-                </div>
-            </div>
-        </div>
-
-        <div class="mt-4">
-            {{ form.submit(class="btn btn-primary btn-lg") }}
-        </div>
-    </form>
-
-    {% if results %}
-    <div class="results-section mt-5">
-        <h3>Calculation Results</h3>
-        <hr>
-        <h4>Selected Values:</h4>
-        <ul>
-            <li><strong>Attack Vector:</strong> {{ results.selected_data.attack_vector }}</li>
-            <li><strong>Privileges Required:</strong> {{ results.selected_data.privileges_required }}</li>
-            <li><strong>Attack Complexity:</strong> {{ results.selected_data.attack_complexity }}</li>
-            <li><strong>User Interaction:</strong> {{ results.selected_data.user_interaction }}</li>
-            <li><strong>AI Trustworthy Characteristic:</strong>
-                {% set selected_aitc_label = '' %}
-                {% for key, label in form.aitc.choices if key == results.selected_data.aitc %}
-                    {% set selected_aitc_label = label %}
-                {% endfor %}
-                {{ selected_aitc_label }} ({{ results.selected_data.aitc }})
-            </li>
-            <li><strong>Characteristic Impact:</strong> {{ results.selected_data.characteristic_impact }}</li>
-            <li><strong>Legal Impact:</strong> {{ results.selected_data.legal_impact }}</li>
-        </ul>
-
-        <h4 class="mt-4">Calculated Scores (Example):</h4>
-        <p><strong>Base Exploitability Component:</strong> {{ results.base_score_component }} / 10.0</p>
-        <p><strong>Impact Component:</strong> {{ results.impact_score_component }} / 10.0</p>
+        </form>
         
-        <h4 class="mt-3">Overall Risk Score:</h4>
-        {% set score_class = 'score-medium' %}
-        {% if results.qualitative_assessment == 'Low' %}
-            {% set score_class = 'score-low' %}
-        {% elif results.qualitative_assessment == 'High' %}
-            {% set score_class = 'score-high' %}
-        {% elif results.qualitative_assessment == 'Critical' %}
-            {% set score_class = 'score-critical' %}
-        {% elif results.qualitative_assessment == 'Informational' %}
-            {% set score_class = 'score-low' %} {# Or a neutral color #}
-        {% endif %}
-        <p class="score-display {{ score_class }}">{{ results.final_score }} / 10.0</p>
-        <p><strong>Qualitative Assessment:</strong> {{ results.qualitative_assessment }}</p>
-        
-        <p class="mt-3 text-muted"><small><em><strong>Note:</strong> {{ results.notes }}</em></small></p>
+        <div id="generalFormError" class="alert alert-danger mt-3" style="display: none;"></div>
+
+        <div id="resultsSection" class="results-section mt-5" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3>Calculation Results</h3>
+                <button type="button" id="copyResultsButton" class="btn btn-sm btn-outline-secondary copy-button">
+                    <i class="bi bi-clipboard"></i> Copy Results
+                </button>
+            </div>
+            <hr>
+            
+            <h4>Selected Values:</h4>
+            <ul id="selectedValuesList">
+                <li><strong>Attack Vector:</strong> <span data-key="attack_vector"></span></li>
+                <li><strong>Privileges Required:</strong> <span data-key="privileges_required"></span></li>
+                <li><strong>Attack Complexity:</strong> <span data-key="attack_complexity"></span></li>
+                <li><strong>User Interaction:</strong> <span data-key="user_interaction"></span></li>
+                <li><strong>AI Trustworthy Characteristic:</strong> <span data-key="aitc_label"></span></li>
+                <li><strong>Characteristic Impact:</strong> <span data-key="characteristic_impact"></span></li>
+                <li><strong>Legal Impact:</strong> <span data-key="legal_impact"></span></li>
+            </ul>
+
+            <h4 class="mt-4">Calculated Scores:</h4>
+            <p><strong>Base Exploitability Component:</strong> <span id="baseScoreDisplay">0.0</span> / 10.0</p>
+            <p><strong>Impact Component:</strong> <span id="impactScoreDisplay">0.0</span> / 10.0</p>
+            
+            <h4 class="mt-3">Overall Risk Score:</h4>
+            <p id="overallScoreParagraph" class="score-display score-informational">
+                <span id="finalScoreDisplay">0.0</span> / 10.0
+            </p>
+            <p><strong>Qualitative Assessment:</strong> 
+                <span id="qualitativeAssessmentDisplay" class="score-text-informational">Informational</span>
+            </p>
+
+            <h4 class="mt-3">Risk Vector:</h4>
+            <p id="vectorStringDisplay" class="vector-string-display">N/A</p>
+            
+            <p class="mt-3 text-muted-color"><small><em><strong>Note:</strong> <span id="notesDisplay"></span></em></small></p>
+        </div>
     </div>
-    {% endif %}
-
 </div>
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
-{# Add any specific JS for this page if needed #}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('riskCalculatorForm');
+    const resultsSection = document.getElementById('resultsSection');
+    const calculationSpinner = document.getElementById('calculationSpinner');
+    const generalFormErrorDiv = document.getElementById('generalFormError');
+    const copyResultsButton = document.getElementById('copyResultsButton');
+
+    // --- AITC Description Elements & Data ---
+    const aitcSelectElement = form.elements['aitc']; // Get AITC select field
+    const aitcDescriptionArea = document.getElementById('aitcDescriptionArea'); 
+    
+    let aitcDescriptions = {}; 
+    try {
+        const descriptionsJsonString = '{{ aitc_descriptions_json | tojson | safe if (aitc_descriptions_json is defined and aitc_descriptions_json is not none) else "{}" }}';
+        aitcDescriptions = JSON.parse(descriptionsJsonString);
+    } catch (e) {
+        console.error("Error parsing AITC descriptions:", e);
+        if (generalFormErrorDiv) {
+            generalFormErrorDiv.textContent = "Could not load AITC characteristic descriptions.";
+            generalFormErrorDiv.style.display = 'block';
+        }
+    }
+    // --- End AITC ---
+
+    // Result display elements
+    const selectedValuesList = document.getElementById('selectedValuesList');
+    const baseScoreDisplay = document.getElementById('baseScoreDisplay');
+    const impactScoreDisplay = document.getElementById('impactScoreDisplay');
+    const finalScoreDisplay = document.getElementById('finalScoreDisplay');
+    const overallScoreParagraph = document.getElementById('overallScoreParagraph');
+    const qualitativeAssessmentDisplay = document.getElementById('qualitativeAssessmentDisplay');
+    const vectorStringDisplay = document.getElementById('vectorStringDisplay');
+    const notesDisplay = document.getElementById('notesDisplay');
+
+    const errorFeedbacks = {
+        'attack_vector': document.getElementById('error-attack_vector'),
+        'privileges_required': document.getElementById('error-privileges_required'),
+        'attack_complexity': document.getElementById('error-attack_complexity'),
+        'user_interaction': document.getElementById('error-user_interaction'),
+        'aitc': document.getElementById('error-aitc'),
+        'characteristic_impact': document.getElementById('error-characteristic_impact'),
+        'legal_impact': document.getElementById('error-legal_impact')
+    };
+    
+    const requiredFieldNames = [
+        'attack_vector', 'privileges_required', 'attack_complexity', 
+        'user_interaction', 'aitc', 'characteristic_impact', 'legal_impact'
+    ];
+
+    let currentResultsForCopy = null;
+
+    function clearAllErrors() { 
+        generalFormErrorDiv.style.display = 'none';
+        generalFormErrorDiv.textContent = '';
+        for (const key in errorFeedbacks) {
+            if (errorFeedbacks[key]) {
+                errorFeedbacks[key].textContent = '';
+                errorFeedbacks[key].style.display = 'none';
+            }
+        }
+    }
+    function displayFieldErrors(errors) { 
+        for (const fieldName in errors) {
+            if (errorFeedbacks[fieldName]) {
+                errorFeedbacks[fieldName].textContent = errors[fieldName].join(', ');
+                errorFeedbacks[fieldName].style.display = 'block';
+            }
+        }
+    }
+    function updateResultsOnPage(resData) { 
+        currentResultsForCopy = resData;
+        resultsSection.style.display = 'block';
+        generalFormErrorDiv.style.display = 'none';
+
+        if (resData.selected_data) {
+            selectedValuesList.querySelectorAll('span[data-key]').forEach(span => {
+                const key = span.dataset.key;
+                span.textContent = resData.selected_data[key] !== undefined ? resData.selected_data[key] : 'N/A';
+            });
+        }
+
+        baseScoreDisplay.textContent = parseFloat(resData.base_score_component).toFixed(1);
+        impactScoreDisplay.textContent = parseFloat(resData.impact_score_component).toFixed(1);
+        finalScoreDisplay.textContent = parseFloat(resData.final_score).toFixed(1);
+        qualitativeAssessmentDisplay.textContent = resData.qualitative_assessment;
+        vectorStringDisplay.textContent = resData.vector_string;
+        notesDisplay.textContent = resData.notes;
+
+        const scoreClass = (resData.qualitative_assessment || 'informational').toLowerCase();
+        overallScoreParagraph.className = `score-display score-${scoreClass}`;
+        qualitativeAssessmentDisplay.className = `score-text-${scoreClass}`;
+        if(copyResultsButton) copyResultsButton.disabled = false;
+    }
+    function hideResults() { 
+        currentResultsForCopy = null;
+        resultsSection.style.display = 'none';
+        if(copyResultsButton) copyResultsButton.disabled = true;
+     }
+    function checkAllFieldsSelected() { 
+        for (const fieldName of requiredFieldNames) {
+            const element = form.elements[fieldName];
+            if (!element) {
+                console.warn(`Form element not found: ${fieldName}`);
+                return false;
+            }
+            if (element.type === 'radio' || (element.length > 0 && element[0] && element[0].type === 'radio')) {
+                if (!form.querySelector(`input[name="${fieldName}"]:checked`)) {
+                    return false;
+                }
+            } else if (element.tagName === 'SELECT') {
+                if (element.value === '' || element.value === null) {
+                    return false;
+                }
+            } else { 
+                if (!element.value) return false;
+            }
+        }
+        return true;
+    }
+
+    function triggerCalculation() { 
+        if (!checkAllFieldsSelected()) {
+            hideResults();
+            clearAllErrors();
+            return;
+        }
+
+        clearAllErrors();
+        calculationSpinner.style.display = 'inline-block';
+
+        const data = {};
+        requiredFieldNames.forEach(fieldName => {
+            const element = form.elements[fieldName];
+            if (element.type === 'radio' || (element.length > 0 && element[0] && element[0].type === 'radio')) {
+                const checked = form.querySelector(`input[name="${fieldName}"]:checked`);
+                if (checked) data[fieldName] = checked.value;
+            } else {
+                data[fieldName] = element.value;
+            }
+        });
+
+        const csrfTokenInput = form.querySelector('input[name="csrf_token"]');
+        if (!csrfTokenInput || !csrfTokenInput.value) {
+            console.error('CSRF token not found or empty!');
+            calculationSpinner.style.display = 'none';
+            generalFormErrorDiv.textContent = 'Security token missing or invalid. Please refresh the page.';
+            generalFormErrorDiv.style.display = 'block';
+            return;
+        }
+        data['csrf_token'] = csrfTokenInput.value; // Include CSRF token in the body
+
+        fetch("{{ url_for('utils_bp.risk_calculator') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfTokenInput.value 
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => { // Chain of promises for response handling
+            calculationSpinner.style.display = 'none';
+            if (!response.ok) {
+                // Try to parse error body as JSON first for validation errors
+                if (response.headers.get('Content-Type')?.includes('application/json') && (response.status === 400 || response.status === 422)) {
+                    return response.json().then(errData => {
+                        throw { type: 'validation', data: errData, status: response.status };
+                    });
+                }
+                // For other errors, get text and throw generic error
+                return response.text().then(text => {
+                    throw new Error(`Server responded with status: ${response.status}. Response: ${text.substring(0, 200)}`);
+                });
+            }
+            return response.json(); // Expect JSON for successful responses
+        })
+        .then(responseData => {
+            if (responseData.results) {
+                updateResultsOnPage(responseData.results);
+            } else if (responseData.errors) { // Should be handled by !response.ok if status is 400/422
+                displayFieldErrors(responseData.errors);
+                hideResults();
+            } else { // Unexpected successful response format
+                 throw new Error("Received an unexpected response format from the server.");
+            }
+        })
+        .catch(error => {
+            calculationSpinner.style.display = 'none';
+            hideResults();
+            console.error('Calculation error object:', error);
+            if (error.type === 'validation' && error.data && error.data.errors) {
+                displayFieldErrors(error.data.errors);
+            } else {
+                generalFormErrorDiv.textContent = error.message || 'An unexpected error occurred. Please try again.';
+                generalFormErrorDiv.style.display = 'block';
+            }
+        });
+    }
+
+    // --- AITC Description Logic (Corrected) ---
+    function showAitcDescription(selectedValue) {
+        if (!aitcDescriptionArea) {
+            console.warn("AITC description area not found.");
+            return; 
+        }
+
+        if (selectedValue && aitcDescriptions[selectedValue] && aitcDescriptions[selectedValue].description) {
+            // Use template literals correctly
+            aitcDescriptionArea.innerHTML = `<h6>${aitcDescriptions[selectedValue].label}</h6><p class="mb-0">${aitcDescriptions[selectedValue].description.replace(/\n/g, '<br>')}</p>`;
+            aitcDescriptionArea.style.display = 'block';
+        } else {
+            aitcDescriptionArea.innerHTML = '<p class="mb-0 text-muted-color">Select an AITC characteristic to see its description.</p>';
+            aitcDescriptionArea.style.display = 'block'; 
+        }
+    }
+
+    if (aitcSelectElement) {
+        aitcSelectElement.addEventListener('change', function() {
+            showAitcDescription(this.value);
+            triggerCalculation(); 
+        });
+        showAitcDescription(aitcSelectElement.value); // Initial display
+    } else {
+        console.warn("AITC select element (form.elements['aitc']) not found for description feature.");
+        if(aitcDescriptionArea) { // If area exists but select doesn't, show a message
+             aitcDescriptionArea.innerHTML = '<p class="mb-0 text-danger">Error: AITC select field not found.</p>';
+             aitcDescriptionArea.style.display = 'block';
+        }
+    }
+    // --- End AITC Description Logic ---
+
+    // Attach event listeners to other form inputs
+    requiredFieldNames.forEach(fieldName => {
+        const elements = form.elements[fieldName];
+        if (elements) {
+            // Don't re-attach to 'aitc' if it was handled by aitcSelectElement specific listener
+            if (fieldName === 'aitc' && aitcSelectElement) {
+                return; 
+            }
+            if (elements.nodeType === Node.ELEMENT_NODE) { 
+                elements.addEventListener('change', triggerCalculation);
+            } else if (elements.length) { 
+                Array.from(elements).forEach(el => el.addEventListener('change', triggerCalculation));
+            }
+        } else {
+            console.warn(`Form element not found during event listener attachment: ${fieldName}`);
+        }
+    });
+    
+    if (copyResultsButton) { 
+        copyResultsButton.disabled = true;
+        copyResultsButton.addEventListener('click', function() {
+            if (!currentResultsForCopy) {
+                alert('No results to copy.');
+                return;
+            }
+            const score = parseFloat(currentResultsForCopy.final_score).toFixed(1);
+            const vector = currentResultsForCopy.vector_string;
+            const qualitative = currentResultsForCopy.qualitative_assessment;
+            const textToCopy = `Risk Score: ${score}/10.0 (${qualitative})\nVector: ${vector}`;
+
+            navigator.clipboard.writeText(textToCopy).then(function() {
+                const originalHTML = copyResultsButton.innerHTML;
+                copyResultsButton.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+                copyResultsButton.classList.add('copied');
+                
+                setTimeout(function() {
+                    copyResultsButton.innerHTML = originalHTML;
+                    copyResultsButton.classList.remove('copied');
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Could not copy text: ', err);
+                alert('Failed to copy results. Please try manually.');
+            });
+        });
+     }
+
+    triggerCalculation(); 
+});
+</script>
 {% endblock %}

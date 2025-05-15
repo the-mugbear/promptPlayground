@@ -1,9 +1,10 @@
 {# templates/partials/_formhelpers.html #}
-{% macro render_field(field, label_visible=true, class="", **kwargs) %}
+{% macro render_field(field, label_visible=true, class="") %}
 <div class="form-group mb-3">
     {% if label_visible and field.label %}
         {{ field.label(class="form-label") }}
     {% endif %}
+    {# 'kwargs' here will be a dictionary of any extra keyword arguments passed to the macro #}
     {{ field(class="form-control " + class, **kwargs) }}
     {% if field.errors %}
         {% for error in field.errors %}
@@ -18,7 +19,7 @@
 </div>
 {% endmacro %}
 
-{% macro render_select_field(field, label_visible=true, class="", **kwargs) %}
+{% macro render_select_field(field, label_visible=true, class="") %}
 <div class="form-group mb-3">
     {% if label_visible and field.label %}
         {{ field.label(class="form-label") }}
@@ -37,7 +38,7 @@
 </div>
 {% endmacro %}
 
-{% macro render_radio_field(field, label_visible=true, class="", **kwargs) %}
+{% macro render_radio_field(field, label_visible=true, class="") %}
 <div class="form-group form-group-radio mb-3">
     {% if label_visible and field.label %}
         <label class="form-label d-block">{{ field.label }}</label> {# Label for the whole group #}
@@ -45,6 +46,7 @@
     <div> {# Wrapper for radio buttons for flex layout #}
     {% for subfield in field %}
         <div class="form-check form-check-inline">
+            {# Be mindful if kwargs passed to render_radio_field are intended for subfields #}
             {{ subfield(class="form-check-input " + class, **kwargs) }}
             {{ subfield.label(class="form-check-label") }}
         </div>
@@ -63,7 +65,12 @@
 </div>
 {% endmacro %}
 
-{% macro render_checkbox_field(field, label_visible=true, **kwargs) %}
+{% macro render_checkbox_field(field, label_visible=true) %} 
+{# Note: I removed 'class=""' as it wasn't used in the original field rendering for checkboxes. 
+   If you need to pass a class specifically for the checkbox input, you can add it to the call 
+   or re-add 'class=""' to the signature and use it like: 
+   {{ field(class="form-check-input " + class, **kwargs) }} 
+#}
 <div class="form-check mb-3">
     {{ field(class="form-check-input", **kwargs) }}
     {% if label_visible and field.label %}
@@ -82,6 +89,6 @@
 </div>
 {% endmacro %}
 
-{% macro render_submit_field(field, **kwargs) %}
+{% macro render_submit_field(field) %}
     {{ field(class="btn btn-primary", **kwargs) }}
 {% endmacro %}
