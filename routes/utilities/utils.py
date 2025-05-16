@@ -17,7 +17,7 @@ def calculate_risk_score_logic(form_data, current_aitc_choices_map):
     pr_scores = {'H': 3.33, 'L': 6.66, 'N': 10.0}
     ac_scores = {'L': 10.0, 'M': 6.66, 'H': 3.33}
     ui_scores = {'N': 10.0, 'R': 5.0}
-    impact_mapping = {'N': 0.0, 'L': 0.25, 'M': 0.5, 'H': 0.75}
+    impact_mapping = {'N': 0.0, 'L': 3.33, 'M': 6.66, 'H': 10.0}
 
     # Extract each base metric (defaults to 0.0 if missing)
     av = av_scores.get(form_data.get('attack_vector'), 0.0)
@@ -33,7 +33,7 @@ def calculate_risk_score_logic(form_data, current_aitc_choices_map):
     char_impact = impact_mapping.get(form_data.get('characteristic_impact'), 0.0)
     legal_impact = impact_mapping.get(form_data.get('legal_impact'), 0.0)
     avg_impact = (char_impact + legal_impact) / 2
-    impact_score_component = round(avg_impact * 10, 1)
+    impact_score_component = round(avg_impact, 1)
     impact_score_component = min(impact_score_component, 10.0)
 
     # If there's no impact at all, the overall score is zero
