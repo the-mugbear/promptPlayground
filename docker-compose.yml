@@ -7,11 +7,21 @@ services:
     build: . # Build the image from the Dockerfile in the current directory
     container_name: fuzzy_prompts_web
     # command: gunicorn --bind 0.0.0.0:8000 "fuzzy_prompts:create_app()" --workers 1 --threads 4 --timeout 120 --access-logfile - --error-logfile - # Command to run Flask app
-    command: ["gunicorn", "--worker-class", "eventlet", "-w", "1", "fuzzy_prompts:app", "--bind", "0.0.0.0:8000", "--log-level", "debug"]
+    command: [
+        "gunicorn",
+        "--worker-class", "eventlet",
+        "-w", "1",
+        "fuzzy_prompts:app", 
+        "--bind", "0.0.0.0:8000",
+        "--log-level", "debug",
+        # --- Add SSL Configuration ---
+        "--certfile", "/app/certs/cert.pem",
+        "--keyfile", "/app/certs/key.pem"
+      ]
     volumes:
       - .:/app # Mount current directory to /app in container (good for development)
     ports:
-      - "8021:8000" # Map host port 8021 to container port 8000
+      - "443:8000" # Map host port 8021 to container port 8000
     environment:
       # Keep Flask/DB/Secret variables
       - FLASK_APP=fuzzy_prompts:create_app

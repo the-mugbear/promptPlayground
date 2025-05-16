@@ -37,8 +37,4 @@ exit()
 
 OR
 
-podman exec -it fuzzy_prompts_web flask create-admin --username admin --email "" --password --is-admin      
-
-
-podman exec -it fuzzy_prompts_web flask create-admin --username charles --email "admin@example.com" --password admin --is-admin
 podman exec -it fuzzy_prompts_web flask create-admin --username admin --email "newadmin@example.com" --password yourChosenPassword --is-admin

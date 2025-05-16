@@ -82,3 +82,10 @@ Summary of Manual Steps Post-Clone:
     Create and populate the .env file.
     Run podman-compose -f docker-compose.yml up --build -d.
     Run podman-compose -f docker-compose.yml exec web flask db upgrade (after db service is ready).
+
+
+
+GENERATE certs
+
+mkdir -p certs
+openssl req -x509 -newkey rsa:4096 -nodes -out certs/cert.pem -keyout certs/key.pem -days 365
