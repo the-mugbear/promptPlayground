@@ -1,44 +1,50 @@
 # routes/utilities/utils.py (or routes/utils_bp.py as per your comment)
 from flask import Blueprint, render_template, request, flash, jsonify, current_app 
+from flask_login import current_user
 from routes.utilities.forms import RiskCalculatorForm, aitc_choices_raw, aitc_data
 utils_bp = Blueprint('utils_bp', __name__,
                      url_prefix='/utilities')
 
-# It's good practice to have this helper function defined before it's used in the route.
+# Don't need comments with function names like this, you're welcome
 def calculate_risk_score_logic(form_data, current_aitc_choices_map):
     """
     Performs the risk calculation.
     """
-    # Using current_app.logger for more robust logging than print()
-    current_app.logger.debug(f"Calculating risk score with form_data: {form_data}")
+    current_scoring_version = "1.3"
 
-    # Example: Assign numerical values
-    av_scores = {'IO': 0.62, 'IF': 0.85} 
-    pr_scores = {'H': 0.27, 'L': 0.62, 'N': 0.85} 
-    ac_scores = {'L': 0.77, 'M': 0.44, 'H': 0.20} # Assuming Low complexity = higher score component
-    ui_scores = {'N': 0.85, 'R': 0.62} 
-    
+    # Numerical mappings
+    av_scores = {'IO': 5.0, 'IF': 10.0}
+    pr_scores = {'H': 3.33, 'L': 6.66, 'N': 10.0}
+    ac_scores = {'L': 10.0, 'M': 6.66, 'H': 3.33}
+    ui_scores = {'N': 10.0, 'R': 5.0}
     impact_mapping = {'N': 0.0, 'L': 0.25, 'M': 0.5, 'H': 0.75}
 
-    # Robustly get values, defaulting to 0 if a key is somehow missing (shouldn't happen with DataRequired)
-    # Also, ensure form_data keys exist before accessing, though validators should ensure they do.
-    base_score_component = round(
-        av_scores.get(form_data.get('attack_vector'), 0) *
-        pr_scores.get(form_data.get('privileges_required'), 0) *
-        ac_scores.get(form_data.get('attack_complexity'), 0) *
-        ui_scores.get(form_data.get('user_interaction'), 0) * 10, 1
-    )
+    # Extract each base metric (defaults to 0.0 if missing)
+    av = av_scores.get(form_data.get('attack_vector'), 0.0)
+    pr = pr_scores.get(form_data.get('privileges_required'), 0.0)
+    ac = ac_scores.get(form_data.get('attack_complexity'), 0.0)
+    ui = ui_scores.get(form_data.get('user_interaction'), 0.0)
+
+    # Average the four base components
+    base_score_component = round((av + pr + ac + ui) / 4, 1)
     base_score_component = min(base_score_component, 10.0)
 
-    char_impact_score = impact_mapping.get(form_data.get('characteristic_impact'), 0)
-    legal_impact_score = impact_mapping.get(form_data.get('legal_impact'), 0)
-    impact_score_component = round(max(char_impact_score, legal_impact_score) * 10, 1)
+    # Extract and average the two impact mappings
+    char_impact = impact_mapping.get(form_data.get('characteristic_impact'), 0.0)
+    legal_impact = impact_mapping.get(form_data.get('legal_impact'), 0.0)
+    avg_impact = (char_impact + legal_impact) / 2
+    impact_score_component = round(avg_impact * 10, 1)
     impact_score_component = min(impact_score_component, 10.0)
 
-    final_score = round((base_score_component + impact_score_component) / 2, 1)
-    final_score = min(final_score, 10.0)
+    # If there's no impact at all, the overall score is zero
+    if impact_score_component == 0.0:
+        final_score = 0.0
+    else:
+        # Otherwise average base and impact
+        final_score = round((base_score_component + impact_score_component) / 2, 1)
+        final_score = min(final_score, 10.0)
 
-    qualitative = "Informational"
+    # Qualitative tiering
     if final_score >= 9.0:
         qualitative = "Critical"
     elif final_score >= 7.0:
@@ -47,26 +53,30 @@ def calculate_risk_score_logic(form_data, current_aitc_choices_map):
         qualitative = "Medium"
     elif final_score > 0.0:
         qualitative = "Low"
-    # else: qualitative remains "Informational"
+    else:
+        qualitative = "Informational"
 
+    # Build the vector string
     vector_parts = [
+        f"GenAIVSS:{current_scoring_version}",
         f"AV:{form_data.get('attack_vector', 'N/A')}",
         f"PR:{form_data.get('privileges_required', 'N/A')}",
         f"AC:{form_data.get('attack_complexity', 'N/A')}",
         f"UI:{form_data.get('user_interaction', 'N/A')}",
-        f"AITC:{form_data.get('aitc', 'N/A')}",
         f"CI:{form_data.get('characteristic_impact', 'N/A')}",
-        f"LI:{form_data.get('legal_impact', 'N/A')}"
+        f"LI:{form_data.get('legal_impact', 'N/A')}",
+        f"AITC:{form_data.get('aitc', 'N/A')}"
     ]
     vector_string = "/".join(vector_parts)
 
-    aitc_label = form_data.get('aitc', 'N/A') # Default to key
+    # Resolve AITC label
+    aitc_label = form_data.get('aitc', 'N/A')
     for key, label_text in current_aitc_choices_map:
         if key == form_data.get('aitc'):
             aitc_label = label_text
             break
-    
-    enriched_selected_data = form_data.copy() # Make a copy to avoid modifying original dict if passed around
+
+    enriched_selected_data = form_data.copy()
     enriched_selected_data['aitc_label'] = aitc_label
 
     results = {
@@ -85,10 +95,10 @@ def calculate_risk_score_logic(form_data, current_aitc_choices_map):
 def risk_calculator():
 
     if request.method == 'POST':
-        current_app.logger.debug(f"POST Request Headers: {request.headers}")
-        current_app.logger.debug(f"POST Request Content-Type: {request.content_type}")
-        current_app.logger.debug(f"POST Request is_json: {request.is_json}")
-        current_app.logger.debug(f"POST Request X-Requested-With: {request.headers.get('X-Requested-With')}")
+        # current_app.logger.debug(f"POST Request Headers: {request.headers}")
+        # current_app.logger.debug(f"POST Request Content-Type: {request.content_type}")
+        # current_app.logger.debug(f"POST Request is_json: {request.is_json}")
+        # current_app.logger.debug(f"POST Request X-Requested-With: {request.headers.get('X-Requested-With')}")
 
         is_ajax = request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         current_app.logger.debug(f"Determined is_ajax: {is_ajax}")
