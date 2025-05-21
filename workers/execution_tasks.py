@@ -2,6 +2,7 @@
 import time
 import json
 import logging
+import traceback
 from datetime import datetime
 from celery import shared_task, group, chord # Removed chain as it's not used by orchestrator directly
 from celery.exceptions import SoftTimeLimitExceeded, TaskRevokedError
@@ -362,6 +363,10 @@ def execute_single_test_case_task(self, test_run_attempt_id, test_case_id, endpo
     task_id = self.request.id
     logger.info(f"SingleCaseTask {task_id}: Start TCID={test_case_id}, Seq={sequence_num}")
 
+    attempt = None # Initialize
+    case = None # Initialize
+    record = None # Initialize
+
     try:
         attempt, case, endpoint = fetch_objects(test_run_attempt_id, test_case_id, endpoint_id)
         payload = build_payload(endpoint.http_payload, prompt_text)  
@@ -373,14 +378,56 @@ def execute_single_test_case_task(self, test_run_attempt_id, test_case_id, endpo
         return {"status":"SUCCESS","execution_id":record.id,"test_case_id":case.id,"disposition":record.status}
 
     except Exception as ex:
-        db.session.rollback()
-        record = create_error_record(locals(), ex)
-        db.session.add(record); db.session.commit()
-        emit_execution_update(attempt, record)
+        logger.error(f"SingleCaseTask {task_id}: EXCEPTION for TCID={test_case_id}, AttemptID={test_run_attempt_id} - Type: {type(ex).__name__}, Error: {ex}", exc_info=True)
+        db.session.rollback() # Rollback any partial changes from the try block
+
+        current_payload_for_error = "Payload not generated"
+        if 'payload' in locals() and locals()['payload'] is not None:
+            current_payload_for_error = str(locals()['payload']) # Convert to string just in case
+
+        # Use the new create_error_record function
+        # It's crucial that test_run_attempt_id and test_case_id are valid here.
+        # They are direct arguments to the task, so they should be.
+        record = create_error_record(
+            attempt_id=test_run_attempt_id,
+            case_id=test_case_id,
+            sequence_num=sequence_num,
+            error_exception=ex,
+            payload=current_payload_for_error,
+            task_id=task_id
+        )
+        
+        try:
+            db.session.add(record)
+            db.session.commit()
+            logger.info(f"SingleCaseTask {task_id}: CREATED error TestExecution record ID {record.id} for TCID={test_case_id}")
+            
+            # Attempt to fetch 'attempt' object if it wasn't fetched successfully before the exception
+            # This is for emit_execution_update. If it's still None, emit_execution_update might need to handle it or skip.
+            if not attempt and test_run_attempt_id:
+                try:
+                    attempt = db.session.get(TestRunAttempt, test_run_attempt_id)
+                    if not attempt:
+                         logger.warning(f"SingleCaseTask {task_id}: Could not re-fetch TestRunAttempt {test_run_attempt_id} for emit_execution_update after error.")
+                except Exception as e_refetch:
+                    logger.error(f"SingleCaseTask {task_id}: Error re-fetching TestRunAttempt {test_run_attempt_id} for emit: {e_refetch}")
+
+            if attempt and record: # Ensure both are available
+                emit_execution_update(attempt, record)
+            else:
+                logger.warning(f"SingleCaseTask {task_id}: Skipped emit_execution_update for error on TCID={test_case_id} due to missing attempt or record object.")
+
+        except Exception as e_commit_err:
+            # This is a critical failure: failed to even record the error.
+            logger.critical(f"SingleCaseTask {task_id}: FAILED TO COMMIT ERROR RECORD for TCID={test_case_id}: {e_commit_err}", exc_info=True)
+            # At this point, the record is lost.
+
         return {"status":"FAILED","reason":str(ex),"test_case_id":test_case_id,"disposition":"error"}
 
     finally:
-        db.session.remove()
+        if db.session and db.session.is_active:
+            logger.debug(f"SingleCaseTask {task_id}: Removing DB session for TCID={test_case_id}")
+            db.session.remove()
 
 # --- Callback Task for Parallel Batches ---
 @celery.task(bind=True, acks_late=True, name='tasks.handle_batch_completion')
@@ -472,6 +519,69 @@ def create_execution_record(attempt, case, seq, payload, status_code, body, erro
         error_message=error_msg,
         status=disposition,
         started_at=attempt.started_at, # or track time earlier
+        finished_at=datetime.utcnow()
+    )
+
+def create_error_record(
+    attempt_id: int,
+    case_id: int,
+    sequence_num: int,
+    error_exception: Exception,
+    payload: str = "Payload not generated or available in error context",
+    task_id: str = "Unknown Celery Task ID"
+) -> TestExecution:
+    """
+    Creates a TestExecution record for a failed task execution.
+    """
+    logger.error(
+        f"Task {task_id}: Creating error record for AttemptID: {attempt_id}, CaseID: {case_id}, Seq: {sequence_num}. Error: {str(error_exception)}"
+    )
+    
+    # Extract a more detailed error message, including traceback
+    error_message_detail = f"Exception Type: {type(error_exception).__name__}\n"
+    error_message_detail += f"Error: {str(error_exception)}\n"
+    error_message_detail += f"Traceback:\n{traceback.format_exc()}"
+
+    # Ensure that payload and error_message_detail are truncated if they are too long for the DB fields
+    # Assuming your TestExecution model has length limits on request_payload and error_message
+    # You might need to check your model definition for actual limits (e.g., String(2000))
+    MAX_PAYLOAD_LENGTH = 2000  # Example, adjust as per your model
+    MAX_ERROR_LENGTH = 4000   # Example, adjust as per your model
+
+    truncated_payload = payload
+    if payload and len(payload) > MAX_PAYLOAD_LENGTH:
+        truncated_payload = payload[:MAX_PAYLOAD_LENGTH - 3] + "..."
+        logger.warning(f"Task {task_id}: Truncated payload for error record for CaseID: {case_id}")
+
+    truncated_error_message = error_message_detail
+    if len(error_message_detail) > MAX_ERROR_LENGTH:
+        truncated_error_message = error_message_detail[:MAX_ERROR_LENGTH - 3] + "..."
+        logger.warning(f"Task {task_id}: Truncated error message for error record for CaseID: {case_id}")
+
+    # Fetch attempt object to get started_at time, if available
+    # This is optional, can default if attempt_id is somehow invalid, though it shouldn't be
+    started_at_time = datetime.utcnow() # Default to now if attempt cannot be fetched
+    try:
+        if attempt_id: # Should always have attempt_id here
+            attempt = db.session.get(TestRunAttempt, attempt_id)
+            if attempt:
+                started_at_time = attempt.started_at
+            else:
+                logger.warning(f"Task {task_id}: Could not find TestRunAttempt {attempt_id} when creating error record for CaseID: {case_id}. Using current time for started_at.")
+    except Exception as e_fetch:
+        logger.error(f"Task {task_id}: Error fetching TestRunAttempt {attempt_id} for error record (CaseID: {case_id}): {e_fetch}")
+
+
+    return TestExecution(
+        test_run_attempt_id=attempt_id,
+        test_case_id=case_id,
+        sequence=sequence_num,
+        request_payload=truncated_payload,
+        response_data=None,  # No successful response
+        status_code=None,    # No HTTP status code from a successful call
+        error_message=truncated_error_message,
+        status="error",      # Clearly mark as an error record
+        started_at=started_at_time,
         finished_at=datetime.utcnow()
     )
 

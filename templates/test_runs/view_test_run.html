@@ -276,9 +276,9 @@
                             <tbody>
                                 {% for attempt in item.attempts %}
                                     <tr id="exec-{{ attempt.execution_id }}"
-                                    class="border-t hover:bg-gray-50"
-                                    data-attempt="{{ attempt.attempt_number }}"
-                                    data-status="{{ attempt.status }}">
+                                        class="border-t hover:bg-gray-50"
+                                        data-attempt="{{ attempt.attempt_number }}"
+                                        data-status="{{ attempt.status }}">
                                         
                                         <td class="px-4 py-2">{{ attempt.attempt_number }}</td>
                                         <td class="px-4 py-2">
@@ -328,6 +328,7 @@
 <script defer src="{{ url_for('static', filename='js/testRuns/filterAttempts.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/testRuns/updateDisposition.js') }}"></script> 
 <script defer src="{{ url_for('static', filename='js/testRuns/pagination.js') }}"></script> 
+<script defer src="{{ url_for('static', filename='js/testRuns/filterResponse.js') }}"></script>
 
 <script>
     // Live duration updater
