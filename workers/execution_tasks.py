@@ -131,6 +131,11 @@ def orchestrate_test_run_task(self, test_run_id):
                 if current_db_status_for_case == 'pausing':
                     db.session.query(TestRun).filter_by(id=test_run_id).update({'status': 'paused'})
                     db.session.commit()
+
+                    # Detach all loaded objects, return conn to pool
+                    db.session.expunge_all()
+                    db.session.remove()
+
                     test_run.status = 'paused' # Update local object
                     emit_run_update(test_run_id, 'run_paused', test_run.get_status_data())
                     logger.info(f"Orchestrator TR_ID:{test_run_id}, TaskID:{self.request.id}: Run PAUSED.")

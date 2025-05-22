@@ -3,22 +3,19 @@
 Test run execution operations. This module handles the initiation of test runs
 via an orchestrator Celery task, enabling real-time status, pause, and cancel.
 """
-
 from flask import redirect, url_for, flash
 from flask_login import login_required, current_user
 from datetime import datetime
 from extensions import db
-# from sqlalchemy.orm import selectinload # Not strictly needed for this simplified route
 
 # Celery task import
-from workers.execution_tasks import orchestrate_test_run_task, emit_run_update # Keep emit_run_update for edge cases
+from tasks.orchestrator import orchestrate          # the new orchestrator task
+from tasks.helpers    import emit_run_update        # the shared helper
 
 # Model imports
 from models.model_TestRun import TestRun
-from models.model_TestRunAttempt import TestRunAttempt # Still needed for clearing old attempts
-# from models.model_TestExecution import TestExecution # Not directly used in this simplified route
-# from models.model_Endpoints import Endpoint # Not directly used in this simplified route
-# from services.common.header_parser_service import headers_from_apiheader_list # Not used
+from models.model_TestRunAttempt import TestRunAttempt
+
 
 from . import test_runs_bp
 
@@ -93,7 +90,7 @@ def start_test_run(test_run_id):
     db.session.commit() # Commit total and pending status
 
     # --- Launch the single orchestrator task ---
-    task_result = orchestrate_test_run_task.delay(test_run.id)
+    task_result = orchestrate.delay(test_run.id)
     
     # Optimistically update the celery_task_id on the TestRun object in the database.
     # The orchestrator task will also do this as its first step, ensuring consistency.

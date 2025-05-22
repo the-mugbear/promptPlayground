@@ -63,10 +63,12 @@ class Config:
         SQLALCHEMY_DATABASE_URI = f'postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # In your Flask app config (e.g., config.py or app initialization)
-    SQLALCHEMY_POOL_SIZE = 15  # Or higher, depending on your needs
-    SQLALCHEMY_MAX_OVERFLOW = 30 # Or higher
-    SQLALCHEMY_POOL_TIMEOUT = 30  # Default is 30 seconds, can be adjusted
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_size":      20,
+        "max_overflow":   40,
+        "pool_timeout":   30,
+        "pool_recycle":   1800,
+    }
 
     # Celery Configuration (pointing to RabbitMQ)
     CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'amqp://guest:guest@localhost:5672//')
@@ -124,7 +126,6 @@ def create_app(config_object=Config): # Pass the class itself
     # The first argument is the function, the second is the name used in templates
     app.add_template_filter(_format_timedelta_helper, 'format_timedelta_custom')
 
-
     # --- Create instance folder and UPLOAD_FOLDER if they don't exist ---
     try:
         os.makedirs(app.instance_path, exist_ok=True)
@@ -154,8 +155,6 @@ def create_app(config_object=Config): # Pass the class itself
         # You can add other Celery-specific settings from app.config if needed:
         # task_always_eager=app.config.get('CELERY_TASK_ALWAYS_EAGER', False),
     )
-    # Ensure Celery tasks can find the app context if they need it (less critical for SocketIO emits via broker)
-    # celery.conf.update({'CELERY_FLASK_APP_NAME': app.name}) # Example if needed by a custom Task class
 
     # --- Register Jinja Filters ---
     def prettyjson_filter(value):
@@ -215,19 +214,19 @@ def create_app(config_object=Config): # Pass the class itself
         bp = request.blueprint   # e.g. 'auth_bp', 'test_runs_bp', or None
         endpoint  = request.endpoint    # e.g. 'auth_bp.login', 'test_runs_bp.view_test_run'
 
-        # Logging for every request
-        print(f"--- Request Start ---")
-        print(f"Path: {request.path}, Method: {request.method}")
-        print(f"Endpoint: {endpoint}, Blueprint: {bp}")
-        print(f"Content-Type: {request.content_type}, is_json: {request.is_json}")
-        print(f"X-Requested-With: {request.headers.get('X-Requested-With')}")
-        print(f"User Authenticated: {current_user.is_authenticated}")
-        # ------------------------
+        # # Logging for every request
+        # print(f"--- Request Start ---")
+        # print(f"Path: {request.path}, Method: {request.method}")
+        # print(f"Endpoint: {endpoint}, Blueprint: {bp}")
+        # print(f"Content-Type: {request.content_type}, is_json: {request.is_json}")
+        # print(f"X-Requested-With: {request.headers.get('X-Requested-With')}")
+        # print(f"User Authenticated: {current_user.is_authenticated}")
+        # # ------------------------
 
         is_public_route = (bp in public_blueprints) or (endpoint in public_endpoints)
         if endpoint == 'static': # Static files are always public
             is_public_route = True
-        print(f"Is Public Route? {is_public_route}")
+        # print(f"Is Public Route? {is_public_route}")
 
         if not current_user.is_authenticated and not is_public_route:
             print(f"User NOT authenticated for PROTECTED endpoint: {endpoint}")
@@ -247,7 +246,7 @@ def create_app(config_object=Config): # Pass the class itself
                 print(f"Redirecting to login for non-AJAX from: {request.url}")
                 return redirect(url_for('auth_bp.login', next=request.url))
 
-        print(f"--- Request Allowed (User Auth: {current_user.is_authenticated}, Public: {is_public_route}) ---")
+        # print(f"--- Request Allowed (User Auth: {current_user.is_authenticated}, Public: {is_public_route}) ---")
         # If we reach here, the request proceeds to the view function or next before_request handler.
 
     # --- User Loader configuration (moved login_manager.init_app above) ---
@@ -267,4 +266,4 @@ if __name__ == '__main__':
                  host='0.0.0.0',
                  port=int(os.environ.get('PORT', 5000)), # Use PORT env var or default to 5000
                  debug=app.config['DEBUG'],
-                 use_reloader=app.config['DEBUG']) # Reloader is useful in debug, can be unstable with eventlet
+                 use_reloader=app.config['DEBUG']) 

@@ -204,7 +204,7 @@ def handle_request_cancel_run(data):
         if orchestrator_task_id:
             try:
                 # Send revoke signal to the orchestrator Celery task
-                celery.control.revoke(orchestrator_task_id, terminate=True, signal='SIGTERM')
+                celery.control.revoke(orchestrator_task_id, signal='SIGTERM')
                 print(f"SocketIO: Sent revoke(terminate=True) to Celery task {orchestrator_task_id} for TestRun {run_id}.")
                 # The orchestrator task is responsible for its own cleanup and final status update ('cancelled' or 'failed').
             except Exception as e:

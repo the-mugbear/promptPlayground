@@ -33,11 +33,12 @@
         </button>
     
         <!-- {# Delete button (as a link or its own form) #} -->
-        <a href="{{ url_for('test_runs_bp.delete_test_run', run_id=run.id) }}"
-           class="px-3 py-2 bg-gray-300 text-black rounded hover:bg-gray-400 ms-2"
-           onclick="return confirm('Are you sure you want to delete this test run and all its results?');">
-            <i class="fas fa-trash-alt"></i> Delete
-        </a>
+        <form method="post"
+            action="{{ url_for('test_runs_bp.delete_test_run', run_id=run.id) }}"
+            onsubmit="return confirm('Are you sure you want to delete this test run?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
     </div>
 
     <!-- {# This hidden div provides necessary data to runMonitor.js #} -->
@@ -322,7 +323,7 @@
 
 
 <!-- {# --- Custom JavaScript for Test Run Monitoring --- #} -->
-<script defersrc="{{ url_for('static', filename='js/testRuns/runMonitor.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/testRuns/runMonitor.js') }}"></script>
 
 
 <script defer src="{{ url_for('static', filename='js/testRuns/filterAttempts.js') }}"></script>
