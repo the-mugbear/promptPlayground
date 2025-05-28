@@ -36,6 +36,14 @@ class Endpoint(db.Model):
     test_runs = db.relationship('TestRun', back_populates='endpoint')
     dialogues = db.relationship("Dialogue", back_populates="endpoint", cascade="all, delete-orphan")
 
+    identified_invalid_characters = db.Column(db.Text, nullable=True) # Stores a string of identified invalid characters
+
+    # Fields for site crawl results
+    last_crawl_timestamp = db.Column(db.DateTime, nullable=True)
+    last_crawl_status = db.Column(db.String(50), nullable=True) # e.g., "in_progress", "completed", "failed"
+    discovered_links_json = db.Column(db.Text, nullable=True) # JSON string of list of discovered links
+    found_strings_summary_json = db.Column(db.Text, nullable=True) # JSON string of dict of found strings summary
+
     def to_dict(self):
         """Convert the endpoint log instance into a dictionary."""
         return {
@@ -45,7 +53,12 @@ class Endpoint(db.Model):
             "http_payload": self.http_payload,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
             "headers": [header.to_dict() for header in self.headers],
-            "user_id": self.user_id
+            "user_id": self.user_id,
+            "identified_invalid_characters": self.identified_invalid_characters,
+            "last_crawl_timestamp": self.last_crawl_timestamp.isoformat() if self.last_crawl_timestamp else None,
+            "last_crawl_status": self.last_crawl_status,
+            "discovered_links_json": self.discovered_links_json,
+            "found_strings_summary_json": self.found_strings_summary_json
         }
 
     def __repr__(self):

@@ -8,6 +8,7 @@ from extensions import db # Assuming extensions.py is in 'app'
 from models.model_Endpoints import Endpoint, APIHeader
 from services.endpoints.api_templates import PAYLOAD_TEMPLATES # Adjust path as needed
 from services.common.header_parser_service import parse_raw_headers, headers_from_apiheader_list # Adjust path
+from tasks.endpoint_tasks import perform_invalid_character_check_task, perform_site_crawl_task # Import tasks
 
 from . import endpoints_bp # Import the blueprint from the local package __init__.py
 
@@ -154,13 +155,20 @@ def handle_create_endpoint():
             db.session.commit() # Commit headers
 
         # Success response
+        # Dispatch Celery task for invalid character check
+        perform_invalid_character_check_task.delay(endpoint.id)
+        # Dispatch Celery task for site crawl
+        perform_site_crawl_task.delay(endpoint.id)
+
+        # Success response
+        flash_message = "Endpoint created successfully! Invalid character check and initial site crawl initiated in the background."
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({
-                'message': "Endpoint created successfully!",
+                'message': flash_message,
                 'redirect_url': url_for(".view_endpoint_details", endpoint_id=endpoint.id)
             }), 201 # HTTP 201 Created is appropriate for successful POST creating a resource
 
-        flash("Endpoint created successfully!", "success")
+        flash(flash_message, "success")
         return redirect(url_for(".view_endpoint_details", endpoint_id=endpoint.id))
 
     except Exception as e:

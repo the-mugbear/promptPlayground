@@ -117,14 +117,33 @@ def create_execution_record(attempt, case, seq, payload, status_code, body, erro
         "fail" if status_code else
         "error"
     )
+
+    final_response_data = body
+    final_error_message = error_msg
+
+    if disposition == "pass":
+        if body is None:
+            final_response_data = "" # Ensure empty string for successful empty responses
+        # error_msg should ideally be None for pass, but keep as is if pre-populated
+    elif disposition == "fail": # HTTP error from endpoint
+        # body contains the error response from the endpoint.
+        # error_msg should ideally be None.
+        pass # final_response_data is already body
+    elif disposition == "error": # Client-side error (status_code is None)
+        final_response_data = None
+        # error_msg from call_endpoint already contains the detailed error in this case.
+        # If error_msg was None (e.g. if call_endpoint changed), ensure some default.
+        if final_error_message is None and body is not None: # Defensive: if error_msg was lost, use body
+             final_error_message = body if isinstance(body, str) else "Client-side execution error"
+
     return TestExecution(
         test_run_attempt_id=attempt.id,
         test_case_id=case.id,
         sequence=seq,
         request_payload=payload,
-        response_data=body,
+        response_data=final_response_data,
         status_code=status_code,
-        error_message=error_msg,
+        error_message=final_error_message,
         status=disposition,
         started_at=attempt.started_at,
         finished_at=datetime.utcnow()
