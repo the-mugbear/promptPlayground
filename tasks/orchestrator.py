@@ -57,7 +57,7 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
     ]
     
     # Assuming get_status_data() primarily uses run attributes or already loaded relations
-    status_data_for_emit = run.get_status_data(eagerly_loaded_total=current_progress_total)
+    status_data_for_emit = run.get_status_data()
 
 
     # Initialize/Update run metadata
