@@ -10,6 +10,7 @@ from celery_app import celery
 from tasks.base import ContextTask, with_session
 from extensions import db
 from models.model_TestRunAttempt import TestRunAttempt
+from models.model_TestRun import TestRun # Import TestRun model
 from models.model_TestCase import TestCase
 from models.model_Endpoints import Endpoint
 from models.model_TestExecution import TestExecution
@@ -34,7 +35,13 @@ def execute_single_test_case(self, test_run_attempt_id, test_case_id, endpoint_i
     logger.info(f"SingleCaseTask {task_id}: Start TCID={test_case_id}, Seq={sequence_num}")
 
     try:
-        attempt, case, endpoint = fetch_objects(test_run_attempt_id, test_case_id, endpoint_id)
+        attempt, case, endpoint, test_run = fetch_objects(test_run_attempt_id, test_case_id, endpoint_id)
+
+        # Check for cancellation
+        if test_run and test_run.status == 'cancelling':
+            logger.info(f"SingleCaseTask {task_id}: TestRun ID {test_run.id} is cancelling. Stopping task for TCID={test_case_id}.")
+            # db.session.remove() will be handled by ContextTask
+            return {'status': 'CANCELLED_PREEMPTIVELY', 'test_case_id': test_case_id, 'disposition': 'cancelled'}
 
         payload = build_payload(endpoint.http_payload, prompt_text)
         status_code, body, error = call_endpoint(endpoint, payload)
@@ -81,12 +88,23 @@ def execute_single_test_case(self, test_run_attempt_id, test_case_id, endpoint_i
 @with_session
 def fetch_objects(attempt_id, case_id, endpoint_id):
     attempt = db.session.get(TestRunAttempt, attempt_id)
+    if not attempt:
+        # If attempt is not found, we cannot get test_run_id.
+        raise ValueError("Missing objects: Attempt")
+        
+    test_run = db.session.get(TestRun, attempt.test_run_id) # Fetch TestRun
     case = db.session.get(TestCase, case_id)
     endpoint = db.session.get(Endpoint, endpoint_id)
-    missing = [name for name, obj in (('Attempt', attempt), ('Case', case), ('Endpoint', endpoint)) if obj is None]
+    
+    missing = []
+    if not attempt: missing.append('Attempt') # Should be caught above but good for consistency
+    if not test_run: missing.append('TestRun')
+    if not case: missing.append('Case')
+    if not endpoint: missing.append('Endpoint')
+    
     if missing:
         raise ValueError(f"Missing objects: {', '.join(missing)}")
-    return attempt, case, endpoint
+    return attempt, case, endpoint, test_run
 
 @with_session
 def build_payload(template, prompt):

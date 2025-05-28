@@ -66,9 +66,9 @@ def identify_invalid_characters(endpoint_id: int, characters_to_test: str = None
 
             response = replay_post_request(
                 hostname=endpoint.hostname,
-                endpoint=endpoint.endpoint, # This is the path, not the full URL
-                payload=payload_str,
-                headers=header_str
+                endpoint_path=endpoint.endpoint, # Corrected: endpoint to endpoint_path
+                http_payload=payload_str,      # Corrected: payload to http_payload
+                raw_headers=header_str         # Corrected: headers to raw_headers
             )
 
             status_code = None
