@@ -15,11 +15,6 @@
 
 {% block content %}
 
-<!-- VISUAL LOADING INDICATOR -->
-<div id="loadingIndicator" class="loading-indicator blink" style="display: none;">
-  LOADING...
-</div>
-
 <!-- Error/Success Message Container -->
 <div id="messageContainer" style="display: none;" class="message-container">
   <div id="messageContent" class="message-content"></div>
@@ -124,6 +119,45 @@
   </details>
 </div>
 
+<!-- Test in progress modal -->
+<div id="testInProgressModalOverlay" class="dialog-overlay" style="display: none;">
+  <div id="testInProgressModalContent" class="confirmation-dialog" style="max-width: 700px;"> {# Use existing
+    .confirmation-dialog for base styling #}
+    <div class="modal-header-custom"
+      style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--neon-blue);">
+      <h3 style="color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); margin:0;">TRANSMISSION IN PROGRESS...
+      </h3>
+      {# Optional: Add a subtle animated icon or element here #}
+    </div>
+
+    <div class="test-in-progress-modal-body"
+      style="padding: 1rem; max-height: 70vh; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.9em; background: var(--darker-bg, #050507);">
+
+      <div class="terminal-output">
+        <p>&gt; INITIALIZING TEST SEQUENCE...</p>
+        <p>&gt; TARGET: <strong id="transmitTargetMethod" style="color: var(--neon-pink);">[METHOD]</strong> <span
+            id="transmitTargetURL" style="color: var(--neon-blue);">[URL]</span></p>
+
+        <div>
+          <p>&gt; HEADERS SENT (SUMMARY):</p>
+          <pre id="transmitHeadersSummary"
+            style="color: #ccc; background: var(--dark-bg); padding: 0.5rem; border-radius: 4px; border-left: 3px solid var(--neon-purple); margin-left: 1rem; max-height: 100px; overflow-y: auto;"></pre>
+        </div>
+
+        <div>
+          <p>&gt; PAYLOAD SENT:</p>
+          <pre id="transmitPayloadContent"
+            style="color: #ccc; background: var(--dark-bg); padding: 0.5rem; border-radius: 4px; border-left: 3px solid var(--neon-purple); margin-left: 1rem; max-height: 200px; overflow-y: auto;"></pre>
+        </div>
+
+        <p id="transmitStatusLine">&gt; ESTABLISHING CONNECTION... <span class="blinking-cursor">_</span></p>
+      </div>
+
+    </div>
+    {# No footer/close button needed as it's an in-progress indicator that will auto-hide #}
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -131,124 +165,183 @@
 <script src="{{ url_for('static', filename='js/endpoints/field-suggestion-helper.js') }}"></script>
 <script src="{{ url_for('static', filename='js/endpoints/json_pretty_print.js') }}"></script>
 <script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>
-<script src="{{ url_for('static', filename='js/endpoints/loading_animation.js') }}"></script>
 <script src="{{ url_for('static', filename='js/endpoints/payload-token-enforcer.js') }}"></script>
 
 <script>
+  // Page-specific JavaScript for create_endpoint.html
   document.addEventListener('DOMContentLoaded', function () {
     const createForm = document.getElementById('create-endpoint-form');
     const testForm = document.getElementById('test-endpoint-form');
-    const loadingIndicator = document.getElementById('loadingIndicator');
+
+    // Simple text loading indicator (for "Create Endpoint" button)
+    const simpleLoadingIndicator = document.getElementById('loadingIndicator');
     const messageContainer = document.getElementById('messageContainer');
     const messageContent = document.getElementById('messageContent');
-    const testResults = document.getElementById('testResults');
+    const testResultsContainer = document.getElementById('testResults');
 
+    // --- "Test In Progress" Modal Elements & Functions ---
+    const testInProgressModalOverlay = document.getElementById('testInProgressModalOverlay');
+    const transmitTargetMethodEl = document.getElementById('transmitTargetMethod');
+    const transmitTargetURLEl = document.getElementById('transmitTargetURL');
+    const transmitHeadersSummaryEl = document.getElementById('transmitHeadersSummary');
+    const transmitPayloadContentEl = document.getElementById('transmitPayloadContent');
+    const transmitStatusLineEl = document.getElementById('transmitStatusLine');
+
+    // Function to show the cyberpunk "Test In Progress" modal
+    function showTestInProgressModal(method, url, headersValue, payloadObject) {
+      if (!testInProgressModalOverlay) { console.error("Test In Progress Modal overlay not found!"); return; }
+      if (transmitTargetMethodEl) transmitTargetMethodEl.textContent = method;
+      if (transmitTargetURLEl) transmitTargetURLEl.textContent = url;
+      if (transmitHeadersSummaryEl) {
+        transmitHeadersSummaryEl.textContent = headersValue
+          ? String(headersValue).substring(0, 200) + (String(headersValue).length > 200 ? '...' : '')
+          : "Content-Type: multipart/form-data (auto-set by browser)";
+      }
+      if (transmitPayloadContentEl) {
+        let payloadText = "No payload / GET request.";
+        if (payloadObject instanceof FormData) {
+          let entries = [];
+          for (let [key, value] of payloadObject.entries()) {
+            if (key !== 'csrf_token') {
+              entries.push(`${key}: ${String(value instanceof File ? `[File: ${value.name}]` : value).substring(0, 100)}${String(value).length > 100 ? '...' : ''}`);
+            }
+          }
+          payloadText = entries.join('\n') || "FormData is empty (besides CSRF token).";
+        } else {
+          payloadText = String(payloadObject);
+        }
+        transmitPayloadContentEl.textContent = payloadText.length > 1000 ? payloadText.substring(0, 1000) + "\n... (payload truncated) ..." : payloadText;
+      }
+      if (transmitStatusLineEl) transmitStatusLineEl.innerHTML = "> SENDING REQUEST... <span class=\"blinking-cursor\">_</span>";
+      testInProgressModalOverlay.style.display = 'block';
+    }
+    // Function to hide the cyberpunk "Test In Progress" modal
+    function hideTestInProgressModal() {
+      if (testInProgressModalOverlay) testInProgressModalOverlay.style.display = 'none';
+    }
+    // --- End of "Test In Progress" Modal Functions ---
+
+    // Function to display user messages (errors or success)
     function showMessage(message, type = 'error') {
+      if (!messageContainer || !messageContent) return;
       messageContent.textContent = message;
       messageContainer.className = `message-container ${type}`;
       messageContainer.style.display = 'block';
-      setTimeout(() => {
-        messageContainer.style.display = 'none';
-      }, 5000);
+      setTimeout(() => { messageContainer.style.display = 'none'; }, 5000);
     }
 
-    function showLoading() {
-      loadingIndicator.style.display = 'block';
-    }
+    // Controls for the simple text loading indicator (used by "Create Endpoint" button)
+    function showSimpleLoading() { if (simpleLoadingIndicator) simpleLoadingIndicator.style.display = 'block'; }
+    function hideSimpleLoading() { if (simpleLoadingIndicator) simpleLoadingIndicator.style.display = 'none'; }
 
-    function hideLoading() {
-      loadingIndicator.style.display = 'none';
-    }
+    // Event listener for the "Create Endpoint" button
+    if (createForm) {
+      createForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        showSimpleLoading(); // Uses the simple text indicator
 
-    createForm.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      showLoading();
-
-      try {
-        const formData = new FormData(createForm);
-        const response = await fetch("{{ url_for('endpoints_bp.handle_create_endpoint') }}", {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+        try {
+          const formData = new FormData(createForm);
+          const response = await fetch("{{ url_for('endpoints_bp.handle_create_endpoint') }}", {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          const data = await response.json();
+          if (response.ok) {
+            showMessage('Endpoint created successfully!', 'success');
+            if (data.redirect_url) {
+              setTimeout(() => { window.location.href = data.redirect_url; }, 1000);
+            }
+          } else {
+            showMessage(data.error || 'Failed to create endpoint');
           }
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          showMessage('Endpoint created successfully!', 'success');
-          // Redirect to the new endpoint's page after a short delay
-          setTimeout(() => {
-            window.location.href = data.redirect_url;
-          }, 1000);
-        } else {
-          showMessage(data.error || 'Failed to create endpoint');
+        } catch (error) {
+          showMessage('An error occurred while creating the endpoint. See console.');
+          console.error('Error in createForm submission:', error);
+        } finally {
+          hideSimpleLoading();
         }
-      } catch (error) {
-        showMessage('An error occurred while creating the endpoint');
-        console.error('Error:', error);
-      } finally {
-        hideLoading();
-      }
-    });
+      });
+    }
 
-    testForm.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      showLoading();
+    // Event listener for the "Test Endpoint" button
+    if (testForm) {
+      testForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
 
-      try {
-        // Ensure form fields are synced before submission
+        // DO NOT CALL showSimpleLoading() or showLoading() here for the testForm.
+        // We will use the new testInProgressModal exclusively.
+
         const formData = new FormData(createForm);
-        // formData.append('hostname', document.getElementById('hostname').value);
-        // formData.append('endpoint', document.getElementById('endpoint').value);
-        // formData.append('http_payload', document.getElementById('http_payload').value);
-        // formData.append('raw_headers', document.getElementById('raw_headers').value);
+        const testUrl = "{{ url_for('endpoints_bp.test_endpoint') }}";
 
-        const response = await fetch("{{ url_for('endpoints_bp.test_endpoint') }}", {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+        showTestInProgressModal( // Show the cyberpunk modal
+          'POST',
+          testUrl,
+          formData.get('raw_headers'),
+          formData
+        );
+
+        try {
+          const response = await fetch(testUrl, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Server error response (create_endpoint test):", errorText);
+            let errorMessage = `Server responded with ${response.status}`;
+            try {
+              const errorJson = JSON.parse(errorText);
+              errorMessage = errorJson.error || errorJson.message || errorMessage + `: ${errorText.substring(0, 100)}...`;
+            } catch (jsonParseError) {
+              errorMessage += `: ${errorText.substring(0, 100)}...`;
+            }
+            throw new Error(errorMessage);
           }
-        });
 
-        // It's crucial that response.json() is only called if the response is actually JSON.
-        // The robust error handling in view_endpoint.html's fetch is better.
-        // For now, let's assume if it's not response.ok, it might not be JSON.
-        if (!response.ok) {
-          // Try to get text, then attempt JSON parse if needed, or show text directly.
-          const errorText = await response.text();
-          console.error("Server error response (create_endpoint test):", errorText);
-          throw new Error(`Server responded with ${response.status}: ${errorText.substring(0, 100)}...`);
+          const data = await response.json();
+          console.log('Test response from create_endpoint:', data);
+
+          // Display results in the on-page #testResults section for create_endpoint.html
+          if (testResultsContainer) testResultsContainer.style.display = 'block';
+          const statusCodeEl = document.getElementById('testStatusCode');
+          if (statusCodeEl) {
+            statusCodeEl.textContent = data.status_code || 'N/A';
+            statusCodeEl.className = 'status-code ';
+            if (data.status_code && (data.status_code < 200 || data.status_code >= 300)) {
+              statusCodeEl.classList.add('error');
+            } else {
+              statusCodeEl.classList.add('success');
+            }
+          }
+
+          const formatDisplayData = (d) => {
+            if (typeof d === 'object' && d !== null) return JSON.stringify(d, null, 2);
+            if (typeof d === 'string') {
+              try { return JSON.stringify(JSON.parse(d), null, 2); }
+              catch (e) { return d; }
+            }
+            return d !== null && d !== undefined ? String(d) : '';
+          };
+
+          if (document.getElementById('testPayload')) document.getElementById('testPayload').textContent = formatDisplayData(data.payload_sent || 'N/A');
+          if (document.getElementById('testHeadersSent')) document.getElementById('testHeadersSent').textContent = formatDisplayData(data.headers_sent || {});
+          if (document.getElementById('testResponse')) document.getElementById('testResponse').textContent = formatDisplayData(data.response_data || 'N/A');
+
+          if (testResultsContainer) testResultsContainer.scrollIntoView({ behavior: 'smooth' });
+
+        } catch (error) {
+          showMessage(error.message || 'An error occurred while testing the endpoint. Check console.');
+          console.error('Error in testForm submission (create_endpoint):', error);
+        } finally {
+          hideTestInProgressModal(); // Hide the cyberpunk modal
         }
-
-        const data = await response.json();
-        // Update status code
-        console.log('Test response from create_endpoint:', data);
-
-        // Update what was sent
-        testResults.style.display = 'block';
-        const statusCode = document.getElementById('testStatusCode');
-        statusCode.textContent = data.status_code || 'N/A';
-        statusCode.className = data.status_code >= 200 && data.status_code < 300 ? 'success' : 'error';
-        document.getElementById('testPayload').textContent =
-          JSON.stringify(data.payload_sent || {}, null, 2);
-        document.getElementById('testHeadersSent').textContent =
-          JSON.stringify(data.headers_sent || {}, null, 2);
-        document.getElementById('testResponse').textContent =
-          typeof data.response_data === 'object'
-            ? JSON.stringify(data.response_data, null, 2)
-            : data.response_data || '';
-        testResults.scrollIntoView({ behavior: 'smooth' });
-
-      } catch (error) {
-        showMessage('An error occurred while testing the endpoint');
-        console.error('Error:', error);
-      } finally {
-        hideLoading();
-      }
-    });
+      });
+    }
   });
 </script>
 {% endblock %}

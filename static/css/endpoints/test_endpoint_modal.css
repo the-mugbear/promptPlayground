@@ -87,3 +87,95 @@
         background: var(--neon-purple);
         box-shadow: 0 0 10px var(--neon-purple);
     }
+
+    /* Styles for the Test In Progress Modal */
+
+/* .dialog-overlay and .confirmation-dialog should be styled by inline_edit.css */
+/* Ensure .confirmation-dialog used by this modal has appropriate width/max-width set, or override here */
+/* #testInProgressModalContent { max-width: 700px; } /* Example override if needed */
+
+.test-in-progress-modal-body {
+    background: var(--darker-bg, #050507); /* Match terminal background */
+    color: var(--text-color, #fff); /* Default text color */
+    padding: 1.5rem; /* More padding */
+}
+
+.terminal-output p {
+    margin: 0.3em 0;
+    line-height: 1.4;
+    color: var(--neon-green, #39ff14); /* Hacker green for general text */
+    text-shadow: 0 0 5px var(--neon-green, #39ff14);
+}
+
+.terminal-output strong { /* For emphasizing parts like METHOD */
+    color: var(--neon-pink, #ff00ff);
+    text-shadow: 0 0 5px var(--neon-pink, #ff00ff);
+}
+
+.terminal-output span { /* For specific parts like URL */
+    color: var(--neon-blue, #00f3ff);
+    text-shadow: 0 0 5px var(--neon-blue, #00f3ff);
+}
+
+.terminal-output pre {
+    background-color: var(--dark-bg, #0a0a0f); /* Slightly lighter than modal body for contrast */
+    color: #e0e0e0; /* Light grey for payload/header content */
+    padding: 0.75rem;
+    border-radius: 4px;
+    border: 1px dashed var(--neon-purple, #9d00ff); /* Dashed border for retro feel */
+    margin-left: 1.5rem; /* Indent pre blocks */
+    margin-bottom: 0.75rem;
+    max-height: 150px; /* Keep pre blocks from getting too tall */
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all; /* Break long strings to prevent overflow */
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5); /* Inner shadow */
+}
+
+/* Scrollbar for pre sections, consistent with your theme */
+.terminal-output pre::-webkit-scrollbar { width: 8px; }
+.terminal-output pre::-webkit-scrollbar-track { background: var(--dark-bg); }
+.terminal-output pre::-webkit-scrollbar-thumb { background: var(--neon-purple); }
+.terminal-output pre::-webkit-scrollbar-thumb:hover { background: var(--neon-pink); }
+
+
+#transmitStatusLine {
+    margin-top: 1rem;
+    font-weight: bold;
+    color: var(--neon-blue, #00f3ff);
+}
+
+.blinking-cursor {
+    animation: blink-animation 1s steps(2, start) infinite;
+    background-color: var(--neon-green, #39ff14); /* Cursor color */
+    display: inline-block;
+    width: 0.6em;
+    height: 1.2em; /* Adjust height to match font */
+    margin-left: 0.1em;
+    box-shadow: 0 0 5px var(--neon-green, #39ff14);
+}
+
+@keyframes blink-animation {
+    to {
+        visibility: hidden;
+    }
+}
+
+/* Optional: Scan line effect for the modal body */
+.test-in-progress-modal-body::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 2;
+    background-size: 100% 4px, 6px 100%; /* Adjust scanline thickness and spacing */
+    pointer-events: none;
+    animation: scanline 15s linear infinite;
+}
+@keyframes scanline {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 100%; }
+}
