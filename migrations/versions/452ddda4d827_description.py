@@ -1,8 +1,8 @@
-"""Init
+"""Description
 
-Revision ID: d710b327d9e3
+Revision ID: 452ddda4d827
 Revises: 
-Create Date: 2025-05-13 21:13:50.965245
+Create Date: 2025-05-28 21:28:54.950819
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = 'd710b327d9e3'
+revision = '452ddda4d827'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -171,7 +171,7 @@ def upgrade():
     sa.Column('finished_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('status', sa.String(length=50), nullable=True),
     sa.Column('current_sequence', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['test_run_id'], ['test_runs.id'], name='fk_test_run_attempt_test_run_id'),
+    sa.ForeignKeyConstraint(['test_run_id'], ['test_runs.id'], name='fk_test_run_attempt_test_run_id', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('test_run_attempts', schema=None) as batch_op:
@@ -195,13 +195,17 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('test_run_attempt_id', sa.Integer(), nullable=False),
     sa.Column('test_case_id', sa.Integer(), nullable=False),
-    sa.Column('status', sa.String(length=50), nullable=True),
     sa.Column('sequence', sa.Integer(), nullable=False),
+    sa.Column('processed_prompt', sa.Text(), nullable=True),
+    sa.Column('request_payload', sa.Text(), nullable=True),
     sa.Column('response_data', sa.Text(), nullable=True),
+    sa.Column('status_code', sa.Integer(), nullable=True),
+    sa.Column('error_message', sa.Text(), nullable=True),
+    sa.Column('status', sa.String(length=50), nullable=True),
     sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('finished_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['test_case_id'], ['test_cases.id'], ),
-    sa.ForeignKeyConstraint(['test_run_attempt_id'], ['test_run_attempts.id'], name='fk_test_execution_run_attempt_id'),
+    sa.ForeignKeyConstraint(['test_case_id'], ['test_cases.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['test_run_attempt_id'], ['test_run_attempts.id'], name='fk_test_execution_run_attempt_id', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('test_executions', schema=None) as batch_op:
