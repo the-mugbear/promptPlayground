@@ -1,12 +1,16 @@
 {% extends "base.html" %}
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
-  <style>
-    #suggestion-list {
-      max-height: none;
-    }
-  </style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+<script>
+  // Make CSRF token available as a global JavaScript variable
+  const csrfToken = "{{ csrf_token() }}";
+</script>
+<style>
+  #suggestion-list {
+    max-height: none;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -27,67 +31,38 @@
     <h2>Create Endpoint</h2>
 
     <!-- Form #1: create-endpoint-form -->
-    <form 
-      id="create-endpoint-form"
-      style="margin-bottom: 1rem;"
-    >
+    <form id="create-endpoint-form" style="margin-bottom: 1rem;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group">
         <label for="name">Endpoint Name</label>
-        <input 
-          type="text" 
-          id="name" 
-          name="name" 
-          required 
-          placeholder="Enter a friendly name for the endpoint"
-          value="{{ request.form.name|default('') }}"
-        >
+        <input type="text" id="name" name="name" required placeholder="Enter a friendly name for the endpoint"
+          value="{{ request.form.name|default('') }}">
       </div>
 
       <div class="form-group">
         <label for="hostname">Hostname</label>
-        <input 
-          type="text" 
-          id="hostname" 
-          name="hostname" 
-          required 
-          placeholder="e.g., https://api.example.com"
-          value="{{ request.form.hostname|default('') }}"
-        >
+        <input type="text" id="hostname" name="hostname" required placeholder="e.g., https://api.example.com"
+          value="{{ request.form.hostname|default('') }}">
       </div>
-  
+
       <div class="form-group">
         <label for="endpoint">Path</label>
-        <input 
-          type="text" 
-          id="endpoint" 
-          name="endpoint" 
-          required
-          placeholder="e.g., /v1/submit"
-          value="{{ request.form.endpoint|default('') }}"
-        >
+        <input type="text" id="endpoint" name="endpoint" required placeholder="e.g., /v1/submit"
+          value="{{ request.form.endpoint|default('') }}">
       </div>
-    
+
       <div class="form-group">
         <label for="http_payload">HTTP Payload</label>
-        <textarea 
-          id="http_payload" 
-          name="http_payload" 
-          rows="16"
-          placeholder='Paste or edit JSON here...'
-        >{{ request.form.http_payload|default('') }}</textarea>
+        <textarea id="http_payload" name="http_payload" rows="16"
+          placeholder='Paste or edit JSON here...'>{{ request.form.http_payload|default('') }}</textarea>
         <button type="button" onclick="formatHttpPayload()">Format JSON</button>
         <button type="button" id="insertTokenBtn">Insert {{INJECT_PROMPT}} Token</button>
-      </div>      
-  
+      </div>
+
       <div class="form-group">
         <label for="raw_headers">Headers (Key: Value per line)</label>
-        <textarea 
-          id="raw_headers" 
-          name="raw_headers" 
-          rows="9"
-          placeholder="Content-Type: application/json&#10;Authorization: Bearer <token>"
-        >{{ request.form.raw_headers|default('') }}</textarea>
+        <textarea id="raw_headers" name="raw_headers" rows="9"
+          placeholder="Content-Type: application/json&#10;Authorization: Bearer <token>">{{ request.form.raw_headers|default('') }}</textarea>
       </div>
 
       <div style="display: flex; gap: 1rem;">
@@ -95,29 +70,27 @@
         <button type="submit">Create Endpoint</button>
     </form>
 
-      <!-- Form #2: test-endpoint-form (does not store the endpoint) -->
-      <form 
-        id="test-endpoint-form"
-      >
-        <!-- We'll pass the same fields so the route can do a test POST -->
-        <input type="hidden" name="hostname" value="{{ request.form.hostname|default('') }}">
-        <input type="hidden" name="endpoint" value="{{ request.form.endpoint|default('') }}">
-        <input type="hidden" name="http_payload" value="{{ request.form.http_payload|default('') }}">
-        <input type="hidden" name="raw_headers" value="{{ request.form.raw_headers|default('') }}">
+    <!-- Form #2: test-endpoint-form (does not store the endpoint) -->
+    <form id="test-endpoint-form">
+      <!-- We'll pass the same fields so the route can do a test POST -->
+      <input type="hidden" name="hostname" value="{{ request.form.hostname|default('') }}">
+      <input type="hidden" name="endpoint" value="{{ request.form.endpoint|default('') }}">
+      <input type="hidden" name="http_payload" value="{{ request.form.http_payload|default('') }}">
+      <input type="hidden" name="raw_headers" value="{{ request.form.raw_headers|default('') }}">
 
-        <button type="submit">Test Endpoint</button>
-      </form>
-      </div>
+      <button type="submit">Test Endpoint</button>
+    </form>
   </div>
-  
-  <!-- Right Card (suggestions) -->
-  <div class="right-card">
-    <h2>Suggestions</h2>
-    <div id="suggestionText">
-      <p>Select or focus a field on the left to see relevant suggestions. Click a suggestion to copy it.</p>
-    </div>
-    <ul id="suggestion-list"></ul>
+</div>
+
+<!-- Right Card (suggestions) -->
+<div class="right-card">
+  <h2>Suggestions</h2>
+  <div id="suggestionText">
+    <p>Select or focus a field on the left to see relevant suggestions. Click a suggestion to copy it.</p>
   </div>
+  <ul id="suggestion-list"></ul>
+</div>
 </div>
 
 <!-- Third Card: Show test results if present -->
@@ -154,127 +127,128 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/endpoints/form-field-syncer.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/endpoints/field-suggestion-helper.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/endpoints/json_pretty_print.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/endpoints/loading_animation.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/endpoints/payload-token-enforcer.js') }}"></script>
-  
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const createForm = document.getElementById('create-endpoint-form');
-      const testForm = document.getElementById('test-endpoint-form');
-      const loadingIndicator = document.getElementById('loadingIndicator');
-      const messageContainer = document.getElementById('messageContainer');
-      const messageContent = document.getElementById('messageContent');
-      const testResults = document.getElementById('testResults');
+<script src="{{ url_for('static', filename='js/endpoints/form-field-syncer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/endpoints/field-suggestion-helper.js') }}"></script>
+<script src="{{ url_for('static', filename='js/endpoints/json_pretty_print.js') }}"></script>
+<script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>
+<script src="{{ url_for('static', filename='js/endpoints/loading_animation.js') }}"></script>
+<script src="{{ url_for('static', filename='js/endpoints/payload-token-enforcer.js') }}"></script>
 
-      function showMessage(message, type = 'error') {
-        messageContent.textContent = message;
-        messageContainer.className = `message-container ${type}`;
-        messageContainer.style.display = 'block';
-        setTimeout(() => {
-          messageContainer.style.display = 'none';
-        }, 5000);
-      }
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const createForm = document.getElementById('create-endpoint-form');
+    const testForm = document.getElementById('test-endpoint-form');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const messageContainer = document.getElementById('messageContainer');
+    const messageContent = document.getElementById('messageContent');
+    const testResults = document.getElementById('testResults');
 
-      function showLoading() {
-        loadingIndicator.style.display = 'block';
-      }
+    function showMessage(message, type = 'error') {
+      messageContent.textContent = message;
+      messageContainer.className = `message-container ${type}`;
+      messageContainer.style.display = 'block';
+      setTimeout(() => {
+        messageContainer.style.display = 'none';
+      }, 5000);
+    }
 
-      function hideLoading() {
-        loadingIndicator.style.display = 'none';
-      }
+    function showLoading() {
+      loadingIndicator.style.display = 'block';
+    }
 
-      createForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        showLoading();
+    function hideLoading() {
+      loadingIndicator.style.display = 'none';
+    }
 
-        try {
-          const formData = new FormData(createForm);
-          const response = await fetch("{{ url_for('endpoints_bp.handle_create_endpoint') }}", {
-            method: 'POST',
-            body: formData,
-            headers: {
-              'X-Requested-With': 'XMLHttpRequest'
-            }
-          });
+    createForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      showLoading();
 
-          const data = await response.json();
-
-          if (response.ok) {
-            showMessage('Endpoint created successfully!', 'success');
-            // Redirect to the new endpoint's page after a short delay
-            setTimeout(() => {
-              window.location.href = data.redirect_url;
-            }, 1000);
-          } else {
-            showMessage(data.error || 'Failed to create endpoint');
+      try {
+        const formData = new FormData(createForm);
+        const response = await fetch("{{ url_for('endpoints_bp.handle_create_endpoint') }}", {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
           }
-        } catch (error) {
-          showMessage('An error occurred while creating the endpoint');
-          console.error('Error:', error);
-        } finally {
-          hideLoading();
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showMessage('Endpoint created successfully!', 'success');
+          // Redirect to the new endpoint's page after a short delay
+          setTimeout(() => {
+            window.location.href = data.redirect_url;
+          }, 1000);
+        } else {
+          showMessage(data.error || 'Failed to create endpoint');
         }
-      });
-
-      testForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        showLoading();
-
-        try {
-          // Ensure form fields are synced before submission
-          const formData = new FormData(createForm);
-          formData.append('hostname', document.getElementById('hostname').value);
-          formData.append('endpoint', document.getElementById('endpoint').value);
-          formData.append('http_payload', document.getElementById('http_payload').value);
-          formData.append('raw_headers', document.getElementById('raw_headers').value);
-
-          const response = await fetch("{{ url_for('endpoints_bp.test_endpoint') }}", {
-            method: 'POST',
-            body: formData,
-            headers: {
-              'X-Requested-With': 'XMLHttpRequest'
-            }
-          });
-
-          const data = await response.json();
-          console.log('Test response:', data); // For debugging
-
-          // Show test results section
-          testResults.style.display = 'block';
-
-          // Update status code
-          const statusCode = document.getElementById('testStatusCode');
-          statusCode.textContent = data.status_code || 'N/A';
-          statusCode.className = data.status_code >= 200 && data.status_code < 300 ? 'success' : 'error';
-
-          // Update what was sent
-          document.getElementById('testPayload').textContent = 
-            JSON.stringify(data.payload_sent || {}, null, 2);
-
-          // Update headers sent
-          document.getElementById('testHeadersSent').textContent = 
-            JSON.stringify(data.headers_sent || {}, null, 2);
-
-          // Update response
-          document.getElementById('testResponse').textContent = 
-            typeof data.response_data === 'object' 
-              ? JSON.stringify(data.response_data, null, 2) 
-              : data.response_data || '';
-
-          // Scroll to results
-          testResults.scrollIntoView({ behavior: 'smooth' });
-
-        } catch (error) {
-          showMessage('An error occurred while testing the endpoint');
-          console.error('Error:', error);
-        } finally {
-          hideLoading();
-        }
-      });
+      } catch (error) {
+        showMessage('An error occurred while creating the endpoint');
+        console.error('Error:', error);
+      } finally {
+        hideLoading();
+      }
     });
-  </script>
+
+    testForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      showLoading();
+
+      try {
+        // Ensure form fields are synced before submission
+        const formData = new FormData(createForm);
+        // formData.append('hostname', document.getElementById('hostname').value);
+        // formData.append('endpoint', document.getElementById('endpoint').value);
+        // formData.append('http_payload', document.getElementById('http_payload').value);
+        // formData.append('raw_headers', document.getElementById('raw_headers').value);
+
+        const response = await fetch("{{ url_for('endpoints_bp.test_endpoint') }}", {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        // It's crucial that response.json() is only called if the response is actually JSON.
+        // The robust error handling in view_endpoint.html's fetch is better.
+        // For now, let's assume if it's not response.ok, it might not be JSON.
+        if (!response.ok) {
+          // Try to get text, then attempt JSON parse if needed, or show text directly.
+          const errorText = await response.text();
+          console.error("Server error response (create_endpoint test):", errorText);
+          throw new Error(`Server responded with ${response.status}: ${errorText.substring(0, 100)}...`);
+        }
+
+        const data = await response.json();
+        // Update status code
+        console.log('Test response from create_endpoint:', data);
+
+        // Update what was sent
+        testResults.style.display = 'block';
+        const statusCode = document.getElementById('testStatusCode');
+        statusCode.textContent = data.status_code || 'N/A';
+        statusCode.className = data.status_code >= 200 && data.status_code < 300 ? 'success' : 'error';
+        document.getElementById('testPayload').textContent =
+          JSON.stringify(data.payload_sent || {}, null, 2);
+        document.getElementById('testHeadersSent').textContent =
+          JSON.stringify(data.headers_sent || {}, null, 2);
+        document.getElementById('testResponse').textContent =
+          typeof data.response_data === 'object'
+            ? JSON.stringify(data.response_data, null, 2)
+            : data.response_data || '';
+        testResults.scrollIntoView({ behavior: 'smooth' });
+
+      } catch (error) {
+        showMessage('An error occurred while testing the endpoint');
+        console.error('Error:', error);
+      } finally {
+        hideLoading();
+      }
+    });
+  });
+</script>
 {% endblock %}

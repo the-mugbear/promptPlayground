@@ -4,10 +4,13 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/endpoints/inline_edit.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/endpoints/test_endpoint_modal.css') }}">
 <script>
     // Add CSRF token for AJAX requests
     const csrfToken = "{{ csrf_token() }}";
+    console.log('CSRF Token from template:', csrfToken);
 </script>
+
 <style>
     .endpoint-header {
         display: flex;
@@ -15,28 +18,28 @@
         align-items: center;
         margin-bottom: 2rem;
     }
-    
+
     .endpoint-header h2 {
         margin: 0;
     }
-    
+
     .test-form-container {
         margin: 0;
     }
-    
+
     .test-form-container h3 {
         display: none;
     }
-    
+
     .test-form-container form {
         margin: 0;
     }
-    
+
     .payload-container {
         position: relative;
         width: 100%;
     }
-    
+
     .payload-textarea {
         width: 100% !important;
         height: 300px !important;
@@ -45,7 +48,7 @@
         resize: vertical !important;
         box-sizing: border-box !important;
     }
-    
+
     .json-validation-badge {
         position: absolute;
         top: 10px;
@@ -59,19 +62,19 @@
         opacity: 0;
         transition: opacity 0.3s ease;
     }
-    
+
     .json-validation-badge.valid {
         background-color: #d4edda;
         color: #155724;
         opacity: 1;
     }
-    
+
     .json-validation-badge.invalid {
         background-color: #f8d7da;
         color: #721c24;
         opacity: 1;
     }
-    
+
     .validation-icon {
         font-weight: bold;
     }
@@ -84,12 +87,13 @@
         <div class="endpoint-header">
             <h2>Endpoint Details</h2>
             <div class="test-form-container">
-                <form id="testForm" action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}" method="POST">
+                <form id="testForm" action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}"
+                    method="POST">
                     <button type="submit" class="btn btn-primary">Test Endpoint</button>
                 </form>
             </div>
         </div>
-        
+
         <div class="details-grid">
             <div class="editable-field" data-field="name">
                 <label>Name:</label>
@@ -100,7 +104,7 @@
                     <input type="text" class="form-control" value="{{ endpoint.name }}">
                 </div>
             </div>
-            
+
             <div class="editable-field" data-field="hostname">
                 <label>Hostname:</label>
                 <div class="view-mode">
@@ -110,7 +114,7 @@
                     <input type="text" class="form-control" value="{{ endpoint.hostname }}">
                 </div>
             </div>
-            
+
             <div class="editable-field" data-field="path">
                 <label>Path:</label>
                 <div class="view-mode">
@@ -147,67 +151,285 @@
             <h3>Headers</h3>
             <div class="headers-list">
                 {% if endpoint.headers and endpoint.headers|length > 0 %}
-                    {% for header in endpoint.headers %}
-                        <div class="header-item" data-header-id="{{ header.id }}">
-                            <span class="header-key">{{ header.key }}:</span>
-                            <span class="header-value">{{ header.value }}</span>
-                        </div>
-                    {% endfor %}
+                {% for header in endpoint.headers %}
+                <div class="header-item" data-header-id="{{ header.id }}">
+                    <span class="header-key">{{ header.key }}:</span>
+                    <span class="header-value">{{ header.value }}</span>
+                </div>
+                {% endfor %}
                 {% else %}
-                    <p class="no-headers" style="display: none;"><em>No headers available.</em></p>
+                <p class="no-headers" style="display: none;"><em>No headers available.</em></p>
                 {% endif %}
             </div>
         </div>
 
         {% if test_result %}
-            <div class="test-results">
-                <h4>Test Results</h4>
-                
-                <div class="result-section">
-                    <h5>Status Code</h5>
-                    <div class="status-code">{{ test_result.status_code }}</div>
-                </div>
+        <div class="test-results">
+            <h4>Test Results</h4>
 
-                <div class="result-section">
-                    <h5>Response</h5>
-                    <pre class="response-data">{{ test_result.response_data }}</pre>
-                </div>
-
-                <div class="result-section">
-                    <h5>Headers Sent</h5>
-                    <pre class="headers-sent">{{ test_result.headers_sent | tojson(indent=2) }}</pre>
-                </div>
+            <div class="result-section">
+                <h5>Status Code</h5>
+                <div class="status-code">{{ test_result.status_code }}</div>
             </div>
+
+            <div class="result-section">
+                <h5>Response</h5>
+                <pre class="response-data">{{ test_result.response_data }}</pre>
+            </div>
+
+            <div class="result-section">
+                <h5>Headers Sent</h5>
+                <pre class="headers-sent">{{ test_result.headers_sent | tojson(indent=2) }}</pre>
+            </div>
+        </div>
         {% endif %}
     </div>
 </div>
+
+
+<div id="testResultModalOverlay" class="dialog-overlay" style="display: none;">
+    <div id="testResultModalContent" class="confirmation-dialog test-result-modal-content">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--neon-blue);">
+            <h3>Test Endpoint Results</h3> 
+            <span class="close-modal-button"
+                style="font-size: 1.8rem; cursor: pointer; color: var(--neon-pink); line-height: 1;">&times;</span>
+        </div>
+
+        <div class="test-result-modal-body">
+            <div class="result-section-modal">
+                <h5>Status Code</h5>
+                <div id="modalStatusCode" class="status-code"></div> 
+            </div>
+            <hr style="border-color: var(--neon-purple); opacity: 0.2; margin: 0.8rem 0;">
+
+            <div class="result-section-modal">
+                <h5>Response Data</h5>
+                <pre id="modalResponseData" class="response-data"></pre> 
+            </div>
+            <hr style="border-color: var(--neon-purple); opacity: 0.2; margin: 0.8rem 0;">
+
+            <div class="result-section-modal">
+                <h5>Payload Sent to Target</h5>
+                <pre id="modalPayloadSent" class="headers-sent"></pre> 
+            </div>
+            <hr style="border-color: var(--neon-purple); opacity: 0.2; margin: 0.8rem 0;">
+
+            <div class="result-section-modal">
+                <h5>Headers Sent to Target</h5>
+                <pre id="modalHeadersSent" class="headers-sent"></pre> 
+            </div>
+        </div>
+
+        <div class="buttons"
+            style="justify-content: flex-end; padding: 0.5rem 1rem; border-top: 1px solid var(--neon-blue); margin-top:1rem;">
+            <button type="button" class="cancel-btn close-modal-button-footer">Close</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/endpoints/inline_edit.js') }}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const textarea = document.querySelector('.payload-textarea');
-    const badge = document.getElementById('jsonValidationBadge');
-    
-    function validateJSON() {
-        try {
-            const value = textarea.value.trim();
-            if (!value) {
-                badge.className = 'json-validation-badge';
-                return;
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- JSON Validation Setup ---
+        const textarea = document.querySelector('.payload-textarea');
+        const badge = document.getElementById('jsonValidationBadge');
+
+        function validateJSON() {
+            // Your existing validateJSON logic...
+            try {
+                const value = textarea.value.trim();
+                if (!value) {
+                    badge.className = 'json-validation-badge';
+                    return;
+                }
+                JSON.parse(value);
+                badge.className = 'json-validation-badge valid';
+                badge.querySelector('.validation-text').textContent = 'Valid JSON';
+            } catch (e) {
+                badge.className = 'json-validation-badge invalid';
+                badge.querySelector('.validation-text').textContent = 'Invalid JSON';
             }
-            JSON.parse(value);
-            badge.className = 'json-validation-badge valid';
-            badge.querySelector('.validation-text').textContent = 'Valid JSON';
-        } catch (e) {
-            badge.className = 'json-validation-badge invalid';
-            badge.querySelector('.validation-text').textContent = 'Invalid JSON';
         }
-    }
-    
-    textarea.addEventListener('input', validateJSON);
-    validateJSON(); // Initial validation
-});
+
+        if (textarea && badge) {
+            textarea.addEventListener('input', validateJSON);
+            validateJSON(); // Initial validation
+        } else {
+            console.warn("Elements for JSON validation (textarea/badge) not found on this page.");
+        }
+
+        // --- Test Result Modal Setup and Functions ---
+        const testResultModalOverlay = document.getElementById('testResultModalOverlay'); // Correct: Get the overlay
+        const modalContent = document.getElementById('testResultModalContent');         // Correct: Get the modal content box
+
+        // Ensure modalContent is found before trying to query its children
+        if (!modalContent) {
+            console.error("Modal content #testResultModalContent not found! Test results cannot be displayed in modal.");
+            // Fallback or alternative display can be handled here if needed
+        }
+
+        const modalStatusCodeEl = document.getElementById('modalStatusCode');
+        const modalResponseDataEl = document.getElementById('modalResponseData');
+        const modalPayloadSentEl = document.getElementById('modalPayloadSent');
+        const modalHeadersSentEl = document.getElementById('modalHeadersSent');
+        // Select close buttons *within* the modalContent if it exists
+        const modalHeaderCloseBtn = modalContent ? modalContent.querySelector('.close-modal-button') : null;
+        const modalFooterCloseBtn = modalContent ? modalContent.querySelector('.close-modal-button-footer') : null;
+
+        function openModal() {
+            if (testResultModalOverlay) testResultModalOverlay.style.display = 'block';
+        }
+        function closeModal() {
+            if (testResultModalOverlay) testResultModalOverlay.style.display = 'none';
+        }
+
+        // Attach event listeners for closing the modal
+        if (modalHeaderCloseBtn) modalHeaderCloseBtn.onclick = closeModal;
+        if (modalFooterCloseBtn) modalFooterCloseBtn.onclick = closeModal;
+
+        if (testResultModalOverlay) {
+            testResultModalOverlay.onclick = function (event) {
+                // Close if the click is on the overlay background, not the modal content itself
+                if (event.target == testResultModalOverlay) {
+                    closeModal();
+                }
+            }
+        }
+        document.addEventListener('keydown', function (event) {
+            // Close modal on Escape key press if it's currently displayed
+            if (event.key === "Escape" && testResultModalOverlay && testResultModalOverlay.style.display === 'block') {
+                closeModal();
+            }
+        });
+
+        // --- Test Endpoint Form AJAX Handling ---
+        const testForm = document.getElementById('testForm');
+        if (testForm) {
+            testForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                const url = this.action;
+                // --- GATHER CURRENT DATA AND CREATE FormData ---
+                const formData = new FormData();
+                // IMPORTANT: Add CSRF token to FormData
+                // The global 'csrfToken' const must be correctly defined from {{ csrf_token() }}
+                formData.append('csrf_token', csrfToken);
+
+                // Get current values from editable fields and append them
+                // You'll need a reliable way to get the current value from your inline editable fields
+                // (whether they are in "view" or "edit" mode).
+                // The 'getFieldValue' helper from previous suggestion or similar logic is needed here.
+                const getFieldValue = (fieldDataName) => {
+                    const field = document.querySelector(`.editable-field[data-field="${fieldDataName}"]`);
+                    if (!field) return null;
+                    const inputElement = field.querySelector('input, textarea');
+                    if (inputElement && (field.classList.contains('editing') || inputElement.offsetParent !== null)) {
+                        return inputElement.value;
+                    }
+                    const viewElement = field.querySelector('.view-mode span');
+                    return viewElement ? viewElement.textContent.trim() : null;
+                };
+
+                const currentHttpPayload = document.querySelector('.editable-field[data-field="http_payload"] textarea')?.value;
+                if (currentHttpPayload !== null && currentHttpPayload !== undefined) {
+                    formData.append('http_payload', currentHttpPayload);
+                }
+
+                const currentHostname = getFieldValue('hostname');
+                if (currentHostname !== null && currentHostname !== undefined) {
+                    formData.append('hostname', currentHostname);
+                }
+
+                const currentPath = getFieldValue('path'); // Client-side key is 'path'
+                if (currentPath !== null && currentPath !== undefined) {
+                    formData.append('endpoint', currentPath); // Send as 'endpoint' to match form field name used by backend
+                }
+
+                // For headers, if they are also inline editable and need to be tested live,
+                // you would gather them (e.g., as a raw string like in create_endpoint) and append:
+                // const currentRawHeaders = ... gather headers ...;
+                // formData.append('raw_headers', currentRawHeaders);
+
+
+                console.log('Submitting Test Endpoint via AJAX to:', url, 'with FormData containing http_payload, hostname, etc.');
+
+                fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => { /* Your existing robust error handling */
+                        if (!response.ok) {
+                            return response.text().then(text => {
+                                console.error(`Server responded with ${response.status}. Response text:`, text);
+                                let errorData;
+                                try { errorData = JSON.parse(text); }
+                                catch (e) { throw new Error(`Server error ${response.status}: ${text.substring(0, 200)}...`); }
+                                let detailedError = new Error(errorData.error || errorData.message || `Server error: ${response.status}`);
+                                detailedError.responsePayload = errorData; detailedError.status = response.status;
+                                throw detailedError;
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Test successful from view_endpoint:', data);
+                        if (modalStatusCode) {
+                            modalStatusCode.textContent = data.status_code || 'N/A';
+                            modalStatusCode.className = 'status-code'; // Reset classes
+                            if (data.status_code && (data.status_code < 200 || data.status_code >= 300)) {
+                                modalStatusCode.classList.add('error-status');
+                            }
+                        }
+                        // Attempt to pretty-print JSON if response_data is a string that looks like JSON
+                        let responseDataDisplay = data.response_data || 'No response data';
+                        if (typeof responseDataDisplay === 'string') {
+                            try {
+                                const parsedJson = JSON.parse(responseDataDisplay);
+                                responseDataDisplay = JSON.stringify(parsedJson, null, 2);
+                            } catch (e) { /* Not JSON, display as is */ }
+                        } else if (typeof responseDataDisplay === 'object') {
+                            responseDataDisplay = JSON.stringify(responseDataDisplay, null, 2);
+                        }
+                        if (modalResponseData) modalResponseData.textContent = responseDataDisplay;
+
+                        if (modalPayloadSent) modalPayloadSent.textContent = data.payload_sent ? (typeof data.payload_sent === 'object' ? JSON.stringify(data.payload_sent, null, 2) : data.payload_sent) : 'N/A';
+                        if (modalHeadersSent) modalHeadersSent.textContent = data.headers_sent ? JSON.stringify(data.headers_sent, null, 2) : '{}';
+
+                        openModal();
+                    })
+                    .catch(error => {
+                        console.error('Test error from view_endpoint:', error);
+                        if (modalStatusCode) {
+                            modalStatusCode.textContent = error.status || 'Client Error';
+                            modalStatusCode.className = 'status-code error-status';
+                        }
+                        if (modalResponseData) modalResponseData.textContent = error.message || "An error occurred during the test.";
+                        if (modalPayloadSent) modalPayloadSent.textContent = 'N/A due to error.';
+                        if (modalHeadersSent) modalHeadersSent.textContent = 'N/A due to error.';
+                        openModal();
+                    });
+            });
+        }
+
+        // Helper function for escaping HTML, if needed here specifically
+        function escapeHtml(str) {
+            if (typeof str !== 'string') {
+                if (str === null || str === undefined) return '';
+                str = String(str);
+            }
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    });
 </script>
 {% endblock %}
