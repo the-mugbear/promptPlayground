@@ -8,7 +8,7 @@ class TestCase(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     prompt = db.Column(db.TEXT, nullable=False)
-    transformations = db.Column(db.JSON, nullable=True)
+
     source = db.Column(db.String(255), nullable=True)
     attack_type = db.Column(db.String(50), nullable=True) # jailbreak / prompt_injection / other
     data_type = db.Column(db.String(50), nullable=True) # text / image / audio

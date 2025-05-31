@@ -2,7 +2,7 @@
 Core operations for managing test runs including listing, viewing, creating, and deleting test runs.
 This module handles the basic CRUD operations for test runs and their associated data.
 """
-
+import json
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from extensions import db
@@ -174,7 +174,7 @@ def create_test_run_form():
 
 @test_runs_bp.route('/create', methods=['POST'])
 @login_required
-def handle_create_test_run():
+def create_test_run():
     """
     Handle the submission of the test run creation form.
     
@@ -194,6 +194,9 @@ def handle_create_test_run():
     selected_suite_ids = request.form.getlist('suite_ids')
     selected_filter_ids = request.form.getlist('filter_ids')
     payload_override = request.form.get('endpointPayload')
+
+    # Get the JSON string of ordered transformations from the hidden input
+    ordered_transformations_json = request.form.get('ordered_transformations')
 
     # Generate default name if none provided
     if not run_name:
@@ -219,7 +222,7 @@ def handle_create_test_run():
         new_run = TestRun(
             name=run_name,
             endpoint_id=endpoint_id,
-            status='not_started',
+            status='Not Started',
             user_id=current_user.id
         )
         db.session.add(new_run)
@@ -237,30 +240,6 @@ def handle_create_test_run():
             pf = PromptFilter.query.get(pf_id)
             if pf:
                 new_run.filters.append(pf)
-
-        # Create initial test run attempt
-        # new_attempt = TestRunAttempt(
-        #     test_run=new_run,
-        #     attempt_number=1,
-        #     current_sequence=0,
-        #     status='pending'
-        # )
-        # db.session.add(new_attempt)
-        # db.session.flush()
-
-        # Create pending test executions for each test case
-        # execution_records = []
-        # seq = 0
-        # for suite in new_run.test_suites:
-        #     for tc in suite.test_cases:
-        #         execution_records.append(TestExecution(
-        #             test_run_attempt_id=new_attempt.id,
-        #             test_case_id=tc.id,
-        #             sequence=seq,
-        #             status='pending'
-        #         ))
-        #         seq += 1
-        # db.session.add_all(execution_records)
 
         db.session.commit()
         flash("Test run created successfully!", "success")

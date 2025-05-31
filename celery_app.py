@@ -11,7 +11,14 @@ celery = Celery(
     'fuzzy_prompts',
     broker=os.getenv('CELERY_BROKER_URL', 'amqp://guest:guest@localhost:5672//'),
     backend=os.getenv('CELERY_RESULT_BACKEND', 'rpc://'),
-    include=['workers.execution_tasks', 'workers.import_tasks']
+    # include=['workers.execution_tasks', 'workers.import_tasks']
+    include=[
+        'workers.import_tasks',
+        'tasks.orchestrator',  
+        'tasks.case',          
+        'tasks.batch',         
+        'tasks.helpers'       
+    ]
 )
 
 celery.conf.update(

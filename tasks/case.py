@@ -7,15 +7,14 @@ import traceback
 from datetime import datetime
 
 from celery_app import celery
-from tasks.base import ContextTask, with_session
+from tasks.base import ContextTask
 from extensions import db
 from models.model_TestRunAttempt import TestRunAttempt
 from models.model_TestCase import TestCase
 from models.model_Endpoints import Endpoint
 from models.model_TestExecution import TestExecution
 from services.common.http_request_service import replay_post_request
-from services.transformers.registry import apply_transformation
-from .helpers import emit_run_update, emit_execution_update
+from .helpers import emit_run_update, emit_execution_update, with_session
 
 logger = logging.getLogger(__name__)
 
@@ -25,28 +24,81 @@ logger = logging.getLogger(__name__)
     base=ContextTask,
     name='tasks.execute_single_case'
 )
-def execute_single_test_case(self, test_run_attempt_id, test_case_id, endpoint_id, prompt_text, sequence_num):
+@with_session
+def execute_single_test_case(
+    self,
+    test_run_attempt_id: int,
+    test_case_id: int,
+    endpoint_id: int,
+    prompt_text: str,
+    sequence_num: int
+):
+    
     """
     Executes one test case: applies transformations, calls the endpoint,
     records the result, and emits an execution update.
     """
+    logger.debug(
+        f"execute_single_test_case was called with args="
+        f"(self={self}, test_run_attempt_id={test_run_attempt_id}, "
+        f"test_case_id={test_case_id}, endpoint_id={endpoint_id}, "
+        f"prompt_text='{prompt_text}', sequence_num={sequence_num})"
+    )
+
     task_id = self.request.id
     logger.info(f"SingleCaseTask {task_id}: Start TCID={test_case_id}, Seq={sequence_num}")
 
-    try:
-        attempt, case, endpoint = fetch_objects(test_run_attempt_id, test_case_id, endpoint_id)
+    # 1) Fetch all ORM objects in THIS session
+    attempt = db.session.get(TestRunAttempt, test_run_attempt_id)
+    case    = db.session.get(TestCase, test_case_id)
+    endpoint= db.session.get(Endpoint, endpoint_id)
+    missing = [name for name, obj in (('Attempt', attempt), ('Case', case), ('Endpoint', endpoint)) if obj is None]
+    if missing:
+        raise ValueError(f"Missing objects: {', '.join(missing)}")
 
+    try:
+        # 2) Build the payload (no DB reads inside; just string manipulation)
         payload = build_payload(endpoint.http_payload, prompt_text)
+
+        # 3) Call the endpoint (no DB reads inside; only uses "endpoint" attributes)
         status_code, body, error = call_endpoint(endpoint, payload)
 
-        record = create_execution_record(attempt, case, sequence_num, payload, status_code, body, error)
+        # 4) Create and add the TestExecution record into OUR session
+        record = TestExecution(
+            test_run_attempt_id=attempt.id,
+            test_case_id=case.id,
+            sequence=sequence_num,
+            request_payload=payload,
+            response_data=body,
+            status_code=status_code,
+            error_message=error,
+            # Determine disposition based on status_code
+            status=(
+                "pass" if status_code and 200 <= status_code < 300 else
+                "fail" if status_code else
+                "error"
+            ),
+            started_at=attempt.started_at,
+            finished_at=datetime.utcnow()
+        )
         db.session.add(record)
-        db.session.commit()
-        # 🔥 Return this connection immediately:
-        db.session.remove()
 
+        
+        # 5) Update the attempt status in this same session
+        attempt.status = record.status
+        attempt.finished_at = datetime.utcnow()
+
+        # 6) Emit a real‐time update to WebSocket
+        #    Note: attempt is still session‐bound, record is too
         emit_execution_update(attempt, record)
-        return {"status": "SUCCESS", "execution_id": record.id, "test_case_id": case.id, "disposition": record.status}
+
+        # 7) Return; the @with_session decorator will commit() and remove() the session here
+        return {
+            "status": "SUCCESS",
+            "execution_id": record.id,
+            "test_case_id": case.id,
+            "disposition": record.status
+        }
 
     except Exception as ex:
         logger.error(
@@ -54,8 +106,9 @@ def execute_single_test_case(self, test_run_attempt_id, test_case_id, endpoint_i
             f"AttemptID={test_run_attempt_id} - {type(ex).__name__}: {ex}",
             exc_info=True
         )
-        db.session.rollback()
 
+
+        # 8) Create and add the error record in THIS session
         record = create_error_record(
             attempt_id=test_run_attempt_id,
             case_id=test_case_id,
@@ -64,21 +117,21 @@ def execute_single_test_case(self, test_run_attempt_id, test_case_id, endpoint_i
             payload=str(payload) if 'payload' in locals() else "",
             task_id=task_id
         )
-        try:
-            db.session.add(record)
-            db.session.commit()
-            # 🔥 Return this connection immediately:
-            db.session.remove()
-            
-            logger.info(f"SingleCaseTask {task_id}: Created error record ID {record.id} for TCID={test_case_id}")
-            emit_execution_update(attempt, record)
-        except Exception:
-            logger.critical(f"SingleCaseTask {task_id}: Failed to commit error record", exc_info=True)
+        db.session.add(record)
 
-        return {"status": "FAILED", "reason": str(ex), "test_case_id": test_case_id, "disposition": "error"}
+        # 9) Emit an execution‐error update
+        #    Because attempt was loaded earlier, it is still session‐bound here.
+        emit_execution_update(attempt, record)
+
+        # 10) Return an error structure. Decorator will rollback or commit+remove as appropriate.
+        return {
+            "status": "FAILED",
+            "reason": str(ex),
+            "test_case_id": test_case_id,
+            "disposition": "error"
+        }
 
 # --- Helper Functions ---
-@with_session
 def fetch_objects(attempt_id, case_id, endpoint_id):
     attempt = db.session.get(TestRunAttempt, attempt_id)
     case = db.session.get(TestCase, case_id)
@@ -88,7 +141,6 @@ def fetch_objects(attempt_id, case_id, endpoint_id):
         raise ValueError(f"Missing objects: {', '.join(missing)}")
     return attempt, case, endpoint
 
-@with_session
 def build_payload(template, prompt):
     if not template:
         return json.dumps({"prompt": prompt})
@@ -97,7 +149,6 @@ def build_payload(template, prompt):
         return template.replace("{{INJECT_PROMPT}}", injected)
     raise ValueError("Payload template missing placeholder")
 
-@with_session
 def call_endpoint(endpoint, payload):
     headers = {h.key: h.value for h in (endpoint.headers or [])}
     header_str = "\n".join(f"{k}: {v}" for k, v in headers.items())
@@ -110,7 +161,6 @@ def call_endpoint(endpoint, payload):
         return None, None, body
     return code, body, None
 
-@with_session
 def create_execution_record(attempt, case, seq, payload, status_code, body, error_msg):
     disposition = (
         "pass" if status_code and 200 <= status_code < 300 else
@@ -130,7 +180,6 @@ def create_execution_record(attempt, case, seq, payload, status_code, body, erro
         finished_at=datetime.utcnow()
     )
 
-@with_session
 def create_error_record(attempt_id, case_id, sequence_num, error_exception, payload, task_id):
     # Build detailed error message
     err_detail = (

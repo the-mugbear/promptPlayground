@@ -4,8 +4,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models.model_TestCase import TestCase
 from models.model_TestSuite import TestSuite
-from services.transformers.registry import apply_transformations_to_lines
-from services.transformers.helpers import process_transformations
+
 from . import test_suites_bp
 
 @test_suites_bp.route('/create', methods=['POST'])
@@ -13,15 +12,17 @@ from . import test_suites_bp
 def create_test_suite():
     """
     POST /test_suites/create -> Handle the form submission to create a new test suite.
+    Test cases are now taken from 'test_case_prompts' which is a JSON string array.
+    Transformations are no longer handled at the suite or test case creation level.
     """
     description = request.form.get('description')
     behavior = request.form.get('behavior')
     objective = request.form.get('objective')
 
-    # Process suite-level transformations (default for test cases that inherit)
-    suite_transformations = process_transformations(request.form)
+    if not description: # Basic validation
+        flash('Test suite description is required.', 'error')
+        return redirect(url_for('test_suites_bp.create_test_suite_form')) # Make sure this route exists or adjust
 
-    # Create the test suite.
     new_suite = TestSuite(
         description=description,
         behavior=behavior,
@@ -29,59 +30,62 @@ def create_test_suite():
         user_id=current_user.id
     )
     db.session.add(new_suite)
-    db.session.commit()
+    
+    try:
+        # Process test cases from the 'test_case_prompts' JSON string
+        test_case_prompts_json_string = request.form.get('test_case_prompts', '')
+        
+        prompts_added_count = 0
+        if test_case_prompts_json_string:
+            try:
+                list_of_prompts = json.loads(test_case_prompts_json_string)
 
-    # 1. Process dynamic new test cases from test_cases_data (JSON string)
-    test_cases_json = request.form.get('test_cases_data')
-    if test_cases_json:
-        try:
-            test_cases_list = json.loads(test_cases_json)
-        except Exception as e:
-            flash(f"Error parsing test cases data: {str(e)}", "error")
-            test_cases_list = []
-        for tc_data in test_cases_list:
-            prompt = tc_data.get("prompt", "").strip()
-            if not prompt:
-                continue  # Skip empty test cases.
-            # Decide which transformations to use:
-            # If the test case is flagged to inherit suite-level transformations, use the suite defaults.
-            # Otherwise, use the custom transformations provided in the test case.
-            inherit = tc_data.get("inheritSuiteTransformations", True)
-            if inherit:
-                transformations = suite_transformations
-            else:
-                transformations = tc_data.get("transformations", [])
-            test_case = TestCase(prompt=prompt, transformations=transformations)
-            db.session.add(test_case)
-            db.session.flush()  # Ensure test_case.id is assigned.
-            new_suite.test_cases.append(test_case)
-        db.session.commit()
-    else:
-        # Fallback: if no dynamic test cases data was provided, process from the plain text import field.
-        new_test_cases_data = request.form.get('new_test_cases')
-        if new_test_cases_data:
-            lines = [line.strip() for line in new_test_cases_data.split('\n') if line.strip()]
-            for line in lines:
-                # By default, assign suite-level transformations.
-                test_case = TestCase(prompt=line, transformations=suite_transformations)
-                db.session.add(test_case)
-                db.session.flush()
-                new_suite.test_cases.append(test_case)
-            db.session.commit()
+                if not isinstance(list_of_prompts, list):
+                    flash('Test case prompts are not in the expected list format.', 'warning')
+                elif not list_of_prompts:
+                    # This case means the JSON was "[]" or contained only empty/whitespace strings
+                    flash('No valid test case prompts were provided.', 'info')
+                else:
+                    for prompt_text in list_of_prompts:
+                        # Ensure each item in the list is a string and not empty after stripping
+                        if isinstance(prompt_text, str) and prompt_text.strip():
+                            test_case = TestCase(
+                                prompt=prompt_text.strip(),
+                                # Add other TestCase fields if necessary, e.g., user_id
+                                # source='manual_entry', # Example default
+                            )
+                            # db.session.add(test_case) # Adding here is fine if not auto-added by relationship
+                            new_suite.test_cases.append(test_case) # This associates the test case with the suite
+                            prompts_added_count += 1
+                        else:
+                            # Optionally log or flash a message about invalid/empty entries in the list
+                            print(f"Skipping invalid or empty prompt entry: '{prompt_text}'")
+                    
+                    if prompts_added_count > 0:
+                        flash(f'{prompts_added_count} test case(s) prepared for the new suite.', 'success')
+                
+            except json.JSONDecodeError:
+                flash('Error decoding test case prompts. Please ensure they are correctly formatted.', 'error')
+                # Log the error and the problematic string for debugging
+                print(f"JSONDecodeError for input: {test_case_prompts_json_string}")
+        else:
+            # This means the 'test_case_prompts' field was empty or not sent
+            flash('No test case prompts were provided with the suite.', 'info')
 
-    # 2. Associate existing test cases (if any)
-    selected_test_case_ids = request.form.getlist('selected_test_cases')
-    for tc_id in selected_test_case_ids:
-        existing_tc = TestCase.query.get(tc_id)
-        if existing_tc:
-            # If the existing test case doesn't already have transformations, assign suite-level ones.
-            if not existing_tc.transformations:
-                existing_tc.transformations = suite_transformations
-            new_suite.test_cases.append(existing_tc)
-    db.session.commit()
+        # Now commit everything: the new suite and all associated test cases
+        db.session.commit() 
+        
+        if prompts_added_count > 0:
+             flash('New test suite and associated test cases created successfully!', 'success')
+        else:
+            flash('New test suite created. No test cases were added based on input.', 'info')
 
-    flash('New test suite created successfully!', 'success')
-    return redirect(url_for('test_suites_bp.list_test_suites'))
+        return redirect(url_for('test_suites_bp.test_suite_details', suite_id=new_suite.id)) # Make sure this route exists
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error creating test suite: {str(e)}', 'error')
+        return redirect(url_for('test_suites_bp.create_test_suite_form')) # 
 
 @test_suites_bp.route('/preview_transform', methods=['POST'])
 @login_required

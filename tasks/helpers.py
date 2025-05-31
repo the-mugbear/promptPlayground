@@ -5,7 +5,7 @@ import logging
 from typing import List, Dict, Any
 from extensions import db, socketio
 from services.transformers.registry import apply_transformation
-
+from functools import wraps
 logger = logging.getLogger(__name__)
 
 
@@ -38,32 +38,16 @@ def emit_execution_update(attempt, record) -> None:
     }
     emit_run_update(attempt.test_run_id, "execution_result_update", data)
 
-
-def apply_transformations(prompt: str, transforms: List[Dict[str, Any]]) -> str:
-    """
-    Apply a list of transformation dicts to the prompt in sequence.
-    Each transform dict must have a 'type' and optional 'config'.
-    """
-    for t in transforms:
-        transform_type = t.get('type')
-        config = t.get('config', {})
-        if not transform_type:
-            logger.warning(f"Skipping transform with missing type: {t}")
-            continue
-        try:
-            prompt = apply_transformation(transform_type, prompt, config)
-        except Exception as e:
-            logger.warning(f"Error applying transform '{transform_type}': {e}", exc_info=True)
-    return prompt
-
-
 def with_session(fn):
-    """
-    Decorator to run a function in a fresh DB session and ensure cleanup.
-    """
+    @wraps(fn)
     def wrapper(*args, **kwargs):
         try:
-            return fn(*args, **kwargs)
+            result = fn(*args, **kwargs)
+            db.session.commit()
+            return result
+        except Exception:
+            db.session.rollback()
+            raise
         finally:
             db.session.remove()
     return wrapper

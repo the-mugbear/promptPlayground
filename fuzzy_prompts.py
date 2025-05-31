@@ -2,10 +2,17 @@
 
 import os
 import json
+import logging
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_login import current_user
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
+
+# --- Immediately configure the root logger so that DEBUG messages get printed ---
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
 
 # --- Load environment variables from .env file FIRST ---
 load_dotenv()

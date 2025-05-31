@@ -1,0 +1,30 @@
+{
+    "version": "1.0",
+    "exported_at": "YYYY-MM-DDTHH:MM:SS.ffffff",
+    "test_suites": [
+        {
+            "description": "Suite 1 Description",
+            "behavior": "Behavior for Suite 1",
+            "objective": "Objective for Suite 1",
+            "test_cases": [
+                {
+                    "prompt": "Prompt for test case 1 in suite 1",
+                    "transformations": null,
+                    "source": "manual",
+                    "attack_type": "prompt_injection",
+                    "data_type": "text",
+                    "nist_risk": "high",
+                    "reviewed": false
+                }
+            ]
+        },
+        {
+            "description": "Suite 2 Description",
+            "test_cases": [
+                {
+                    "prompt": "Prompt for test case 1 in suite 2"
+                }
+            ]
+        }
+    ]
+}

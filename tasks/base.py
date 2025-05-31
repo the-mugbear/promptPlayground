@@ -38,16 +38,3 @@ class ContextTask(Task):
             finally:
                 # Always remove the SQLAlchemy session to return connections to the pool
                 db.session.remove()
-
-
-def with_session(fn):
-    """
-    Decorator to provide a fresh session scope for short-lived DB operations.
-    Ensures the session is removed after the function returns or raises.
-    """
-    def wrapper(*args, **kwargs):
-        try:
-            return fn(*args, **kwargs)
-        finally:
-            db.session.remove()
-    return wrapper

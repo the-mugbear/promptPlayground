@@ -39,20 +39,6 @@ def create_test_suite_form():
 def test_suite_details(suite_id):
     # Retrieve the test suite by its ID, or return a 404 error if not found.
     test_suite = TestSuite.query.get_or_404(suite_id)
-    
-    # For each test case in the suite, apply its transformations to the prompt.
-    for test_case in test_suite.test_cases:
-        # Start with the original prompt.
-        transformed_prompt = test_case.prompt  
-        for tinfo in (test_case.transformations or []):
-            t_type = tinfo.get("type")
-            params = {}
-            if "value" in tinfo:
-                params["value"] = tinfo["value"]
-            transformed_prompt = apply_transformation(t_type, transformed_prompt, params)
-        # Attach the transformed prompt to the test case.
-        test_case.transformed_prompt = transformed_prompt
-
     return render_template('test_suites/test_suite_details.html', test_suite=test_suite)
 
 @test_suites_bp.route('/<int:suite_id>/delete', methods=["POST"])

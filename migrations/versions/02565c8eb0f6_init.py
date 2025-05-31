@@ -1,8 +1,8 @@
-"""Description
+"""init
 
-Revision ID: 452ddda4d827
+Revision ID: 02565c8eb0f6
 Revises: 
-Create Date: 2025-05-28 21:28:54.950819
+Create Date: 2025-05-31 01:21:29.282062
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '452ddda4d827'
+revision = '02565c8eb0f6'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -56,7 +56,6 @@ def upgrade():
     op.create_table('test_cases',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('prompt', sa.TEXT(), nullable=False),
-    sa.Column('transformations', sa.JSON(), nullable=True),
     sa.Column('source', sa.String(length=255), nullable=True),
     sa.Column('attack_type', sa.String(length=50), nullable=True),
     sa.Column('data_type', sa.String(length=50), nullable=True),
@@ -136,25 +135,31 @@ def upgrade():
     sa.ForeignKeyConstraint(['endpoint_id'], ['endpoints.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('test_runs',
+    op.create_table('test_run',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('start_time', sa.DateTime(), nullable=True),
-    sa.Column('end_time', sa.DateTime(), nullable=True),
-    sa.Column('run_serially', sa.Boolean(), server_default='false', nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.Column('started_at', sa.DateTime(), nullable=True),
+    sa.Column('completed_at', sa.DateTime(), nullable=True),
+    sa.Column('run_serially', sa.Boolean(), nullable=False),
+    sa.Column('iterations', sa.Integer(), nullable=False),
+    sa.Column('delay_between_requests', sa.Float(), nullable=False),
+    sa.Column('run_transformations', sa.JSON(), nullable=True),
     sa.Column('status', sa.String(length=50), nullable=False),
     sa.Column('progress_current', sa.Integer(), nullable=False),
     sa.Column('progress_total', sa.Integer(), nullable=False),
     sa.Column('celery_task_id', sa.String(length=255), nullable=True),
     sa.Column('endpoint_id', sa.Integer(), nullable=True),
-    sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('notes', sa.Text(), nullable=True),
     sa.ForeignKeyConstraint(['endpoint_id'], ['endpoints.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    with op.batch_alter_table('test_runs', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_test_runs_endpoint_id'), ['endpoint_id'], unique=False)
+    with op.batch_alter_table('test_run', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_test_run_endpoint_id'), ['endpoint_id'], unique=False)
 
     op.create_table('test_suite_cases',
     sa.Column('test_suite_id', sa.Integer(), nullable=False),
@@ -171,7 +176,7 @@ def upgrade():
     sa.Column('finished_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('status', sa.String(length=50), nullable=True),
     sa.Column('current_sequence', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['test_run_id'], ['test_runs.id'], name='fk_test_run_attempt_test_run_id', ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['test_run_id'], ['test_run.id'], name='fk_test_run_attempt_test_run_id', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('test_run_attempts', schema=None) as batch_op:
@@ -181,13 +186,13 @@ def upgrade():
     sa.Column('test_run_id', sa.Integer(), nullable=False),
     sa.Column('prompt_filter_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['prompt_filter_id'], ['prompt_filters.id'], ),
-    sa.ForeignKeyConstraint(['test_run_id'], ['test_runs.id'], ),
+    sa.ForeignKeyConstraint(['test_run_id'], ['test_run.id'], ),
     sa.PrimaryKeyConstraint('test_run_id', 'prompt_filter_id', name='pk_test_run_filters')
     )
     op.create_table('test_run_suites',
     sa.Column('test_run_id', sa.Integer(), nullable=False),
     sa.Column('test_suite_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['test_run_id'], ['test_runs.id'], ),
+    sa.ForeignKeyConstraint(['test_run_id'], ['test_run.id'], ),
     sa.ForeignKeyConstraint(['test_suite_id'], ['test_suites.id'], ),
     sa.PrimaryKeyConstraint('test_run_id', 'test_suite_id', name='pk_test_run_suites')
     )
@@ -211,13 +216,21 @@ def upgrade():
     with op.batch_alter_table('test_executions', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_test_executions_test_run_attempt_id'), ['test_run_attempt_id'], unique=False)
 
-    op.drop_table('celery_tasksetmeta')
     op.drop_table('celery_taskmeta')
+    op.drop_table('celery_tasksetmeta')
     # ### end Alembic commands ###
 
 
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
+    op.create_table('celery_tasksetmeta',
+    sa.Column('id', sa.INTEGER(), autoincrement=False, nullable=False),
+    sa.Column('taskset_id', sa.VARCHAR(length=155), autoincrement=False, nullable=True),
+    sa.Column('result', postgresql.BYTEA(), autoincrement=False, nullable=True),
+    sa.Column('date_done', postgresql.TIMESTAMP(), autoincrement=False, nullable=True),
+    sa.PrimaryKeyConstraint('id', name='celery_tasksetmeta_pkey'),
+    sa.UniqueConstraint('taskset_id', name='celery_tasksetmeta_taskset_id_key')
+    )
     op.create_table('celery_taskmeta',
     sa.Column('id', sa.INTEGER(), autoincrement=False, nullable=False),
     sa.Column('task_id', sa.VARCHAR(length=155), autoincrement=False, nullable=True),
@@ -234,14 +247,6 @@ def downgrade():
     sa.PrimaryKeyConstraint('id', name='celery_taskmeta_pkey'),
     sa.UniqueConstraint('task_id', name='celery_taskmeta_task_id_key')
     )
-    op.create_table('celery_tasksetmeta',
-    sa.Column('id', sa.INTEGER(), autoincrement=False, nullable=False),
-    sa.Column('taskset_id', sa.VARCHAR(length=155), autoincrement=False, nullable=True),
-    sa.Column('result', postgresql.BYTEA(), autoincrement=False, nullable=True),
-    sa.Column('date_done', postgresql.TIMESTAMP(), autoincrement=False, nullable=True),
-    sa.PrimaryKeyConstraint('id', name='celery_tasksetmeta_pkey'),
-    sa.UniqueConstraint('taskset_id', name='celery_tasksetmeta_taskset_id_key')
-    )
     with op.batch_alter_table('test_executions', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_test_executions_test_run_attempt_id'))
 
@@ -253,10 +258,10 @@ def downgrade():
 
     op.drop_table('test_run_attempts')
     op.drop_table('test_suite_cases')
-    with op.batch_alter_table('test_runs', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_test_runs_endpoint_id'))
+    with op.batch_alter_table('test_run', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_test_run_endpoint_id'))
 
-    op.drop_table('test_runs')
+    op.drop_table('test_run')
     op.drop_table('endpoint_headers')
     op.drop_table('dialogues')
     op.drop_table('test_suites')

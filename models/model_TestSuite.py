@@ -1,6 +1,6 @@
 from datetime import datetime
 from extensions import db
-from models.associations import test_suite_cases
+from models.associations import test_suite_cases, test_run_suites
 
 class TestSuite(db.Model):
     __tablename__ = 'test_suites'
@@ -17,13 +17,16 @@ class TestSuite(db.Model):
 
     # Relationships
     test_cases = db.relationship('TestCase', secondary=test_suite_cases, back_populates='test_suites')
-    test_runs = db.relationship('TestRun', secondary='test_run_suites', back_populates='test_suites')
+    # test_runs = db.relationship('TestRun', secondary='test_run_suites', back_populates='test_suites')
+    test_runs = db.relationship(
+        'TestRun',
+        secondary=test_run_suites, 
+        back_populates='test_suites'
+    )
 
-    
     def __repr__(self):
         return f"<TestSuite {self.id} - {self.description}>"
     
-        # ---- ADD THIS METHOD ----
     def to_dict(self):
         """Converts the TestSuite object to a dictionary suitable for JSON serialization."""
         return {
@@ -34,4 +37,3 @@ class TestSuite(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None, 
             'user_id': self.user_id
         }
-    # ---- END OF ADDED METHOD ----

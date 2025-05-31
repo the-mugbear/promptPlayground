@@ -2,33 +2,41 @@
 {% block title %}Create Test Run{% endblock %}
 
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
-  <script>
-    // Add CSRF token to all AJAX requests
-    const csrfToken = "{{ csrf_token() }}";
-  </script>
-  <style>
-    /* Ensure header key/value pairs are side by side */
-    .headers-container .header-row {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
-    }
-    .headers-container .header-row input[type="text"] {
-      flex: 1;
-    }
-  </style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+<script>
+  // Add CSRF token to all AJAX requests
+  const csrfToken = "{{ csrf_token() }}";
+</script>
+<style>
+  /* Ensure header key/value pairs are side by side */
+  .headers-container .header-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .headers-container .header-row input[type="text"] {
+    flex: 1;
+  }
+
+  /* Styling for the transformations section (optional, can be in a separate CSS file) */
+  .transformations-group-title {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="two-column-container">
-  
+
   <!-- Left: Main POST form for run details + hidden suite IDs -->
   <div class="left-card">
     <h2>Test Run Details</h2>
-    <form id="createRunForm" action="{{ url_for('test_runs_bp.handle_create_test_run') }}" method="POST">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-      
+    <form id="createRunForm" action="{{ url_for('test_runs_bp.create_test_run') }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
       <!-- Run Name -->
       <div class="form-group">
         <label for="run_name">Run Name (optional)</label>
@@ -41,53 +49,54 @@
         <select name="endpoint_id" id="endpoint_id" required>
           <option value="" selected>— select an endpoint —</option>
           {% for endpoint in endpoints %}
-            <option value="{{ endpoint.id }}">{{ endpoint.name }}</option>
+          <option value="{{ endpoint.id }}">{{ endpoint.name }}</option>
           {% endfor %}
         </select>
       </div>
 
-    <!-- Prompt Filters -->
-    <div class="form-group">
-      <label for="filterSelect">Available Prompt Filters</label>
-      <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
-        <select id="filterSelect" class="form-control" style="flex:1">
-          <option value="" disabled selected>— choose a filter —</option>
-          {% for pf in prompt_filters %}
+      <!-- Prompt Filters -->
+      <div class="form-group">
+        <label for="filterSelect">Available Prompt Filters</label>
+        <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+          <select id="filterSelect" class="form-control" style="flex:1">
+            <option value="" disabled selected>— choose a filter —</option>
+            {% for pf in prompt_filters %}
             <option value="{{ pf.id }}">{{ pf.name }}</option>
-          {% endfor %}
-        </select>
-        <button type="button" id="addFilterBtn">Add Filter</button>
+            {% endfor %}
+          </select>
+          <button type="button" id="addFilterBtn">Add Filter</button>
+        </div>
       </div>
-    </div>
 
-    <!-- Selected Prompt Filters -->
-    <div class="form-group">
-      <label>Selected Prompt Filters</label>
-      <ul id="selectedFiltersList" class="selected-suites-list">
-        <!-- filled by JS -->
-      </ul>
-      <!-- Hidden inputs go here -->
-      <div id="hiddenFiltersContainer"></div>
-    </div>
+      <!-- Selected Prompt Filters -->
+      <div class="form-group">
+        <label>Selected Prompt Filters</label>
+        <ul id="selectedFiltersList" class="selected-suites-list">
+          <!-- filled by JS -->
+        </ul>
+        <!-- Hidden inputs go here -->
+        <div id="hiddenFiltersContainer"></div>
+      </div>
 
 
-    <!-- Selected Test Suites Display -->
-    <div class="form-group">
-      <label>Selected Test Suites:</label>
-      <ul id="selectedSuitesList" class="selected-suites-list">
-        {# Populated via JS #}
-      </ul>
-    </div>
+      <!-- Selected Test Suites Display -->
+      <div class="form-group">
+        <label>Selected Test Suites:</label>
+        <ul id="selectedSuitesList" class="selected-suites-list">
+          {# Populated via JS #}
+        </ul>
+      </div>
+
+      <div class="form-group">
+        <h3 class="transformations-group-title">Apply Transformations to this Test Run</h3>
+        {% include 'partials/_transformations.html' %}
+      </div>
 
       <!-- HTTP Payload Override -->
       <div class="form-group">
         <label for="endpointPayload">HTTP Payload Override (optional)</label>
-        <textarea 
-          id="endpointPayload" 
-          name="endpointPayload" 
-          rows="16"
-          placeholder="Useful for modifying attributes like chat ID/channel but do not remove the INJECT_PROMPT token as this will cause test execution failure!"
-        ></textarea>
+        <textarea id="endpointPayload" name="endpointPayload" rows="16"
+          placeholder="Useful for modifying attributes like chat ID/channel but do not remove the INJECT_PROMPT token as this will cause test execution failure!"></textarea>
       </div>
 
       <!-- Headers -->
@@ -108,7 +117,7 @@
   <!-- Right: GET form for searching test suites + checkboxes + "Add selected" -->
   <div class="right-card">
     <h2>Find Test Suites</h2>
-    
+
     <!-- Search Form -->
     <form class="search-form" method="GET" action="{{ url_for('test_runs_bp.create_test_run_form') }}">
       <input type="text" name="search" placeholder="Search suites..." value="{{ search|default('') }}">
@@ -116,38 +125,39 @@
     </form>
 
     {% if test_suites %}
-      <div class="suites-list">
-        {% for suite in test_suites %}
-          <div class="suite-item">
-            <label style="display: inline-flex; align-items: center;">
-              <input type="checkbox" class="suite-checkbox" value="{{ suite.id }}" data-description="{{ suite.description }}">
-              {{ suite.description }}
-            </label>
-          </div>
-        {% endfor %}
+    <div class="suites-list">
+      {% for suite in test_suites %}
+      <div class="suite-item">
+        <label style="display: inline-flex; align-items: center;">
+          <input type="checkbox" class="suite-checkbox" value="{{ suite.id }}"
+            data-description="{{ suite.description }}">
+          {{ suite.description }}
+        </label>
       </div>
-      <button type="button" id="addSelectedBtn">Add Selected Suites</button>
-      
-      <!-- Pagination -->
-      {% if pagination.pages > 1 %}
-        <div class="pagination-links" style="margin-top: 1rem;">
-          {% if pagination.has_prev %}
-            <a href="{{ url_for('test_runs_bp.create_test_run_form', page=pagination.prev_num, search=search) }}">Previous</a>
-          {% endif %}
-          {% for p in range(1, pagination.pages+1) %}
-            {% if p == pagination.page %}
-              <strong>{{ p }}</strong>
-            {% else %}
-              <a href="{{ url_for('test_runs_bp.create_test_run_form', page=p, search=search) }}">{{ p }}</a>
-            {% endif %}
-          {% endfor %}
-          {% if pagination.has_next %}
-            <a href="{{ url_for('test_runs_bp.create_test_run_form', page=pagination.next_num, search=search) }}">Next</a>
-          {% endif %}
-        </div>
+      {% endfor %}
+    </div>
+    <button type="button" id="addSelectedBtn">Add Selected Suites</button>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="pagination-links" style="margin-top: 1rem;">
+      {% if pagination.has_prev %}
+      <a href="{{ url_for('test_runs_bp.create_test_run_form', page=pagination.prev_num, search=search) }}">Previous</a>
       {% endif %}
+      {% for p in range(1, pagination.pages+1) %}
+      {% if p == pagination.page %}
+      <strong>{{ p }}</strong>
+      {% else %}
+      <a href="{{ url_for('test_runs_bp.create_test_run_form', page=p, search=search) }}">{{ p }}</a>
+      {% endif %}
+      {% endfor %}
+      {% if pagination.has_next %}
+      <a href="{{ url_for('test_runs_bp.create_test_run_form', page=pagination.next_num, search=search) }}">Next</a>
+      {% endif %}
+    </div>
+    {% endif %}
     {% else %}
-      <p>No test suites found.</p>
+    <p>No test suites found.</p>
     {% endif %}
   </div>
 
@@ -155,12 +165,12 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/testRuns/endpointDetails.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/testRuns/testSuiteSelection.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/testRuns/ajaxSearch.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/testRuns/pagination.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/testRuns/findReplace.js') }}"></script>
-  <script>
+<script src="{{ url_for('static', filename='js/testRuns/endpointDetails.js') }}"></script>
+<script src="{{ url_for('static', filename='js/testRuns/testSuiteSelection.js') }}"></script>
+<script src="{{ url_for('static', filename='js/testRuns/ajaxSearch.js') }}"></script>
+<script src="{{ url_for('static', filename='js/testRuns/pagination.js') }}"></script>
+<script src="{{ url_for('static', filename='js/testRuns/findReplace.js') }}"></script>
+<script>
   document.addEventListener('DOMContentLoaded', () => {
     const select = document.getElementById('filterSelect');
     const addBtn = document.getElementById('addFilterBtn');
@@ -198,5 +208,5 @@
       });
     });
   });
-  </script>
+</script>
 {% endblock %}
