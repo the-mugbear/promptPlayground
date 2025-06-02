@@ -91,6 +91,10 @@
         <h3 class="transformations-group-title">Apply Transformations to this Test Run</h3>
         {% include 'partials/_transformations.html' %}
       </div>
+      <div class="form-group">
+        <label>Selected Transformations (in order):</label>
+        <ol id="selectedTransformsOrder"></ol>
+      </div>
 
       <!-- HTTP Payload Override -->
       <div class="form-group">
@@ -170,6 +174,7 @@
 <script src="{{ url_for('static', filename='js/testRuns/ajaxSearch.js') }}"></script>
 <script src="{{ url_for('static', filename='js/testRuns/pagination.js') }}"></script>
 <script src="{{ url_for('static', filename='js/testRuns/findReplace.js') }}"></script>
+<script src="{{ url_for('static', filename='js/common/transformerSelect.js') }}"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const select = document.getElementById('filterSelect');

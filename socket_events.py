@@ -165,7 +165,6 @@ def handle_request_resume_run(data):
         emit('error_event', {'message': f'TestRun cannot be resumed from status: {test_run.status}'}, room=request.sid)
         emit('progress_update', test_run.get_status_data(), room=request.sid)
 
-
 @socketio.on('request_cancel_run')
 def handle_request_cancel_run(data):
     """
@@ -190,35 +189,30 @@ def handle_request_cancel_run(data):
         emit('error_event', {'message': 'Permission denied.'}, room=request.sid)
         return
 
-    # Valid states to initiate cancellation from
-    valid_cancel_states = ['pending', 'running', 'pausing', 'paused']
+    # Only certain statuses are cancellable:
+    valid_cancel_states = ['pending', 'running', 'pausing', 'paused', 'cancelling']
     if test_run.status in valid_cancel_states:
-        orchestrator_task_id = test_run.celery_task_id
+        orches_task_id = test_run.celery_task_id
 
-        # Set status to 'cancelling' first. The orchestrator task should see this.
-        test_run.status = 'cancelling'
+        # 1) Soft‐set the status to 'cancelled' in the database right away:
+        test_run.status = 'cancelled'
+        test_run.end_time = datetime.utcnow()
         db.session.commit()
-        print(f"SocketIO: Cancel requested for TestRun {run_id} (Task ID: {orchestrator_task_id}) by User {current_user.id}. Status set to 'cancelling'.")
-        emit_to_run_room(run_id, 'run_cancelling', test_run.get_status_data())
 
-        if orchestrator_task_id:
+        # 2) Immediately emit run_cancelled to all clients in that room:
+        emit_to_run_room(run_id, 'run_cancelled', test_run.get_status_data())
+
+        # 3) If there *is* an orchestrator Celery task running, send it a revoke
+        if orches_task_id:
             try:
-                # Send revoke signal to the orchestrator Celery task
-                celery.control.revoke(orchestrator_task_id, signal='SIGTERM')
-                print(f"SocketIO: Sent revoke(terminate=True) to Celery task {orchestrator_task_id} for TestRun {run_id}.")
-                # The orchestrator task is responsible for its own cleanup and final status update ('cancelled' or 'failed').
+                celery.control.revoke(orches_task_id, signal='SIGTERM')
+                print(f"SocketIO: Sent revoke(terminate=True) to Celery task {orches_task_id}.")
             except Exception as e:
-                print(f"SocketIO: Error sending revoke signal for task {orchestrator_task_id}: {e}")
-                # The status is already 'cancelling'. The task might still see this and stop.
-                # Or, a timeout mechanism in the orchestrator might eventually lead to 'failed'.
-                emit('error_event', {'message': f'Error initiating task cancellation: {e}'}, room=request.sid)
-        else:
-            # No active orchestrator task ID, but status was in a cancellable state (e.g., 'pending' but task never stored ID yet, or error)
-            print(f"SocketIO: TestRun {run_id} was in a cancellable state ({test_run.status}) but no Celery Task ID found. Setting status to 'cancelled'.")
-            test_run.status = 'cancelled' # Directly set to cancelled
-            test_run.end_time = datetime.utcnow()
-            db.session.commit()
-            emit_to_run_room(run_id, 'run_cancelled', test_run.get_status_data())
+                print(f"SocketIO: Error revoking task {orches_task_id}: {e}")
+                emit('error_event', {'message': f'Error attempting to cancel: {e}'}, room=request.sid)
+
+        # Done—client sees run_cancelled and will transition out of “Cancelling…”
     else:
+        # If it was already cancelled/completed/failed, just send the current state
         emit('error_event', {'message': f'TestRun cannot be cancelled from status: {test_run.status}'}, room=request.sid)
         emit('progress_update', test_run.get_status_data(), room=request.sid)

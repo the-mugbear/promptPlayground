@@ -670,3 +670,8 @@ select option {
 .flash-close:hover {
     opacity: 1;
 }
+
+/* Add to your theme.css, base.css, or within the <style> block of view_test_run.html */
+.hidden {
+  display: none !important;
+}

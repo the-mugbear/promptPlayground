@@ -1,13 +1,8 @@
 {% extends "base.html" %}
 
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/test_suites/list_test_suites.css') }}">
-  <script>
-    // Add CSRF token to all AJAX requests
-    const csrfToken = "{{ csrf_token() }}";
-  </script>
-  
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/test_suites/list_test_suites.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -37,20 +32,47 @@
 <div class="content-card">
   <h1>All Test Suites</h1>
 
-  <div class="action-buttons">
-    <a href="{{ url_for('test_suites_bp.create_test_suite_form') }}" class="btn btn-primary">Create New Suite</a>
-    <button type="button" class="btn btn-secondary" onclick="document.getElementById('importFile').click()">Import Suite</button>
-    <input type="file" id="importFile" accept=".json" style="display: none" onchange="handleFileSelect(this)">
-    <a href="{{ url_for('help_bp.test_suite_import') }}" class="btn btn-link">Import Format Help</a>
-    <a href="{{ url_for('test_suites_bp.export_all_test_suites') }}" class="btn btn-secondary">Export All Suites</a>
-  </div>
+<div class="action-buttons">
+  <!-- 1) “Create New Suite” -->
+  <button
+    type="button"
+    class="btn btn-primary"
+    onclick="location.href='{{ url_for('test_suites_bp.create_test_suite_form') }}'">
+    Create New Suite
+  </button>
 
-  <input 
-    type="search" 
-    id="searchSuite" 
-    placeholder="Filter test suites..."
-    class="search-bar"
-  >
+  <!-- 2) “Import Suite(s)”: triggers the hidden file-input -->
+  <button
+    type="button"
+    class="btn btn-secondary"
+    onclick="document.getElementById('importFile').click()">
+    Import Suite(s)
+  </button>
+  <input
+    type="file"
+    id="importFile"
+    accept=".json"
+    style="display: none">
+
+  <!-- 3) “Import Format Help” -->
+  <button
+    type="button"
+    class="btn btn-info"
+    onclick="location.href='{{ url_for('help_bp.test_suite_import') }}'">
+    Import Format Help
+  </button>
+
+  <!-- 4) “Export All Suites” -->
+  <button
+    type="button"
+    class="btn btn-secondary"
+    onclick="location.href='{{ url_for('test_suites_bp.export_all_test_suites') }}'">
+    Export All Suites
+  </button>
+</div>
+
+
+  <input type="search" id="searchSuite" placeholder="Filter test suites..." class="search-bar">
 
   <table id="suitesTable">
     <thead>
@@ -63,263 +85,59 @@
     </thead>
     <tbody>
       {% for suite in test_suites %}
-        <tr>
-          <td>
-            <a href="{{ url_for('test_suites_bp.test_suite_details', suite_id=suite.id) }}">
-              {{ suite.description }}
-            </a>
-          </td>
-          <td>{{ suite.behavior }}</td>
-          <td>{{ suite.user.username if suite.user else 'System' }}</td>
-          <td>
-            <button 
-              type="button" 
-              class="view-test-cases-btn" 
-              data-suite-id="{{ suite.id }}"
-            >
-              View Test Cases
+      <tr>
+        <td>
+          <a href="{{ url_for('test_suites_bp.test_suite_details', suite_id=suite.id) }}">
+            {{ suite.description }}
+          </a>
+        </td>
+        <td>{{ suite.behavior }}</td>
+        <td>{{ suite.user.username if suite.user else 'System' }}</td>
+        <td>
+          <button type="button" class="view-test-cases-btn" data-suite-id="{{ suite.id }}">
+            View Test Cases
+          </button>
+
+          <a href="{{ url_for('test_suites_bp.export_test_suite', suite_id=suite.id) }}" class="btn btn-secondary">
+            Export
+          </a>
+
+          <form action="{{ url_for('test_suites_bp.delete_test_suite', suite_id=suite.id) }}" method="POST"
+            style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button type="submit"
+              onclick="return confirm('Are you sure you want to delete Test Suite #{{ suite.id }}?');"
+              class="delete-btn">
+              Delete
             </button>
+          </form>
+        </td>
+      </tr>
 
-            <a 
-              href="{{ url_for('test_suites_bp.export_test_suite', suite_id=suite.id) }}" 
-              class="btn btn-secondary"
-            >
-              Export
-            </a>
-
-            <form action="{{ url_for('test_suites_bp.delete_test_suite', suite_id=suite.id) }}" method="POST" style="display:inline;">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-              <button 
-                type="submit" 
-                onclick="return confirm('Are you sure you want to delete Test Suite #{{ suite.id }}?');"
-                class="delete-btn"
-              >
-                Delete
-              </button>
-            </form>
-          </td>
-        </tr>
-
-        <tr class="test-cases-row" style="display: none;">
-          <td colspan="5">
-            <div class="test-cases-container">
-              {% if suite.test_cases %}
-                <ul>
-                  {% for tc in suite.test_cases %}
-                    <li>{{ tc.prompt }}</li>
-                  {% endfor %}
-                </ul>
-              {% else %}
-                <p>No test cases associated with this suite.</p>
-              {% endif %}
-            </div>
-          </td>
-        </tr>
+      <tr class="test-cases-row" style="display: none;">
+        <td colspan="5">
+          <div class="test-cases-container">
+            {% if suite.test_cases %}
+            <ul>
+              {% for tc in suite.test_cases %}
+              <li>{{ tc.prompt }}</li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p>No test cases associated with this suite.</p>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
 
-<script src="{{ url_for('static', filename='js/filterCommon.js') }}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Initialize filter config
-  window.filterConfigs = [
-    {
-      searchInputId: "searchSuite",         // ID of the search input element
-      tableId: "suitesTable",              // ID of the table to filter
-      toggleButtonSelector: ".view-test-cases-btn", // Selector for toggle buttons
-      rowGroupSize: 2,                     // Grouping of rows (e.g., main row and details row)
-      viewDetailsText: "View Test Cases",   // Text when details are hidden
-      hideDetailsText: "Hide Test Cases"    // Text when details are visible
-    }
-  ];
-
-  // Initialize modal event listeners
-  const modal = document.getElementById('importModal');
-  const closeBtn = document.querySelector('.close');
-  
-  if (closeBtn) {
-    closeBtn.onclick = closeImportModal;
-  }
-  
-  window.onclick = function(event) {
-    if (event.target === modal) {
-      closeImportModal();
-    }
-  };
-});
-
-let importData = null;
-
-function handleFileSelect(input) {
-  if (!input.files || !input.files[0]) return;
-  
-  const file = input.files[0];
-  const reader = new FileReader();
-  
-  reader.onload = function(e) {
-    try {
-      const data = JSON.parse(e.target.result);
-      
-      // Validate version
-      if (data.version !== '1.0') {
-        alert('Unsupported file version');
-        return;
-      }
-      
-      // Check if this is a bulk export file
-      if (data.test_suites) {
-        importData = data;
-        showImportModal(data.test_suites);
-      } else if (data.test_suite) {
-        // Handle single suite import
-        importSingleSuite(data);
-      } else {
-        alert('Invalid file format');
-      }
-    } catch (error) {
-      alert('Error reading file: ' + error.message);
-    }
-  };
-  
-  reader.readAsText(file);
-}
-
-function showImportModal(suites) {
-  const modal = document.getElementById('importModal');
-  const suiteList = document.getElementById('suiteList');
-  
-  // Clear existing content
-  suiteList.innerHTML = '';
-  
-  // Add each suite to the list
-  suites.forEach((suite, index) => {
-    const suiteDiv = document.createElement('div');
-    suiteDiv.className = 'suite-item';
-    suiteDiv.innerHTML = `
-      <div class="suite-header">
-        <input type="checkbox" id="suite-${index}" checked>
-        <label for="suite-${index}">${suite.description}</label>
-      </div>
-      <div class="suite-details">
-        <p><strong>Behavior:</strong> ${suite.behavior || 'N/A'}</p>
-        <p><strong>Objective:</strong> ${suite.objective || 'N/A'}</p>
-        <p><strong>Test Cases:</strong> ${suite.test_cases.length}</p>
-      </div>
-    `;
-    suiteList.appendChild(suiteDiv);
-  });
-  
-  modal.style.display = 'block';
-}
-
-function closeImportModal() {
-  const modal = document.getElementById('importModal');
-  modal.style.display = 'none';
-  importData = null;
-}
-
-function selectAllSuites() {
-  const checkboxes = document.querySelectorAll('.suite-item input[type="checkbox"]');
-  checkboxes.forEach(checkbox => checkbox.checked = true);
-}
-
-function deselectAllSuites() {
-  const checkboxes = document.querySelectorAll('.suite-item input[type="checkbox"]');
-  checkboxes.forEach(checkbox => checkbox.checked = false);
-}
-
-async function importSingleSuite(data) {
-  try {
-    const response = await fetch('/test_suites/import_suite', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': csrfToken
-      },
-      body: JSON.stringify(data)
-    });
-    
-    const result = await response.json();
-    
-    if (response.ok) {
-      alert('Test suite imported successfully!');
-      window.location.reload();
-    } else if (response.status === 409) {
-      const shouldImport = confirm(`${result.message}\n\nWould you like to import it anyway?`);
-      if (shouldImport) {
-        // TODO: Add force import option to the backend
-        alert('Force import not implemented yet. Please modify the existing suite instead.');
-      }
-    } else {
-      alert(`Error importing test suite: ${result.error}`);
-    }
-  } catch (error) {
-    alert('Error importing test suite: ' + error.message);
-  }
-}
-
-async function importSelectedSuites() {
-  if (!importData) return;
-  
-  const selectedSuites = [];
-  const checkboxes = document.querySelectorAll('.suite-item input[type="checkbox"]');
-  
-  checkboxes.forEach((checkbox, index) => {
-    if (checkbox.checked) {
-      selectedSuites.push(importData.test_suites[index]);
-    }
-  });
-  
-  if (selectedSuites.length === 0) {
-    alert('Please select at least one test suite to import');
-    return;
-  }
-  
-  // Create a new import data object with only selected suites
-  const selectedImportData = {
-    version: '1.0',
-    test_suites: selectedSuites
-  };
-  
-  try {
-    const response = await fetch('/test_suites/import_suite', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': csrfToken
-      },
-      body: JSON.stringify(selectedImportData)
-    });
-    
-    const result = await response.json();
-    
-    if (response.ok) {
-      alert(`Successfully imported ${result.suites_imported} test suite(s)!`);
-      window.location.reload();
-    } else if (response.status === 409) {
-      if (result.error === 'duplicates_found') {
-        const duplicateList = result.duplicates.map(d => 
-          `- "${d.description}" (Behavior: ${d.behavior || 'N/A'})`
-        ).join('\n');
-        
-        const message = `Found ${result.duplicate_count} duplicate test suite(s) out of ${result.total_suites} total suites:\n\n${duplicateList}\n\nWould you like to:\n1. Skip duplicates and import the rest\n2. Cancel the import`;
-        
-        const choice = confirm(message);
-        if (choice) {
-          // TODO: Add force_import parameter to skip duplicates
-          alert('Skipping duplicates not implemented yet. Please modify the existing suites instead.');
-        }
-      }
-    } else {
-      alert(`Error importing test suite: ${result.error}`);
-    }
-  } catch (error) {
-    alert('Error importing test suite: ' + error.message);
-  }
-  
-  closeImportModal();
-}
+  const csrfToken = "{{ csrf_token() }}";
 </script>
+<script src="{{ url_for('static', filename='js/filterCommon.js') }}"></script>
+<script src="{{ url_for('static', filename='js/testSuites/list_test_suites.js') }}"></script>
+
 {% endblock %}

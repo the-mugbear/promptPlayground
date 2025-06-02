@@ -2,65 +2,105 @@
 {% block title %}Create Prompt Filter{% endblock %}
 
 {% block head %}
+  {# Assuming forms.css or theme.css already handles .form-group, input, textarea, button styling #}
+  {# Link to your main theme CSS if not already in base.html #}
+  {# <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}"> #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}"> {# If you have a dedicated forms.css #}
   <style>
+    /* Styles for the create_prompt_filter.html page, adapted for the theme */
+
+    /* Preview section - make it consistent with .form-card or .content-card */
     .preview-section {
-      margin-top: 1rem;
-      padding: 1rem;
-      background-color: #1a1a1a;
-      border-radius: 4px;
+      margin-top: var(--spacing-lg, 1.5rem);
+      padding: var(--spacing-md, 1rem);
+      background-color: var(--surface-color, #1a1a1a); /* Or a slightly darker variant like #111 */
+      border: 1px solid var(--border-color, rgba(0, 255, 65, 0.3));
+      border-radius: var(--border-radius-md, 8px);
+      box-shadow: 0 0 10px rgba(0, 255, 65, 0.1); /* Subtle glow */
     }
+
     .preview-section h3 {
       margin-top: 0;
-      color: #00FF41;
+      color: var(--accent-color, #00FF41); /* Theme's accent color */
+      font-family: var(--heading-font, 'Orbitron', monospace);
+      font-size: 1.25rem; /* Adjust as needed */
+      border-bottom: 1px dashed var(--border-color, rgba(0, 255, 65, 0.3));
+      padding-bottom: var(--spacing-sm, 0.5rem);
+      margin-bottom: var(--spacing-md, 1rem);
     }
+
     .character-preview {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
+      gap: var(--spacing-sm, 0.5rem);
+      margin-top: var(--spacing-sm, 0.5rem);
+      min-height: 30px; /* Ensure it has some height when empty */
     }
+    
+    .character-preview p { /* Style for the placeholder text */
+        color: var(--text-muted-color, #888);
+        font-style: italic;
+    }
+
     .character-box {
-      padding: 0.25rem 0.5rem;
-      background-color: #2a2a2a;
-      border: 1px solid #00FF41;
-      border-radius: 3px;
-      color: #00FF41;
-      font-family: monospace;
+      padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+      background-color: var(--surface-color, #2a2a2a); /* Darker than form inputs but lighter than page bg */
+      border: 1px solid var(--accent-color, #00FF41);
+      border-radius: var(--border-radius-sm, 3px);
+      color: var(--accent-color, #00FF41);
+      font-family: var(--main-font, monospace); /* Use main monospace font */
+      font-size: 0.9rem;
+      box-shadow: 0 0 5px rgba(0, 255, 65, 0.2); /* Subtle glow for each box */
     }
+
+    /* Specific style for comma, if you want it to look different */
     .character-box.comma {
-      background-color: #1a1a1a;
-      border: 1px solid #00FF41;
-      color: #00FF41;
+      background-color: var(--surface-color, #1a1a1a); /* Can be same as .preview-section or slightly different */
+      /* border-color: var(--secondary-color, #00FFFF); */ /* Example: use secondary color for comma border */
+      /* color: var(--secondary-color, #00FFFF); */
     }
+
+    /* Ensure the main form card and container have theme styles if not already in base.html */
+    /* .container might be styled in base.css or theme.css */
+    /* .form-card is assumed to be styled by forms.css or theme.css */
+    /* Apply .content-card styles if .form-card isn't sufficient from theme */
+
   </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
-  <div class="form-card">
+  {# Use .content-card if it's your standard themed card, or ensure .form-card gets similar styling #}
+  <div class="form-card"> 
     <h2>Create Prompt Filter</h2>
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> {# Assuming you use Flask-WTF #}
+      
       <div class="form-group">
         <label for="name">Filter Name</label>
         <input type="text" name="name" id="name" placeholder="Enter filter name" required>
       </div>
+      
       <div class="form-group">
         <label for="invalid_characters">Invalid Characters</label>
-        <input type="text" name="invalid_characters" id="invalid_characters" placeholder="Enter characters to filter (spaces will separate them)">
-        <small>Enter any characters you want to filter out. Use spaces to separate multiple characters.</small>
+        <input type="text" name="invalid_characters" id="invalid_characters" placeholder="Enter characters to filter (space-separated)">
+        <small>Enter any characters you want to filter out. Use spaces to separate multiple characters (e.g., ! @ # $ %)</small>
       </div>
+      
       <div class="preview-section">
         <h3>Character Preview</h3>
         <div id="characterPreview" class="character-preview">
           <p>Enter characters above to see them here...</p>
         </div>
       </div>
+      
       <div class="form-group">
-        <label for="words_to_replace">Words to Replace</label>
-        <textarea name="words_to_replace" id="words_to_replace" rows="4" placeholder='Enter words to replace (JSON format or comma separated)'></textarea>
-        <small>You can enter a JSON array or a comma-separated list.</small>
+        <label for="words_to_replace">Words to Replace (Key:Value Pairs)</label>
+        <textarea name="words_to_replace" id="words_to_replace" rows="4" placeholder='Enter as JSON: {"old":"new", "bad word":"good word"}\nOr comma-separated: old:new, bad word:good word'></textarea>
+        <small>Enter as a JSON object (e.g., `{"foo":"bar", "baz":"qux"}`) or comma-separated key:value pairs (e.g., `foo:bar, baz:qux`).</small>
       </div>
-      <button type="submit">Create Filter</button>
+      
+      <button type="submit" class="btn btn-primary neon-hover">Create Filter</button> {# Added common button classes #}
     </form>
   </div>
 </div>
@@ -71,32 +111,42 @@ document.addEventListener('DOMContentLoaded', function() {
   const previewContainer = document.getElementById('characterPreview');
 
   function updatePreview() {
-    const input = invalidCharsInput.value;
-    if (!input) {
-      previewContainer.innerHTML = '<p>Enter characters above to see them here...</p>';
-      return;
-    }
-
-    // Split only by spaces, preserving all other characters including commas
-    const characters = input.split(/\s+/).filter(char => char);
+    const inputValue = invalidCharsInput.value; // No trim here to see leading/trailing spaces if user types them
     
-    if (characters.length === 0) {
+    // Clear preview if input is empty or only whitespace
+    if (!inputValue.trim()) {
       previewContainer.innerHTML = '<p>Enter characters above to see them here...</p>';
       return;
     }
 
-    // Create character boxes
-    previewContainer.innerHTML = characters.map(char => {
-      const isComma = char === ',';
-      return `<div class="character-box ${isComma ? 'comma' : ''}">${char}</div>`;
-    }).join('');
+    // Split by one or more spaces. Filter out empty strings that result from multiple spaces.
+    const characters = inputValue.split(/\s+/).filter(char => char.length > 0); 
+    
+    if (characters.length === 0 && inputValue.length > 0) {
+        // This case handles when the input is only spaces
+        previewContainer.innerHTML = '<p>Previewing spaces is not supported. Enter non-space characters.</p>';
+        return;
+    } else if (characters.length === 0) {
+        previewContainer.innerHTML = '<p>Enter characters above to see them here...</p>';
+        return;
+    }
+    
+    previewContainer.innerHTML = ''; // Clear previous content
+    characters.forEach(char => {
+      const charBox = document.createElement('div');
+      charBox.classList.add('character-box');
+      if (char === ',') {
+        charBox.classList.add('comma'); // Special style for comma if needed
+      }
+      // To display space as a visible character if you were to allow it (currently filtered by split):
+      // charBox.textContent = char === ' ' ? '[space]' : char; 
+      charBox.textContent = char;
+      previewContainer.appendChild(charBox);
+    });
   }
 
-  // Update preview on input
   invalidCharsInput.addEventListener('input', updatePreview);
-  
-  // Initial preview update
-  updatePreview();
+  updatePreview(); // Initial call
 });
 </script>
 {% endblock %}

@@ -68,6 +68,7 @@ def execute_single_test_case(
             test_run_attempt_id=attempt.id,
             test_case_id=case.id,
             sequence=sequence_num,
+            processed_prompt=prompt_text,
             request_payload=payload,
             response_data=body,
             status_code=status_code,

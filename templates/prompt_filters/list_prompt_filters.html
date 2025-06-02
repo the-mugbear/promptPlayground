@@ -1,48 +1,111 @@
 {% extends "base.html" %}
-{% block title %}List Prompt Filters{% endblock %}
+{% block title %}Prompt Filters{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  {# tables.css should provide base table styling, loaded via base.html or here if specific #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+  <style>
+    /* Additional styles for this page to enhance theme congruency */
+    .content-card .table th {
+      color: var(--accent-color, #00FF41); /* Neon green for table headers */
+      font-family: var(--heading-font, monospace);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .content-card .table td a {
+      color: var(--secondary-color, #3a86ff);
+      font-weight: bold;
+    }
+    .content-card .table td a:hover {
+      color: var(--accent-color, #00FF41);
+      text-decoration: underline;
+    }
+
+    .character-list-cell {
+      max-width: 200px; /* Adjust as needed */
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: var(--main-font, monospace);
+      font-size: 0.9em;
+    }
+    .no-filters-message {
+        color: var(--text-muted-color, #888);
+        font-style: italic;
+        padding: var(--spacing-lg, 1.5rem);
+        text-align: center;
+        border: 1px dashed var(--border-color, rgba(0, 255, 65, 0.3));
+        border-radius: var(--border-radius-md, 8px);
+        background-color: rgba(0,0,0,0.1);
+    }
+    .action-buttons-header { /* For the "Create New" button area */
+        margin-bottom: var(--spacing-lg, 1.5rem);
+        text-align: right; /* Align button to the right */
+    }
+  </style>
+{% endblock %}
 
 {% block content %}
 <div class="container">
-  <h2>Existing Prompt Filters</h2>
-  {% if prompt_filters %}
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Invalid Characters</th>
-        <th>Words to Replace</th>
-        <th>Created At</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for pf in prompt_filters %}
-      <tr>
-        <td>{{ pf.id }}</td>
-        <td><a href="{{ url_for('prompt_filter_bp.view_prompt_filter', filter_id=pf.id) }}">{{ pf.name }}View</a></td>
-        <td>{{ pf.invalid_characters or '' }}</td>
-        <td>
-          {% if pf.words_to_replace %}
-            {{ pf.words_to_replace | join(', ') }}
-          {% else %}
-            N/A
-          {% endif %}
-        </td>
-        <td>{{ pf.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-        <td>
-          <form method="POST"
-          action="{{ url_for('prompt_filter_bp.delete_prompt_filter', filter_id=pf.id) }}"
-          style="display:inline;"
-          onsubmit="return confirm('Really delete filter “{{ pf.name }}”?');">
-          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <p>No prompt filters found.</p>
-  {% endif %}
+  <div class="content-card"> {# Themed card for the main content #}
+    <div class="card-header"> {# Consistent header styling #}
+      <h2>Prompt Filters</h2>
+    </div>
+
+    <div class="action-buttons-header">
+      <a href="{{ url_for('prompt_filter_bp.create_prompt_filter') }}" class="btn btn-primary neon-hover">Create New Filter</a>
+    </div>
+
+    {% if prompt_filters %}
+      <div class="table-responsive"> {# Helps with responsiveness on small screens #}
+        <table class="table table-themed"> {# Assuming .table and .table-themed (or similar) are in tables.css #}
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Invalid Characters</th>
+              <th>Replacement Rules</th>
+              <th>Created At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pf in prompt_filters %}
+            <tr>
+              <td>{{ pf.id }}</td>
+              <td><a href="{{ url_for('prompt_filter_bp.view_prompt_filter', filter_id=pf.id) }}">{{ pf.name }}</a></td>
+              <td class="character-list-cell" title="{{ pf.invalid_characters or '' }}">
+                {{ pf.invalid_characters or 'None' }}
+              </td>
+              <td>
+                {% if pf.words_to_replace and pf.words_to_replace is mapping %}
+                  {{ pf.words_to_replace | length }} rule(s)
+                {% elif pf.words_to_replace %}
+                  Data present (Non-dictionary)
+                {% else %}
+                  0 rules
+                {% endif %}
+              </td>
+              <td>{{ pf.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td>
+              <td>
+                <form method="POST"
+                      action="{{ url_for('prompt_filter_bp.delete_prompt_filter', filter_id=pf.id) }}"
+                      style="display:inline;"
+                      onsubmit="return confirm('Are you sure you want to delete the filter “{{ pf.name }}”? This action cannot be undone.');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-danger btn-sm neon-hover-danger">Delete</button> {# Themed button #}
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="no-filters-message">No prompt filters have been created yet. Get started by creating one!</p>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

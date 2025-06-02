@@ -1,25 +1,131 @@
 {% extends "base.html" %}
-{% block title %}View Prompt Filter{% endblock %}
+{% block title %}Prompt Filter Details: {{ prompt_filter.name }}{% endblock %}
+
+{% block head %}
+  {{ super() }} {# Includes styles from base.html head block #}
+  {# Link to forms.css if not already in base or if specific styles are needed often #}
+  {# <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}"> #}
+  <style>
+    .details-list {
+      list-style: none;
+      padding-left: 0;
+    }
+    .details-list li {
+      padding: var(--spacing-sm, 0.5rem) 0;
+      border-bottom: 1px dashed var(--border-color, rgba(0, 255, 65, 0.2));
+    }
+    .details-list li:last-child {
+      border-bottom: none;
+    }
+    .details-list strong {
+      color: var(--accent-color, #00FF41); /* Label color */
+      margin-right: var(--spacing-sm, 0.5rem);
+      display: inline-block;
+      min-width: 180px; /* Adjust as needed for alignment */
+    }
+
+    .character-display-inline {
+      display: inline-flex; /* Changed from flex to inline-flex */
+      flex-wrap: wrap;
+      gap: var(--spacing-xs, 0.25rem);
+      background-color: rgba(0,0,0,0.1); /* Slight background for the group */
+      padding: var(--spacing-xs, 0.25rem);
+      border-radius: var(--border-radius-sm, 3px);
+      vertical-align: middle; /* Align with the "Invalid Characters:" text */
+    }
+
+    .character-box-inline {
+      padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+      background-color: var(--surface-color, #2a2a2a);
+      border: 1px solid var(--accent-color, #00FF41);
+      border-radius: var(--border-radius-sm, 3px);
+      color: var(--accent-color, #00FF41);
+      font-family: var(--main-font, monospace);
+      font-size: 0.9rem;
+    }
+
+    .key-value-pair {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm, 0.5rem);
+    }
+    .key-value-pair .original-word,
+    .key-value-pair .replacement-word {
+      padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+      background-color: var(--surface-color, #2a2a2a);
+      border: 1px solid var(--border-color-strong, rgba(0, 255, 65, 0.6));
+      border-radius: var(--border-radius-sm, 3px);
+      color: var(--text-color, #e0e0e0);
+      font-family: var(--main-font, monospace);
+    }
+    .key-value-pair .arrow {
+      color: var(--accent-color, #00FF41);
+      font-weight: bold;
+    }
+
+    .action-links {
+        margin-top: var(--spacing-lg, 1.5rem);
+    }
+  </style>
+{% endblock %}
 
 {% block content %}
 <div class="container">
-  <h2>Prompt Filter: {{ prompt_filter.name }}</h2>
-  <p><strong>ID:</strong> {{ prompt_filter.id }}</p>
-  <p><strong>Invalid Characters:</strong> {{ prompt_filter.invalid_characters or "None" }}</p>
-  <p><strong>Words to Replace:</strong>
-    {% if prompt_filter.words_to_replace %}
-      <ul>
-      {% for word in prompt_filter.words_to_replace %}
-        <li>{{ word }}</li>
-      {% endfor %}
-      </ul>
-    {% else %}
-      None
-    {% endif %}
-  </p>
-  <p><strong>Created At:</strong> {{ prompt_filter.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-  
-  <!-- Optionally, add links for edit or delete -->
-  <a href="{{ url_for('prompt_filter_bp.list_prompt_filters') }}">Back to List</a>
+  <div class="content-card"> {# Using .content-card for a themed container #}
+    <div class="card-header"> {# Consistent header styling from cards.css/theme_inspired.css #}
+      <h2>Filter Details: {{ prompt_filter.name }}</h2>
+    </div>
+
+    <ul class="details-list">
+      <li><strong>ID:</strong> {{ prompt_filter.id }}</li>
+      <li>
+        <strong>Invalid Characters:</strong>
+        {% if prompt_filter.invalid_characters %}
+          <div class="character-display-inline">
+            {% for char_group in prompt_filter.invalid_characters.split() %}
+              {# Assuming characters are space-separated in the string #}
+              <span class="character-box-inline">{{ char_group }}</span>
+            {% endfor %}
+          </div>
+        {% else %}
+          None
+        {% endif %}
+      </li>
+      <li>
+        <strong>Words to Replace:</strong>
+        {% if prompt_filter.words_to_replace and prompt_filter.words_to_replace is mapping %}
+          {# Ensure it's a dictionary-like object #}
+          <ul style="list-style: none; padding-left: var(--spacing-md, 1rem); margin-top: var(--spacing-xs, 0.25rem);">
+            {% for original_word, replacement_word in prompt_filter.words_to_replace.items() %}
+              <li class="key-value-pair">
+                <span class="original-word">{{ original_word }}</span>
+                <span class="arrow">&rarr;</span> {# Right arrow symbol #}
+                <span class="replacement-word">{{ replacement_word }}</span>
+              </li>
+            {% else %}
+              <li>None defined.</li>
+            {% endfor %}
+          </ul>
+        {% elif prompt_filter.words_to_replace %}
+           {{ prompt_filter.words_to_replace }} {# Fallback if not a mapping #}
+        {% else %}
+          None
+        {% endif %}
+      </li>
+      <li><strong>Created At:</strong> {{ prompt_filter.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</li>
+    </ul>
+
+    <div class="action-links">
+      {# Styled "Back to List" as a button #}
+      <a href="{{ url_for('prompt_filter_bp.list_prompt_filters') }}" class="btn btn-secondary neon-hover">Back to List</a>
+      {# Example for future edit/delete buttons:
+      <a href="#" class="btn btn-primary neon-hover">Edit Filter</a>
+      <form method="POST" action="#" style="display: inline;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger neon-hover" onclick="return confirm('Are you sure?')">Delete Filter</button>
+      </form>
+      #}
+    </div>
+  </div>
 </div>
 {% endblock %}

@@ -210,3 +210,8 @@ select option {
   background-color: #111;
   border-radius: 0.375rem;
 }
+
+/* Add to your theme.css, base.css, or within the <style> block of view_test_run.html */
+.hidden {
+  display: none !important;
+}

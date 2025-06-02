@@ -106,13 +106,42 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
         current_prompt = original_prompt
         all_tfm_steps = []
 
-        # Stage 1: run-level
-        if run_level_tfm_configs:
-            all_tfm_steps.extend(run_level_tfm_configs)
+        # STAGE 1: APPLY PROMPT FILTERS DIRECTLY
+        if filter_list: # filter_list contains actual PromptFilter objects
+            logger.info(f"Orchestrator: Case {case_id}, applying {len(filter_list)} prompt filter(s).")
+            for pf_index, prompt_filter_obj in enumerate(filter_list):
+                logger.debug(f"Orchestrator: Applying filter '{prompt_filter_obj.name}' (Order: {pf_index + 1}). Current prompt: '{current_prompt[:100]}...'")
 
-        # Stage 2: prompt filters
-        if prompt_filter_tfm_configs:
-            all_tfm_steps.extend(prompt_filter_tfm_configs)
+                # Apply invalid character removal
+                if prompt_filter_obj.invalid_characters:
+                    # Assuming space-separated characters in the string as per create_prompt_filter.html
+                    # If it's a continuous string like "!@#", iterate char by char: for char_to_remove in prompt_filter_obj.invalid_characters:
+                    chars_to_remove_list = prompt_filter_obj.invalid_characters.split()
+                    if chars_to_remove_list:
+                        logger.debug(f"Filter '{prompt_filter_obj.name}': Removing invalid characters: {chars_to_remove_list}")
+                        for char_to_remove in chars_to_remove_list:
+                            if char_to_remove: # Handles potential empty strings from multiple spaces
+                                current_prompt = current_prompt.replace(char_to_remove, "")
+                        logger.debug(f"Prompt after invalid char removal by '{prompt_filter_obj.name}': '{current_prompt[:100]}...'")
+                
+                # Apply word replacements
+                if prompt_filter_obj.words_to_replace: # This is a JSON field, SQLAlchemy provides a dict
+                    if isinstance(prompt_filter_obj.words_to_replace, dict):
+                        logger.debug(f"Filter '{prompt_filter_obj.name}': Applying word replacements: {prompt_filter_obj.words_to_replace}")
+                        for old_word, new_word_val in prompt_filter_obj.words_to_replace.items():
+                            new_word_str = str(new_word_val) if new_word_val is not None else ""
+                            current_prompt = current_prompt.replace(old_word, new_word_str)
+                        logger.debug(f"Prompt after word replacements by '{prompt_filter_obj.name}': '{current_prompt[:100]}...'")
+                    else:
+                        logger.warning(f"Filter '{prompt_filter_obj.name}': words_to_replace is not a dict ({type(prompt_filter_obj.words_to_replace)}). Skipping.")
+        else:
+            logger.debug(f"Orchestrator: Case {case_id}, no prompt filters to apply.")
+
+        # STAGE 2: APPLY TRANSFORMATIONS (Run-level and Case-specific)
+        all_tfm_steps_for_case = []
+        # Add run-level transformations
+        if run_level_tfm_configs:
+            all_tfm_steps_for_case.extend(run_level_tfm_configs)
 
         # Stage 3: case-specific
         case_specific_tfm_data = _get_case_transforms(case_id)

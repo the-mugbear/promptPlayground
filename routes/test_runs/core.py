@@ -47,19 +47,29 @@ def view_test_run(run_id):
         Rendered template with test run details including:
         - Test case responses and status
         - Overall execution statistics
-        - Per-attempt execution counts
+        - Per‐attempt execution counts
         - Associated prompt filters
+        - Run‐level transformations
     """
-    # Eager load all related data to minimize database queries
-    run = (TestRun.query
-           .options(
-               selectinload(TestRun.endpoint),
-               selectinload(TestRun.test_suites).selectinload(TestSuite.test_cases),
-               selectinload(TestRun.attempts).selectinload(TestRunAttempt.executions).selectinload(TestExecution.test_case)
-           )
-           .get_or_404(run_id))
+    # 1) Eager load the run, its endpoint, test suites → test cases,
+    #    and all attempts → executions → test_case
+    run = (
+        TestRun.query
+        .options(
+            selectinload(TestRun.endpoint),
+            selectinload(TestRun.test_suites).selectinload(TestSuite.test_cases),
+            selectinload(TestRun.attempts)
+                .selectinload(TestRunAttempt.executions)
+                .selectinload(TestExecution.test_case)
+        )
+        .get_or_404(run_id)
+    )
 
-    # Build a map of test cases to their execution history
+    # 2) Deserialize run‐level transformations JSON into a Python list
+    run_transformations = run.run_transformations if run.run_transformations is not None else []
+
+
+    # 3) Build a map of test_case_id → { test_case, attempts: [ … ] }
     test_case_map = {}
     for attempt in run.attempts:
         for execution in attempt.executions:
@@ -77,10 +87,11 @@ def view_test_run(run_id):
                 'status': execution.status,
                 'response': execution.response_data,
                 'started_at': execution.started_at,
-                'finished_at': execution.finished_at
+                'finished_at': execution.finished_at,
+                'processed_prompt': execution.processed_prompt
             })
 
-    # Sort execution history by attempt number for chronological display
+    # 4) Sort each test case’s executions by attempt_number
     for item in test_case_map.values():
         item['attempts'].sort(key=lambda x: x['attempt_number'])
 
@@ -96,13 +107,24 @@ def view_test_run(run_id):
         .all()
     )
 
+    # 5) Calculate overall execution statistics (passed, failed, etc.)
+    overall_counts = (
+        db.session.query(
+            func.lower(TestExecution.status),
+            func.count(TestExecution.id)
+        )
+        .join(TestRunAttempt)
+        .filter(TestRunAttempt.test_run_id == run_id)
+        .group_by(TestExecution.status)
+        .all()
+    )
     overall_counts_dict = {status: count for status, count in overall_counts}
     passed_count = overall_counts_dict.get('passed', 0)
     failed_count = overall_counts_dict.get('failed', 0)
     skipped_count = overall_counts_dict.get('skipped', 0)
     pending_review_count = overall_counts_dict.get('pending_review', 0)
 
-    # Calculate per-attempt execution statistics
+    # 6) Calculate per‐attempt execution counts
     per_attempt_counts = (
         db.session.query(
             TestRunAttempt.attempt_number,
@@ -114,7 +136,6 @@ def view_test_run(run_id):
         .group_by(TestRunAttempt.attempt_number, TestExecution.status)
         .all()
     )
-
     attempt_counts = {}
     for attempt_number, status, count in per_attempt_counts:
         if attempt_number not in attempt_counts:
@@ -122,12 +143,14 @@ def view_test_run(run_id):
                 "passed": 0, "failed": 0, "skipped": 0, "pending_review": 0}
         attempt_counts[attempt_number][status] = count
 
-    # Load all available prompt filters for potential association
+    # 7) Load all prompt filters (for the “Add Filter” form)
     all_filters = PromptFilter.query.order_by(PromptFilter.name).all()
 
+    # 8) Render template, passing in run_transformations as a Python list
     return render_template(
         'test_runs/view_test_run.html',
         run=run,
+        run_transformations=run_transformations,
         test_case_map=test_case_map,
         current_time=datetime.now(),
         passed_count=passed_count,
@@ -195,8 +218,44 @@ def create_test_run():
     selected_filter_ids = request.form.getlist('filter_ids')
     payload_override = request.form.get('endpointPayload')
 
-    # Get the JSON string of ordered transformations from the hidden input
-    ordered_transformations_json = request.form.get('ordered_transformations')
+    # 2) Parse the ordered list of transformation names from our hidden field
+    ordered_json = request.form.get('ordered_transformations', '[]')
+    try:
+        ordered_names = json.loads(ordered_json)
+    except ValueError:
+        ordered_names = []
+        flash("Invalid transformation order data.", 'danger')
+
+    # 3) Build a list of {name, params} in exactly that order
+    transform_configs = []
+    for transform_name in ordered_names:
+        if transform_name == 'prepend_text':
+            # read the associated text field
+            text = request.form.get('text_to_prepend', '').strip()
+            if not text:
+                flash("Selected “Prepend Text” but left the text blank.", 'warning')
+                # You could choose to skip or return here. Let’s skip if blank:
+                continue
+            transform_configs.append({
+                'name': 'prepend_text',
+                'params': {'text_to_prepend': text}
+            })
+
+        elif transform_name == 'postpend_text':
+            text = request.form.get('text_to_postpend', '').strip()
+            if not text:
+                flash("Selected “Postpend Text” but left the text blank.", 'warning')
+                continue
+            transform_configs.append({
+                'name': 'postpend_text',
+                'params': {'text_to_postpend': text}
+            })
+
+        else:
+            # All other transforms have no extra parameters
+            transform_configs.append({'name': transform_name, 'params': {}})
+
+    #run_transformations_json = json.dumps(transform_configs)
 
     # Generate default name if none provided
     if not run_name:
@@ -223,7 +282,8 @@ def create_test_run():
             name=run_name,
             endpoint_id=endpoint_id,
             status='Not Started',
-            user_id=current_user.id
+            user_id=current_user.id,
+            run_transformations=transform_configs
         )
         db.session.add(new_run)
 
