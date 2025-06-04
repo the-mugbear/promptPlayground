@@ -24,7 +24,7 @@ class Endpoint(db.Model):
     hostname = db.Column(db.String(255), nullable=False)
     endpoint = db.Column(db.String(255), nullable=False)
     http_payload = db.Column(db.Text, nullable=True)   # HTTP payload sent with the request, should handle and store as JSON
-    timestamp = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)  # <--- ADDED TIMESTAMP
+    timestamp = db.Column(db.DateTime(timezone=True), default=datetime.utcnow) 
 
     # Foreign key to the User model
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) # Or False if user is mandatory

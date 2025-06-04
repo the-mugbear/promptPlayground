@@ -54,7 +54,7 @@ services:
     build: . # Use the same image as the web service
     container_name: fuzzy_prompts_worker
     # Override the default CMD from the Dockerfile
-    command: celery -A celery_app:celery worker -P eventlet --loglevel=info
+    command: celery -A celery_app:celery worker -P eventlet --loglevel=debug
     # command: sleep infinity
     volumes:
       - .:/app # Mount code for development consistency

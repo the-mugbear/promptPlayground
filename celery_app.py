@@ -15,18 +15,21 @@ celery = Celery(
     include=[
         'workers.import_tasks',
         'tasks.orchestrator',  
-        'tasks.case',          
-        'tasks.batch',         
-        'tasks.helpers'       
+        'tasks.case',           
+        'tasks.helpers',
+        'tasks.batch'       
     ]
 )
 
 celery.conf.update(
     task_serializer='json',
-    accept_content=['json'],
     result_serializer='json',
     timezone=os.environ.get('CELERY_TIMEZONE', 'UTC'),
     enable_utc=True,
+    task_time_limit=300,
+    task_soft_time_limit=50,
+    task_compression='gzip',
+    accept_content=['json', 'application/x-gzip'],
 )
 
 class ContextTask(Task):

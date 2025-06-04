@@ -1,4 +1,6 @@
+from sqlalchemy.dialects.postgresql import JSONB
 from extensions import db
+
 
 # A TEST EXECUTION RECORD IS PRODUCED FOR EACH INDIVIDUAL TEST CASE THAT COMPRISES A TEST RUN
 # THE STATUS BELOW IS INTENDED TO CAPTURE IT'S EXECUTION STATE AND BE REUSED AS IT'S DISPOSITION STATE
@@ -18,7 +20,7 @@ class TestExecution(db.Model):
 
     # What was sent
     processed_prompt = db.Column(db.Text, nullable=True)
-    request_payload = db.Column(db.Text, nullable=True)
+    request_payload = db.Column(db.JSON, nullable=True)
 
     # What was received
     response_data = db.Column(db.Text, nullable=True)

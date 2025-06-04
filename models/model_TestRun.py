@@ -3,29 +3,29 @@ from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 from sqlalchemy import Enum as SQLAlchemyEnum
 from models.associations import test_run_suites
 from enum import Enum as PythonEnum 
-import datetime # Ensure this is imported if not already via 'from datetime import datetime'
+import datetime
 
 class TestRun(db.Model):
-    __tablename__ = 'test_run' # Changed from 'test_runs' in your version to match my previous suggestion, adjust if 'test_runs' is preferred
+    __tablename__ = 'test_run'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False, default=lambda: f"Test Run - {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}") # Made default a lambda for dynamic naming
-    description = db.Column(db.Text, nullable=True) # Added from my previous suggestion
+    name = db.Column(db.String(255), nullable=False, default=lambda: f"Test Run - {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}") 
+    description = db.Column(db.Text, nullable=True) 
 
-    # Timestamps (consistent with both versions)
+    # Timestamps 
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     started_at = db.Column(db.DateTime, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
 
-    # Flag to assist application (from your version)
+    # Flag to assist application 
     run_serially = db.Column(db.Boolean, default=False, nullable=False) # server_default removed for broader DB compatibility unless specifically needed for PostgreSQL
 
-    # Configuration for the run (iterations and delay from my suggestion, consistent with your fields)
+    # Configuration for the run 
     iterations = db.Column(db.Integer, default=1, nullable=False)
     delay_between_requests = db.Column(db.Float, default=0.0, nullable=False)
 
-    # --- NEW FIELDS FOR TRANSFORMATIONS AT RUN LEVEL (my suggestion) ---
+    # --- NEW FIELDS FOR TRANSFORMATIONS AT RUN LEVEL ---
     # {
     #     "name": "reverse_string",
     #     "params": {}

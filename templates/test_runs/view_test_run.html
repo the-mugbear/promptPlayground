@@ -313,16 +313,14 @@
             {% if test_case_map %}
             {% for tc_id, item in test_case_map.items() %}
             <div class="test-case-group content-card mb-4"> {# Each test case its own card #}
-                <div class="test-case-header card-header">
+                <!-- <div class="test-case-header card-header">
                     <h3 class="h4-style original-prompt-title mb-0">
                         {{ item.test_case.prompt | truncate(120) }}
                         <span class="test-case-id">(ID: {{item.test_case.id}})</span>
                     </h3>
-                </div>
+                </div> -->
 
-                <div id="details-{{ tc_id }}" class="test-case-details p-3"> {# REMOVED 'hidden' class, added some top
-                    margin via CSS if needed #}
-
+                <div id="details-{{ tc_id }}" class="test-case-details p-3">
                     <div class="prompt-comparison-section">
                         <h4>Prompt Details</h4>
                         <div class="mb-2">
@@ -342,18 +340,38 @@
                         </div>
                         {% else %}
                         <div>
-                            <strong>Processed Prompt (Sent to Endpoint):</strong>
-                            <p class="text-muted-color italic prompt-text-display"
-                                style="background-color: transparent; border-style:dashed;">No changes from original
-                                prompt.</p>
+                            {% set processed_prompt_to_show = item.attempts[0].processed_prompt if item.attempts and
+                            item.attempts[0] else None %}
+
+                            {% if processed_prompt_to_show is not none %}
+                            {% if processed_prompt_to_show != item.test_case.prompt %}
+                            <div>
+                                <strong>Processed Prompt (Sent to Endpoint):</strong>
+                                <div class="prompt-text-display" style="border-color: var(--accent-color);">{{
+                                    processed_prompt_to_show }}</div>
+                            </div>
+                            {% else %}
+                            {# ... (shows "No changes from original prompt.") ... #}
+                            {% endif %}
+                            {% elif item.attempts %}
+                            {# This 'elif' implies there are attempts, but processed_prompt_to_show was None #}
+                            <div>
+                                <strong>Processed Prompt (Sent to Endpoint):</strong>
+                                <p class="text-muted-color italic prompt-text-display"
+                                    style="background-color: transparent; border-style:dashed;">
+                                    N/A (Not recorded) {# Changed message slightly #}
+                                </p>
+                            </div>
+                            {% endif %}
                         </div>
                         {% endif %}
                         {% elif item.attempts %}
                         <div>
                             <strong>Processed Prompt (Sent to Endpoint):</strong>
                             <p class="text-muted-color italic prompt-text-display"
-                                style="background-color: transparent; border-style:dashed;">N/A (Not recorded or
-                                original was used)</p>
+                                style="background-color: transparent; border-style:dashed;">
+                                N/A (Not recorded or original was used)
+                            </p>
                         </div>
                         {% endif %}
                     </div>

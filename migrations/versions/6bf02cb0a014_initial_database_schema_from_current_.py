@@ -1,8 +1,8 @@
-"""init
+"""Initial database schema from current models
 
-Revision ID: 02565c8eb0f6
+Revision ID: 6bf02cb0a014
 Revises: 
-Create Date: 2025-05-31 01:21:29.282062
+Create Date: 2025-06-04 18:25:12.345012
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '02565c8eb0f6'
+revision = '6bf02cb0a014'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -202,7 +202,7 @@ def upgrade():
     sa.Column('test_case_id', sa.Integer(), nullable=False),
     sa.Column('sequence', sa.Integer(), nullable=False),
     sa.Column('processed_prompt', sa.Text(), nullable=True),
-    sa.Column('request_payload', sa.Text(), nullable=True),
+    sa.Column('request_payload', sa.JSON(), nullable=True),
     sa.Column('response_data', sa.Text(), nullable=True),
     sa.Column('status_code', sa.Integer(), nullable=True),
     sa.Column('error_message', sa.Text(), nullable=True),
