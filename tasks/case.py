@@ -139,8 +139,12 @@ def execute_single_test_case(
 
         logger.info(f"Task {task_id}: Making POST to {endpoint_obj.hostname}{endpoint_obj.endpoint} for TC_ID:{case_obj.id}")
         
-        # Prepare headers: Converts list of APIHeader objects from the endpoint into a dictionary.
+        # headers_dict is correctly created as a Python dictionary:
         headers_dict = {h.key: h.value for h in (endpoint_obj.headers or [])}
+        
+        # Convert the headers_dict to a multi-line string format
+        # that parse_raw_headers_with_cookies expects.
+        raw_headers_string_for_request = "\n".join(f"{k}: {v}" for k, v in headers_dict.items())
         
         # Convert payload_dict to a JSON string because replay_post_request expects a string
         # for its internal json.loads() call.
@@ -154,7 +158,7 @@ def execute_single_test_case(
                 endpoint_obj.hostname,
                 endpoint_obj.endpoint,
                 http_payload_str_for_request, # Pass the JSON STRING to replay_post_request
-                headers_dict,                 # Pass the headers dictionary
+                raw_headers_string_for_request,
                 timeout=10                    # Set a timeout for the request
             )
             status_code = resp.get("status_code")
