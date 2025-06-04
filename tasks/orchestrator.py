@@ -122,90 +122,81 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
     
     # In orchestrate(), after all_sigs is populated:
     if all_sigs:
-        diagnostic_workflow = group(all_sigs)
-        logger.info(f"DIAGNOSTIC: Attempting to submit simple group of {len(all_sigs)} tasks...")
+        # Create a group of all the individual test case execution signatures
+        test_case_group = group(all_sigs)
+        
+        # Create a signature for the finalize_run task that will run after the group completes.
+        # .s() creates a signature. Using .si() for immutable signature is also an option
+        # if finalize_run doesn't need results from the group.
+        # finalize_run(self, run_id: int, final_status: str)
+        finalization_sig = finalize_run.s(run_id=run_id, final_status='completed')
+
+        # Create a workflow: first the group of test cases, then the finalization task.
+        # The pipe operator `|` chains them, so finalization_sig runs after test_case_group.
+        diagnostic_workflow_with_callback = (test_case_group | finalization_sig)
+        
+        logger.info(f"DIAGNOSTIC: Attempting to submit simple group of {len(all_sigs)} tasks with a finalization callback...")
         try:
-            task_chain_result = diagnostic_workflow.apply_async()
-            logger.info(f"DIAGNOSTIC: Simple group submitted. Workflow ID: {task_chain_result.id}")
-            return {'status': 'PENDING_DIAGNOSTIC_GROUP', 'workflow_id': task_chain_result.id}
+            # Apply the workflow asynchronously
+            task_chain_result = diagnostic_workflow_with_callback.apply_async()
+            
+            logger.info(f"DIAGNOSTIC: Simple group with callback submitted. Workflow (Group) ID: {task_chain_result.id}")
+            # The task_chain_result.id here will be the ID of the group.
+            # The orchestrate task returns. The actual run finalization happens when the callback runs.
+            return {'status': 'PENDING_DIAGNOSTIC_GROUP_WITH_CALLBACK', 'workflow_id': task_chain_result.id}
+            
         except Exception as e_submit:
-            logger.error(f"DIAGNOSTIC: Failed to submit simple group: {e_submit}", exc_info=True)
-            return {'status': 'ERROR', 'message': 'Failed diagnostic group submission'}
-    # (Comment out the original batch_chords/workflow/apply_async logic for this test)
+            logger.error(f"DIAGNOSTIC: Failed to submit simple group with callback: {e_submit}", exc_info=True)
+            # If submission fails, you might want to update the TestRun status to 'error' or 'failed_to_submit' here.
+            # _finalize_run_status(run_id, 'failed_to_submit', db.session, f"Diagnostic group submission error: {e_submit}")
+            return {'status': 'ERROR', 'message': f'Failed diagnostic group submission with callback: {e_submit}'}
+    else:
+        logger.error(f"Orchestrator TR_ID:{run_id}: No signatures generated. Aborting.")
+        _finalize_run_status(run_id, 'completed_with_no_cases', db.session, "No signatures generated.") # Example using your helper
+        return {'status': 'ERROR', 'message': 'No signatures generated.'}
 
-    # # 10) Chunk into batches and build chords (as in your existing orchestrator.py)
-    # batches = [
-    #     all_sigs[i:i + PARALLEL_BATCH_SIZE]
-    #     for i in range(0, len(all_sigs), PARALLEL_BATCH_SIZE)
-    # ]
-    # if not batches: # Should be caught by 'if not all_sigs' but defensive
-    #     logger.error(f"Orchestrator TR_ID:{run_id}: No batches created despite having signatures. Aborting.")
-    #     return {'status': 'ERROR', 'message': 'Batch creation failed.'}
-
-    # batch_chords = [
-    #     chord(
-    #         group(batch_task_list), # Renamed 'batch' to 'batch_task_list' for clarity
-    #         handle_batch_completion.s(
-    #             test_run_id=run_id, # Keep this for the callback
-    #             num_cases_in_batch=len(batch_task_list)
-    #         )
-    #     ).set(immutable=True) # As in your orchestrator.py
-    #     for batch_task_list in batches
-    # ]
-
-    # # 11) Chain the batch chords and finalize (as in your existing orchestrator.py)
-    # workflow = chain(
-    #     *batch_chords,
-    #     finalize_run.si(run_id, 'completed') # Immutable signature for finalize_run
-    # )
-    
-    # logger.info(f"Orchestrator TR_ID:{run_id}: Attempting to submit lightweight task chain...")
-    # apply_async_start_time = time.time()
-    # try:
-    #     task_chain_result = workflow.apply_async()
-    #     logger.info(f"Orchestrator TR_ID:{run_id}: Lightweight task chain submitted in {time.time() - apply_async_start_time:.4f}s. Workflow ID: {task_chain_result.id}")
-    #     # Optionally, store task_chain_result.id on the run model if you want to track the workflow ID
-    #     # run.celery_workflow_id = task_chain_result.id 
-    # except Exception as e_submit:
-    #     logger.error(f"Orchestrator TR_ID:{run_id}: Failed to submit lightweight task chain: {e_submit}", exc_info=True)
-    #     # Finalize run status to 'failed_to_submit' or 'error'
-    #     return {'status': 'ERROR', 'message': f'Failed to submit task chain: {e_submit}'}
-
-    # 12) Return (as in your existing orchestrator.py)
-    return {'status': 'PENDING', 'workflow_id': task_chain_result.id} # Workflow ID is good to return
-
-# Keep your finalize_run, _count_cases, _serialize_filters, _get_case_transforms (if still used elsewhere, though likely not for this flow), _create_attempt helpers
-# Note: _get_case_transforms was confirmed for a removed feature.
-# _serialize_filters might still be used for logging in your orchestrator.py if you had it separate from prompt processing.
-
-# Single finalize callback for both completed and cancelled
+# Make sure finalize_run task is correctly defined in this file, as you have it:
 @celery.task(
     bind=True,
     base=ContextTask,
     name='tasks.finalize_run'
 )
 @with_session
-def finalize_run(self, run_id: int, final_status: str):
+def finalize_run(self, results_from_group, run_id: int, final_status: str): # Added results_from_group
     """
-    After all batch groups have finished, mark the run as completed (or failed),
-    cap progress_current, and emit a final 'run_completed' event.
+    Finalize the TestRun with the given status ('completed' or 'failed').
+    This runs after all tasks in the preceding group have finished.
+    'results_from_group' will contain the return values of all tasks in the group.
     """
-    logger.info(f"FinalizeRunTask TR_ID:{run_id}, TaskID:{self.request.id}: Marking run as '{final_status}'.")
+    logger.info(f"FinalizeRunTask TR_ID:{run_id}, TaskID:{self.request.id}: Group completed. Marking run as '{final_status}'.")
+    logger.debug(f"FinalizeRunTask TR_ID:{run_id}: Received {len(results_from_group) if results_from_group else 0} results from the preceding group.")
+
     run = db.session.get(TestRun, run_id)
     if not run:
         logger.error(f"FinalizeRunTask TR_ID:{run_id}: TestRun not found.")
         return {'status': 'FAILED', 'reason': 'Run not found'}
 
     run.status = final_status
-    run.completed_at = datetime.utcnow()
-    # If we somehow under‐ or overshot, cap progress_current at progress_total
-    if final_status == 'completed' and run.progress_total:
+    run.completed_at = datetime.utcnow() # Use completed_at as per your model
+    
+    # Ensure progress_current is capped at progress_total, especially if some tasks failed
+    # but the group is considered "complete" for the callback to run.
+    # If individual tasks update progress, this might just be a final check.
+    if final_status == 'completed' and run.progress_total > 0:
+        # You could query the actual number of successful TestExecution records
+        # to set progress_current accurately, or assume all were attempted.
+        # For now, setting to total if 'completed'.
         run.progress_current = run.progress_total
+        logger.info(f"FinalizeRunTask TR_ID:{run_id}: Progress set to {run.progress_current}/{run.progress_total}.")
 
-    db.session.flush()
-    emit_run_update(run_id, 'run_completed', run.get_status_data())
-    logger.info(f"FinalizeRunTask TR_ID:{run_id}: Emit final run_completed event.")
-    return {'status': 'SUCCESS', 'run_id': run_id}
+
+    # @with_session handles commit
+    emit_run_update(run_id, 
+                    'run_completed' if final_status == 'completed' else 'run_failed', # Or a more specific event
+                    run.get_status_data())
+    logger.info(f"FinalizeRunTask TR_ID:{run_id}: Run finalized and update emitted.")
+    return {'status': 'SUCCESS', 'run_id': run_id, 'final_status': final_status}
+
 
 
 # --- Helper functions ---
