@@ -17,6 +17,8 @@ def create_prompt_filter():
 
         # Process invalid characters - split only by spaces, preserving all other characters
         invalid_characters = ','.join(char for char in invalid_chars_input.split() if char)
+        # → ['<', '>', '[', ']', '.', '"']
+        # → '<,>,[,],.,\"'
 
         # Try interpreting the input as JSON; enforce dict
         try:

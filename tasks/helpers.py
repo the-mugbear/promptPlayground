@@ -20,21 +20,23 @@ def process_prompt_for_case(original_prompt: str, run_filters: list, run_level_t
 
     # STAGE 1: APPLY PROMPT FILTERS (Adapted from your orchestrator.py)
     if run_filters:
-        logger.debug(f"PromptProcessor: Applying {len(run_filters)} prompt filter(s).")
-        for pf_obj in run_filters: # pf_obj is a PromptFilter ORM instance
-            # logger.debug(f"PromptProcessor: Applying filter '{pf_obj.name}'.") # Optional detailed log
-            if pf_obj.invalid_characters:
-                chars_to_remove_list = pf_obj.invalid_characters.split()
-                for char_to_remove in chars_to_remove_list:
-                    if char_to_remove:
-                        current_prompt = current_prompt.replace(char_to_remove, "")
-            
-            if pf_obj.words_to_replace and isinstance(pf_obj.words_to_replace, dict):
-                for old_word, new_word_val in pf_obj.words_to_replace.items():
-                    new_word_str = str(new_word_val) if new_word_val is not None else ""
-                    current_prompt = current_prompt.replace(old_word, new_word_str)
-    # else:
-        # logger.debug(f"PromptProcessor: No prompt filters to apply.")
+        for pf_obj in run_filters:
+            inv = pf_obj.invalid_characters or ""
+            # Build a list of single chars to strip, ignoring commas/spaces
+            chars_to_remove_list = [c for c in inv if (not c.isspace() and c != ",")]
+
+            for char_to_remove in chars_to_remove_list:
+                # (Optional) log which character is being removed
+                logger.debug(f"[PromptProcessor] Removing invalid char {char_to_remove!r} from prompt")
+                current_prompt = current_prompt.replace(char_to_remove, "")
+
+            # If you also have words_to_replace, handle them here:
+            if pf_obj.words_to_replace:
+                for bad_word, replacement in pf_obj.words_to_replace.items():
+                    logger.debug(
+                        f"[PromptProcessor] Replacing word {bad_word!r} with {replacement!r}"
+                    )
+                    current_prompt = current_prompt.replace(bad_word, replacement)
 
     # STAGE 2: APPLY RUN-LEVEL TRANSFORMATIONS (Adapted from your orchestrator.py)
     if run_level_transformations: # This is a list of config dicts
@@ -49,8 +51,6 @@ def process_prompt_for_case(original_prompt: str, run_filters: list, run_level_t
                     prompt=current_prompt,
                     params=instance_params if isinstance(instance_params, dict) else {}
                 )
-    # else:
-        # logger.debug(f"PromptProcessor: No run-level transformations.")
         
     logger.debug(f"PromptProcessor: Final prompt: '{current_prompt[:100]}...'")
     return current_prompt
