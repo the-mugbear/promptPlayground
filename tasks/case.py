@@ -18,7 +18,7 @@ from models.model_TestRun import TestRun # To update progress and get run-level 
 from models.model_Endpoints import Endpoint
 from services.common.http_request_service import replay_post_request # Your function for making HTTP calls
 # Helper functions for emitting SocketIO updates, SQLAlchemy session management, and prompt processing
-from .helpers import emit_run_update, emit_execution_update, with_session, process_prompt_for_case 
+from .helpers import emit_run_update, emit_execution_update, with_session, process_prompt_for_case, _recursively_inject_prompt
 from sqlalchemy.orm import selectinload, joinedload # For optimizing database queries
 
 logger = logging.getLogger(__name__) # Module-level logger
@@ -101,33 +101,34 @@ def execute_single_test_case(
             run.run_transformations or []  # Pass the list of transformation config dicts (or empty list)
         )
 
-        # --- Prepare payload_dict (Python dictionary for the request body) ---
-        payload_dict = None # Initialize
+        payload_dict = None 
         if endpoint_obj.http_payload: # Check if the endpoint has an http_payload template string
             try:
-                # Step 1: Parse the original template string into a Python dict
+                # Step 1: Parse the original template string (which should be valid JSON) into a Python dict
                 template_as_dict = json.loads(endpoint_obj.http_payload)
-
-                # Step 2: Navigate and update the Python dict
-                # This assumes a structure like {"messages": [..., {"role": "user", "content": "PLACEHOLDER"}]}
-                # You'll need to make this navigation robust based on your actual template structures.
-                prompt_injected = False
-                if 'messages' in template_as_dict and isinstance(template_as_dict['messages'], list):
-                    for msg in template_as_dict['messages']:
-                        if isinstance(msg, dict) and msg.get('role') == 'user' and msg.get('content') == '{{INJECT_PROMPT}}':
-                            msg['content'] = final_prompt # Assign raw string; json.dumps later will handle escaping
-                            prompt_injected = True
-                            break 
+                
+                # Step 2: Recursively find and replace the placeholder
+                # The _recursively_inject_prompt function will modify template_as_dict in place.
+                prompt_injected = _recursively_inject_prompt(
+                    template_as_dict, 
+                    "{{INJECT_PROMPT}}", # The placeholder string to find
+                    final_prompt         # The actual processed prompt string to inject
+                )
+                
                 if not prompt_injected:
-                    logger.warning(f"Task {task_id}: Placeholder '{{INJECT_PROMPT}}' not found or structure incorrect in template for TC_ID:{case_obj.id}. Payload might be incorrect.")
-                    # Decide on fallback: use template_as_dict as is, or error, or default.
-                    # If other placeholders like {{model}} also need replacement, do it here on template_as_dict.
+                    logger.warning(f"Task {task_id}: Placeholder '{{INJECT_PROMPT}}' not found anywhere in the parsed http_payload template for TC_ID:{case_obj.id}. The prompt was not injected.")
+                # If other placeholders like {{model}} also need replacement,
+                # you could call _recursively_inject_prompt again for them,
+                # or make it handle a dictionary of replacements.
 
-                payload_dict = template_as_dict
+                payload_dict = template_as_dict # template_as_dict is now modified (or not, if placeholder wasn't found)
+
             except json.JSONDecodeError as jde:
-                # Log an error if the template (after prompt injection) isn't valid JSON.
-                logger.error(f"Task {task_id}: Failed to parse JSON from http_payload template. Error: {jde}. Template: '{endpoint_obj.http_payload}'. Processed string: '{processed_template_string}'")
+                logger.error(f"Task {task_id}: Failed to parse http_payload template as JSON. Error: {jde}. Template: '{endpoint_obj.http_payload}'")
                 raise # Re-raise to be caught by the main 'except Exception as task_e'
+            except Exception as e_build: # Catch other potential errors during dict manipulation
+                logger.error(f"Task {task_id}: Error processing http_payload template dictionary: {e_build}", exc_info=True)
+                raise
         else:
             # Fallback if no http_payload template is defined on the endpoint.
             logger.warning(f"Task {task_id}: Endpoint {endpoint_obj.id} has no http_payload. Using default {{'prompt': ...}}.")
