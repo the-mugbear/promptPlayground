@@ -148,13 +148,21 @@ class InlineEditor {
       span.addEventListener('click', () => this.startEditing(span));
     });
 
-    // Handle input changes
-    document.querySelectorAll('.editable-field input, .editable-field textarea').forEach(input => {
+    // Handle input changes by selecting input, textarea, AND select elements
+    document.querySelectorAll('.editable-field input, .editable-field textarea, .editable-field select').forEach(input => {
+      // 'blur' works for all elements and is a good generic event to trigger a save
       input.addEventListener('blur', () => this.handleFieldChange(input));
+      
+      // For a better user experience, we can also save immediately on 'change' for the dropdown
+      if (input.tagName === 'SELECT') {
+        input.addEventListener('change', () => this.handleFieldChange(input));
+      }
+
+      // This keydown listener is mostly for text inputs but won't harm the select element
       input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey && input.tagName !== 'TEXTAREA') { // Allow Enter in textarea unless Shift is held
+        if (e.key === 'Enter' && !e.shiftKey && input.tagName !== 'TEXTAREA') {
           e.preventDefault();
-          input.blur();
+          input.blur(); // Trigger blur to save the change
         }
       });
     });
@@ -165,7 +173,7 @@ class InlineEditor {
 
   startEditing(span) {
     const field = span.closest('.editable-field');
-    const input = field.querySelector('input, textarea');
+    const input = field.querySelector('input, textarea, select');
     field.classList.add('editing');
     input.value = span.textContent.trim();
     input.focus();

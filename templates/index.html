@@ -165,64 +165,10 @@
   {% endif %}
 
   <hr>
-  <div class="content-card">
-    <h2>Research References</h2>
-    <!-- Search Bar -->
-    <input type="text" id="dataset-search" placeholder="Search references...">
-    <!-- Reference List -->
-    {% if dataset_references %}
-      <div id="dataset-references-list">
-        {% for ref in dataset_references %}
-          <div class="reference-item">
-            <h3>
-              <a href="{{ ref.url }}" target="_blank">{{ ref.name }}</a>
-              <span class="dataset-status {{ 'added' if ref.added else 'not-added' }}">
-                {{ 'Added' if ref.added else 'Not Added' }}
-              </span>
-            </h3>
-            {% if ref.excerpt %}
-              <div class="excerpt">{{ ref.excerpt }}</div>
-            {% endif %}
-            <div class="meta">
-              <span>Added: {{ ref.date_added.strftime('%Y-%m-%d') }}</span>
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <p>No references found.</p>
-    {% endif %}
-  </div>
 
-  {% if current_user.is_authenticated %}
-    <hr>
-    <div class="content-card">
-      <h2>Add New Reference</h2>
-      <form method="POST" action="{{ url_for('core_bp.index') }}">
-        <div class="form-group">
-          <label for="dataset_name">Name:</label>
-          <input type="text" id="dataset_name" name="dataset_name" required placeholder="Enter reference name">
-        </div>
-        <div class="form-group">
-          <label for="dataset_url">URL:</label>
-          <input type="url" id="dataset_url" name="dataset_url" required placeholder="Enter reference URL">
-        </div>
-        <div class="form-group">
-          <label for="excerpt">Summary:</label>
-          <textarea id="excerpt" name="excerpt" rows="4" placeholder="Enter a brief summary of the article/research"></textarea>
-        </div>
-        <div class="form-group">
-          <label for="dataset_added">
-            <input type="checkbox" id="dataset_added" name="dataset_added"> Mark as Added
-          </label>
-        </div>
-        <button type="submit">Add Reference</button>
-      </form>
-    </div>
-  {% endif %}
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/core/search_datasets.js') }}"></script>
+
 {% endblock %}

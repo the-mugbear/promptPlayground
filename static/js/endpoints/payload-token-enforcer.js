@@ -1,105 +1,117 @@
 /**
  * Script: PayloadTokenEnforcer
  * Purpose: Ensure a required substitution token is present in the HTTP payload
- *          before submitting the form, and provide a button to insert that token
- *          at the current cursor position or replace any selected text.
+ * before submitting the form, and provide buttons to insert different
+ * versions of that token.
  */
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
   // 1) Grab references to the form and payload textarea
-  // try both form IDs
   const form =
     document.getElementById("create-endpoint-form") ||
     document.getElementById("manual-test-form");
 
   if (!form) {
-    // no matching form on this page → do nothing
+    // No matching form on this page, do nothing
     return;
   }
 
   const httpPayloadField = document.getElementById("http_payload");
-  //    The token must appear in the payload; injected server‑side via Jinja
-  const token = "{{INJECT_PROMPT}}";
+  const baseToken = "{{INJECT_PROMPT}}";
+  const jsonToken = "{{ INJECT_PROMPT | tojson }}";
 
-  // Helper function to validate token presence
+  // --- Main Validation Function ---
   function validateToken() {
     const value = httpPayloadField.value;
-    console.log("Validating payload:", value); // Debug log
-    
-    // Check if token exists in the payload
-    const hasToken = value.includes(token);
-    
+
+    // --- UPDATED VALIDATION LOGIC ---
+    // Use a regular expression to check for either token permutation.
+    // This looks for "{{INJECT_PROMPT}}" with an optional "| tojson" filter inside.
+    const tokenRegex = /\{\{\s*INJECT_PROMPT\s*(?:\|\s*tojson\s*)?\}\}/;
+    const hasToken = tokenRegex.test(value);
+
     if (!hasToken) {
       httpPayloadField.setCustomValidity(
-        "Your HTTP Payload must include the token: " + token
+        "Your HTTP Payload must include a valid prompt token, e.g., {{INJECT_PROMPT}} or {{INJECT_PROMPT | tojson}}."
       );
-      return false;
+      return false; // Block submission if no valid token is found
     }
 
-    // If the payload contains the token and looks like JSON, validate the JSON structure
-    if (value.trim().startsWith('{') || value.trim().startsWith('[')) {
-      try {
-        JSON.parse(value);
-      } catch (e) {
-        httpPayloadField.setCustomValidity(
-          "Invalid JSON format: " + e.message
-        );
-        return false;
-      }
-    }
-    
+    // Clear any previous error message if a valid token is present.
     httpPayloadField.setCustomValidity("");
     return true;
   }
+  // --- END OF UPDATED LOGIC ---
 
-  // 2) On form submission, validate that the payload contains the token
-  form.addEventListener("submit", function(e) {
-    console.log("Form submitted, validating token..."); // Debug log
+  // --- Event Listeners ---
+  form.addEventListener("submit", function (e) {
     if (!validateToken()) {
       e.preventDefault();
       httpPayloadField.reportValidity();
     }
   });
 
-  // 3) As the user types, clear the error once they include the token
   httpPayloadField.addEventListener("input", validateToken);
 
-  // 4) Enable an "Insert Token" button to inject the token at cursor/selection
+
+  // --- Button Handlers ---
+
+  // Helper function to insert text at the cursor
+  function insertTextAtCursor(textToInsert) {
+    const start = httpPayloadField.selectionStart;
+    const end = httpPayloadField.selectionEnd;
+    const text = httpPayloadField.value;
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+
+    httpPayloadField.value = before + textToInsert + after;
+
+    // Place cursor after the inserted text
+    httpPayloadField.selectionStart = httpPayloadField.selectionEnd = start + textToInsert.length;
+    httpPayloadField.focus();
+    validateToken(); // Re-validate after insertion
+  }
+
+  // Listener for the basic token button
   const insertTokenBtn = document.getElementById("insertTokenBtn");
   if (insertTokenBtn) {
-    insertTokenBtn.addEventListener("click", function() {
-      const start = httpPayloadField.selectionStart;
-      const end = httpPayloadField.selectionEnd;
-      const text = httpPayloadField.value;
-      const before = text.substring(0, start);
-      const after = text.substring(end);
-      httpPayloadField.value = before + token + after;
-      // Place cursor after the inserted token
-      httpPayloadField.selectionStart = httpPayloadField.selectionEnd = start + token.length;
-      httpPayloadField.focus();
-      // Validate after insertion
-      validateToken();
+    insertTokenBtn.addEventListener("click", function () {
+      insertTextAtCursor(baseToken);
     });
   }
 
-  // 5) Add JSON formatting functionality
-  window.formatHttpPayload = function() {
+  // Listener for the JSON-safe token button
+  const insertJsonTokenBtn = document.getElementById("insertJsonTokenBtn");
+  if (insertJsonTokenBtn) {
+    insertJsonTokenBtn.addEventListener("click", function (e) {
+      e.preventDefault(); // This is a link in a dropdown, so prevent default action
+      insertTextAtCursor(jsonToken);
+    });
+  }
+
+  // --- JSON Formatting Functionality ---
+  window.formatHttpPayload = function () {
+    const payload = httpPayloadField.value;
+    if (!payload.trim()) {
+      alert("Please enter some JSON to format");
+      return;
+    }
     try {
-      const payload = httpPayloadField.value;
-      if (!payload.trim()) {
-        alert("Please enter some JSON to format");
-        return;
-      }
-      
-      // Try to parse and format the JSON
-      const parsed = JSON.parse(payload);
-      const formatted = JSON.stringify(parsed, null, 2);
+      // Temporarily replace placeholders to allow formatting
+      const placeholder = '"__TEMP_PROMPT_PLACEHOLDER__"';
+      const tempPayload = payload.replace(/\{\{\s*INJECT_PROMPT\s*(\|\s*tojson\s*)?\}\}/g, placeholder);
+
+      const parsed = JSON.parse(tempPayload);
+      let formatted = JSON.stringify(parsed, null, 2);
+
+      // Restore the original placeholder that was used
+      const originalPlaceholder = payload.includes(jsonToken) ? jsonToken : baseToken;
+      formatted = formatted.replace(placeholder, originalPlaceholder);
+
       httpPayloadField.value = formatted;
-      
-      // Validate token after formatting
       validateToken();
     } catch (e) {
-      alert("Invalid JSON: " + e.message);
+      alert("Invalid JSON structure: " + e.message);
     }
   };
 });

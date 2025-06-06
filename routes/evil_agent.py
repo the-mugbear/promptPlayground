@@ -1,7 +1,7 @@
 import json
 from flask import Blueprint, stream_with_context, Response, request, jsonify, flash, redirect, url_for, render_template
 from models.model_Endpoints import Endpoint
-from services.common.http_request_service import replay_post_request
+from services.common.http_request_service import execute_api_request
 from services.common.header_parser_service import parse_raw_headers
 from services.jailbreaks.jailbreak_service import evil_agent_jailbreak_generator
 

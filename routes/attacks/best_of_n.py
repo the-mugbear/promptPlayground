@@ -5,7 +5,7 @@ import json
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify, Response, stream_with_context
 from models.model_Endpoints import Endpoint
 from models.model_Dialogue import Dialogue
-from services.common.http_request_service import replay_post_request
+from services.common.http_request_service import execute_api_request
 from services.common.header_parser_service import headers_from_apiheader_list
 from extensions import db 
 
@@ -128,12 +128,12 @@ def best_of_n_index():
                 # --- Make the HTTP request ---
                 try:
                     # Add timeout to prevent hanging indefinitely
-                    response_data = replay_post_request(hostname, endpoint_path, payload, raw_headers=raw_headers, timeout=30) 
+                    response_data = execute_api_request(hostname, endpoint_path, payload, raw_headers=raw_headers, timeout=30) 
                     response_text = response_data.get("response_text", "No response text received.")
                     is_error = False
 
                 except Exception as e:
-                    # Handle network errors or errors from replay_post_request
+                    # Handle network errors or errors from execute_api_request
                     response_text = f"ERROR executing request for permutation {i + 1}: {e}"
                     is_error = True
                     # Yield an error status

@@ -1,18 +1,17 @@
 # app/endpoints/views_core.py
 from flask import render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
-from sqlalchemy.orm import joinedload # Ensure this is imported if used for eager loading
+from sqlalchemy.orm import joinedload
 import json
+import re
 
-from extensions import db # Assuming extensions.py is in 'app'
-from models.model_Endpoints import Endpoint, APIHeader
-from services.endpoints.api_templates import PAYLOAD_TEMPLATES # Adjust path as needed
-from services.common.header_parser_service import parse_raw_headers, headers_from_apiheader_list # Adjust path
+from extensions import db 
+from models.model_Endpoints import Endpoint, EndpointHeader
+from services.endpoints.api_templates import PAYLOAD_TEMPLATES 
+from services.common.header_parser_service import parse_raw_headers, headers_from_apiheader_list 
 
-from . import endpoints_bp # Import the blueprint from the local package __init__.py
+from . import endpoints_bp
 
-# IMPORTANT: Re-implement or carefully move get_endpoint_form_data here
-# Ensure it retains the logic for fetching existing data for updates.
 def get_endpoint_form_data(endpoint_id=None):
     """
     Extracts common endpoint data from the form.
@@ -28,6 +27,11 @@ def get_endpoint_form_data(endpoint_id=None):
     form_data["hostname"] = request.form.get("hostname", endpoint_obj.hostname if endpoint_obj else "").strip()
     form_data["endpoint_path"] = request.form.get("endpoint", endpoint_obj.endpoint if endpoint_obj else "").strip()
     
+    # Default to 'POST' for new endpoints, a common choice for endpoints with payloads.
+    # Use .upper() to ensure consistent casing (e.g., 'post' becomes 'POST').
+    default_method = endpoint_obj.method if endpoint_obj else "POST"
+    form_data["method"] = request.form.get("method", default_method).strip().upper()
+
     # Payload logic: prioritize form, then DB, then empty
     payload_from_form = request.form.get("http_payload", "").strip()
     if payload_from_form:
@@ -38,8 +42,8 @@ def get_endpoint_form_data(endpoint_id=None):
         form_data["payload"] = ""
 
     # Raw headers logic: prioritize form, then DB (parsed), then empty
-    raw_headers_from_form = request.form.get("raw_headers", None) # Distinguish empty string from not provided
-    if raw_headers_from_form is not None: # If field was present in form
+    raw_headers_from_form = request.form.get("raw_headers", None) 
+    if raw_headers_from_form is not None: 
         form_data["raw_headers"] = raw_headers_from_form.strip()
         form_data["parsed_headers"] = parse_raw_headers(form_data["raw_headers"])
     elif endpoint_obj and endpoint_obj.headers:
@@ -50,7 +54,7 @@ def get_endpoint_form_data(endpoint_id=None):
         form_data["raw_headers"] = ""
         form_data["parsed_headers"] = {}
         
-    form_data["endpoint_obj"] = endpoint_obj # For convenience in routes
+    form_data["endpoint_obj"] = endpoint_obj
     return form_data
 
 @endpoints_bp.route('/', methods=['GET'])
@@ -100,47 +104,54 @@ def handle_create_endpoint():
                                    raw_headers=form_data["raw_headers"],
                                    flash_error=error_msg) # Custom context var for error
 
-        # Validation 2: Check for {{INJECT_PROMPT}} in payload
-        if "{{INJECT_PROMPT}}" not in form_data["payload"]:
+
+        # Validation 2: Check for {{INJECT_PROMPT}} in payload using a regular expression
+        # This ensures either {{INJECT_PROMPT}} or {{INJECT_PROMPT | tojson}} is present.
+        token_regex = re.compile(r'\{\{\s*INJECT_PROMPT\s*(?:\|\s*tojson\s*)?\}\}')
+        if not token_regex.search(form_data["payload"]):
             error_msg = "HTTP Payload must contain the {{INJECT_PROMPT}} token."
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'error': error_msg, 'field_errors': {'http_payload': error_msg}}), 400
             flash(error_msg, "error")
+            # This part for re-rendering the template remains the same
             return render_template("endpoints/create_endpoint.html",
-                                   payload_templates=PAYLOAD_TEMPLATES,
-                                   name=form_data["name"],
-                                   hostname=form_data["hostname"],
-                                   endpoint=form_data["endpoint_path"],
-                                   http_payload=form_data["payload"],
-                                   raw_headers=form_data["raw_headers"],
-                                   flash_error=error_msg)
+                                payload_templates=PAYLOAD_TEMPLATES,
+                                name=form_data["name"],
+                                hostname=form_data["hostname"],
+                                endpoint=form_data["endpoint_path"],
+                                http_payload=form_data["payload"],
+                                raw_headers=form_data["raw_headers"],
+                                flash_error=error_msg)
 
-        # Validation 3: Ensure payload is valid JSON if it looks like JSON
+        # Validation 3: Ensure payload has a valid JSON structure, allowing for Jinja2 placeholders
         try:
             payload_str = form_data["payload"].strip()
             if payload_str.startswith('{') or payload_str.startswith('['):
-                json.loads(payload_str)
+                # To validate, temporarily replace all {{...}} blocks with a valid JSON string value
+                # This checks the structure without being broken by template tags.
+                # Using re.sub is robust for finding all placeholders.
+                cleaned_for_validation = re.sub(r'{{\s*.*?\s*}}', '"dummy_value"', payload_str)
+                
+                # Now, try to parse the cleaned string
+                json.loads(cleaned_for_validation)
+
         except json.JSONDecodeError as e:
-            error_msg = f"Invalid JSON format: {str(e)}"
+            error_msg = f"Invalid JSON structure in template: {str(e)}"
+            
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'error': error_msg, 'field_errors': {'http_payload': error_msg}}), 400
             flash(error_msg, "error")
             return render_template("endpoints/create_endpoint.html",
-                                   payload_templates=PAYLOAD_TEMPLATES,
-                                   name=form_data["name"],
-                                   hostname=form_data["hostname"],
-                                   endpoint=form_data["endpoint_path"],
-                                   http_payload=form_data["payload"],
-                                   raw_headers=form_data["raw_headers"],
-                                   flash_error=error_msg)
+                                flash_error=error_msg)
 
         # If all validations pass:
         endpoint = Endpoint(
             name=form_data["name"],
             hostname=form_data["hostname"],
             endpoint=form_data["endpoint_path"],
+            method=form_data["method"],
             http_payload=form_data["payload"],
-            # user_id=current_user.id # If you have user association
+            user_id=current_user.id
         )
         db.session.add(endpoint)
         db.session.commit()
@@ -149,7 +160,7 @@ def handle_create_endpoint():
         if form_data["raw_headers"]:
             parsed_headers = parse_raw_headers(form_data["raw_headers"]) # Assuming get_endpoint_form_data doesn't provide parsed_headers
             for key, value in parsed_headers.items():
-                header = APIHeader(endpoint_id=endpoint.id, key=key, value=value)
+                header = EndpointHeader(endpoint_id=endpoint.id, key=key, value=value)
                 db.session.add(header)
             db.session.commit() # Commit headers
 
@@ -198,21 +209,17 @@ def update_endpoint(endpoint_id):
     endpoint_obj.name = form_data["name"]
     endpoint_obj.hostname = form_data["hostname"]
     endpoint_obj.endpoint = form_data["endpoint_path"]
+    endpoint_obj.method = form_data["method"]
     endpoint_obj.http_payload = form_data["payload"]
 
     # Remove existing headers
-    APIHeader.query.filter_by(endpoint_id=endpoint_obj.id).delete()
-    # The line below is good for SQLAlchemy's session tracking if headers are accessed again soon,
-    # but direct delete query above is often more efficient for bulk.
-    # endpoint_obj.headers = [] 
+    EndpointHeader.query.filter_by(endpoint_id=endpoint_obj.id).delete()
 
     # Add new headers from form_data["parsed_headers"]
     if form_data["raw_headers"]: # Check if raw_headers string is present
         for key, value in form_data["parsed_headers"].items():
-            new_header = APIHeader(endpoint_id=endpoint_obj.id, key=key, value=value)
+            new_header = EndpointHeader(endpoint_id=endpoint_obj.id, key=key, value=value)
             db.session.add(new_header)
-            # endpoint_obj.headers.append(new_header) # Append if you didn't clear with .headers = []
-
     try:
         db.session.commit()
         flash("Endpoint updated successfully.", "success")

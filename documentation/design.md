@@ -1,3 +1,0 @@
-TestRun: Represents a complete execution of a set of TestSuites against a specific Endpoint with certain PromptFilters. A TestRun can be executed multiple times.
-TestRunAttempt: Represents a single, complete attempt to execute a TestRun. Each time you click "run" on a TestRun, a new TestRunAttempt record should be created. This is what your orchestrate_test_run_task correctly does by creating current_run_attempt.
-TestExecution: Represents the execution of a single TestCase within a specific TestRunAttempt. So, if a TestRunAttempt has 60 test cases, there will be 60 TestExecution records linked to that one TestRunAttempt.

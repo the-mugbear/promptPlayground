@@ -1,11 +1,15 @@
 # app/endpoints/api.py
+import logging
 from flask import request, jsonify
 from flask_login import login_required
 
 from extensions import db
-from models.model_Endpoints import Endpoint, APIHeader
+from models.model_Endpoints import Endpoint, EndpointHeader
 
 from . import endpoints_bp
+
+logger = logging.getLogger(__name__)
+logger.debug("Orchestrator: entering orchestrate()")
 
 @endpoints_bp.route('/<int:endpoint_id>/json', methods=['GET'])
 @login_required
@@ -16,29 +20,37 @@ def get_endpoint_json(endpoint_id):
 @endpoints_bp.route('/<int:endpoint_id>/update_field', methods=['PUT'])
 @login_required
 def update_endpoint_field(endpoint_id):
+    """
+    Update a single field of an endpoint.
+    """
+    # Add 'method' to this list of allowed fields.
+    allowed_fields = ['name', 'hostname', 'endpoint', 'http_payload', 'method']
+    
     endpoint = Endpoint.query.get_or_404(endpoint_id)
-    data = request.get_json(force=True) # force=True if content-type might not be application/json
+    data = request.get_json()
     
-    field_name = list(data.keys())[0]
-    value = data[field_name]
+    if not data or len(data) != 1:
+        return jsonify({'error': 'Invalid request format. Expecting a single key-value pair.'}), 400
+
+    field_name = next(iter(data)) # Get the first (and only) key from the dict
     
-    field_mapping = {
-        'name': 'name',
-        'hostname': 'hostname',
-        'path': 'endpoint',
-        'http_payload': 'http_payload'
-    }
+    if field_name not in allowed_fields:
+        # This is where your error message is coming from
+        return jsonify({'error': f'Invalid field: {field_name}'}), 400
+
+    new_value = data[field_name]
+
+    # Use setattr to dynamically set the attribute on the endpoint object
+    # e.g., setattr(endpoint, 'name', 'New Name') is like endpoint.name = 'New Name'
+    setattr(endpoint, field_name, new_value)
     
-    if field_name not in field_mapping:
-        return jsonify({"error": f"Invalid field: {field_name}"}), 400
-        
     try:
-        setattr(endpoint, field_mapping[field_name], value)
         db.session.commit()
-        return jsonify({"message": f"Updated {field_name}"}), 200
+        return jsonify({'message': f'Endpoint field "{field_name}" updated successfully.'}), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error updating endpoint field: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to update endpoint due to a database error.'}), 500
 
 @endpoints_bp.route('/<int:endpoint_id>/headers', methods=['POST'])
 @login_required
@@ -54,12 +66,12 @@ def add_endpoint_header(endpoint_id):
         return jsonify({"error": "Header key is required"}), 400
         
     # Check if header with this key already exists for this endpoint
-    existing_header = APIHeader.query.filter_by(endpoint_id=endpoint_id, key=key).first()
+    existing_header = EndpointHeader.query.filter_by(endpoint_id=endpoint_id, key=key).first()
     if existing_header:
         return jsonify({"error": f"Header with key '{key}' already exists. Use update instead."}), 409 # Conflict
 
     try:
-        new_header = APIHeader(endpoint_id=endpoint_id, key=key, value=value)
+        new_header = EndpointHeader(endpoint_id=endpoint_id, key=key, value=value)
         db.session.add(new_header)
         db.session.commit()
         return jsonify({
@@ -75,7 +87,7 @@ def add_endpoint_header(endpoint_id):
 def update_endpoint_header(endpoint_id, header_id):
     """Updates an existing header for an endpoint (called via AJAX)."""
     # Ensure header belongs to endpoint is implicit via query.
-    header = APIHeader.query.filter_by(id=header_id, endpoint_id=endpoint_id).first_or_404()
+    header = EndpointHeader.query.filter_by(id=header_id, endpoint_id=endpoint_id).first_or_404()
     data = request.get_json(force=True)
 
     new_key = data.get('key', header.key).strip()
@@ -86,10 +98,10 @@ def update_endpoint_header(endpoint_id, header_id):
 
     # If key is changing, check for conflicts with other headers of the same endpoint
     if new_key != header.key:
-        existing_with_new_key = APIHeader.query.filter(
-            APIHeader.endpoint_id == endpoint_id,
-            APIHeader.key == new_key,
-            APIHeader.id != header_id # Exclude the current header itself
+        existing_with_new_key = EndpointHeader.query.filter(
+            EndpointHeader.endpoint_id == endpoint_id,
+            EndpointHeader.key == new_key,
+            EndpointHeader.id != header_id # Exclude the current header itself
         ).first()
         if existing_with_new_key:
             return jsonify({"error": f"Another header with key '{new_key}' already exists."}), 409
@@ -110,7 +122,7 @@ def update_endpoint_header(endpoint_id, header_id):
 @login_required
 def delete_endpoint_header(endpoint_id, header_id):
     """Deletes a specific header from an endpoint (called via AJAX)."""
-    header = APIHeader.query.filter_by(id=header_id, endpoint_id=endpoint_id).first_or_404()
+    header = EndpointHeader.query.filter_by(id=header_id, endpoint_id=endpoint_id).first_or_404()
     try:
         db.session.delete(header)
         db.session.commit()

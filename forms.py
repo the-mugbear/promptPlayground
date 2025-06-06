@@ -1,8 +1,8 @@
 # forms.py
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, IntegerField, TextAreaField
-from wtforms.validators import DataRequired, Email, EqualTo, ValidationError, Optional
-from models.model_User import User # Import your User model
+from wtforms.validators import DataRequired, Email, EqualTo, ValidationError, Optional, Length
+from models.model_User import User 
 
 class LoginForm(FlaskForm):
     """Form for users to log in."""
@@ -55,3 +55,35 @@ class InvitationForm(FlaskForm):
     expires_days = IntegerField('Expires In (Days)', validators=[Optional()])
     notes = TextAreaField('Notes', validators=[Optional()])
     submit = SubmitField('Generate Invitation')
+
+class ChainForm(FlaskForm):
+    """Form for creating or editing an API Chain."""
+    name = StringField(
+        'Chain Name', 
+        validators=[DataRequired(), Length(min=3, max=100)],
+        render_kw={"placeholder": "e.g., User Authentication Flow"}
+    )
+    description = TextAreaField(
+        'Description', 
+        validators=[Length(max=500)],
+        render_kw={"placeholder": "A brief description of what this chain does.", "rows": 3}
+    )
+    submit = SubmitField('Create Chain')
+
+class ChainStepForm(FlaskForm):
+    """Form for adding or editing a step in an API Chain."""
+    # QuerySelectField is perfect for creating a dropdown from database objects.
+    # It requires the `get_pk` argument to know what to use for the option's `value`.
+    endpoint = SelectField('Endpoint', coerce=int, validators=[DataRequired()])
+    name = StringField(
+        'Step Name (Optional)', 
+        validators=[Optional(), Length(max=100)],
+        render_kw={"placeholder": "e.g., Authenticate and Get Token"}
+    )
+    # This will store the JSON for data extraction rules.
+    # We can use a TextArea and validate it as JSON on the server.
+    data_extraction_rules = TextAreaField(
+        'Data Extraction Rules (JSON format)',
+        render_kw={"rows": 5, "placeholder": '[{"variable_name": "my_var", "source_type": "json_body", "source_identifier": "data.id"}]'}
+    )
+    submit = SubmitField('Add Step')

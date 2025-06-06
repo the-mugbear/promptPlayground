@@ -14,16 +14,18 @@ class Endpoint(db.Model):
         endpoint (str): The path or name of the associated resource.
         http_payload (str): The HTTP payload sent with the request.
         timestamp (datetime): The time the log was created.
-        headers (list[APIHeader]): A list of headers associated with the request.
+        headers (list[EndpointHeader]): A list of headers associated with the request.
         user_id (int): Foreign key referencing the user who created the endpoint.
     """
     __tablename__ = 'endpoints'
     
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), nullable=False)  # New name attribute
+    name = db.Column(db.String(50), nullable=False)
     hostname = db.Column(db.String(255), nullable=False)
     endpoint = db.Column(db.String(255), nullable=False)
-    http_payload = db.Column(db.Text, nullable=True)   # HTTP payload sent with the request, should handle and store as JSON
+    http_payload = db.Column(db.Text, nullable=True)   # HTTP payload sent with the request
+    method = db.Column(db.String(10), nullable=False, default='GET') # e.g., GET, POST, PUT, DELETE
+
     timestamp = db.Column(db.DateTime(timezone=True), default=datetime.utcnow) 
 
     # Foreign key to the User model
@@ -32,7 +34,7 @@ class Endpoint(db.Model):
     user = db.relationship('User', backref=db.backref('endpoints', lazy=True))
     
     # Relationships
-    headers = db.relationship('APIHeader', back_populates='endpoint', cascade='all, delete-orphan')
+    headers = db.relationship('EndpointHeader', back_populates='endpoint', cascade='all, delete-orphan')
     test_runs = db.relationship('TestRun', back_populates='endpoint')
     dialogues = db.relationship("Dialogue", back_populates="endpoint", cascade="all, delete-orphan")
 
@@ -53,9 +55,9 @@ class Endpoint(db.Model):
         return f'<EndpointLog {self.hostname} -> {self.endpoint} @ {self.timestamp}>'
 
 # ---------------------------------
-# API Header
+# Endpoint Header
 # ---------------------------------
-class APIHeader(db.Model):
+class EndpointHeader(db.Model):
     """
     Represents an HTTP header for an API request.
 
@@ -85,4 +87,4 @@ class APIHeader(db.Model):
     
     def __repr__(self):
         """String representation of the API header."""
-        return f'<APIHeader {self.key}: {self.value}>'
+        return f'<EndpointHeader {self.key}: {self.value}>'

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="mb-0">{{ chain.name }}</h1>
+            <p class="text-muted">{{ chain.description }}</p>
+        </div>
+        <div>
+            <a href="{{ url_for('chains_bp.list_chains') }}" class="btn btn-secondary">Back to List</a>
+            <a href="#" class="btn btn-success"><i class="fas fa-play"></i> Run Chain</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Chain Steps</h5>
+        </div>
+        <div class="card-body">
+            {% if chain.steps.all() %}
+            <ul class="list-group list-group-flush">
+                {% for step in chain.steps %}
+                <li class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">
+                            <span class="badge bg-primary me-2">Step {{ step.step_order }}</span>
+                            {{ step.name or "Unnamed Step" }}
+                        </h6>
+                        <small class="text-muted">Uses Endpoint: {{ step.endpoint.name }}</small>
+                    </div>
+                    <p class="mb-1">
+                        {{ step.description or "No description."}}
+                    </p>
+                    {% if step.data_extraction_rules %}
+                    <div class="mt-2">
+                        <strong>Extraction Rules:</strong>
+                        <pre
+                            class="bg-light p-2 rounded small"><code>{{ step.data_extraction_rules | tojson(indent=2) }}</code></pre>
+                    </div>
+                    {% else %}
+                    <small class="text-muted">No data extraction rules for this step.</small>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="alert alert-info" role="alert">
+                This chain has no steps. You'll need to add functionality to add steps.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Add New Step</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('chains_bp.add_step', chain_id=chain.id) }}" method="POST" novalidate>
+                {{ form.hidden_tag() }}
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="endpoint" class="form-label">{{ form.endpoint.label }}</label>
+                        {{ form.endpoint(class="form-select") }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="name" class="form-label">{{ form.name.label }}</label>
+                        {{ form.name(class="form-control") }}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="data_extraction_rules" class="form-label">{{ form.data_extraction_rules.label }}</label>
+                    {{ form.data_extraction_rules(class="form-control font-monospace") }}
+                    <div class="form-text">
+                        Enter a valid JSON array or leave blank. Example:
+                        <code>[{"variable_name": "my_var", "source_type": "header", "source_identifier": "X-Auth-Token"}]</code>
+                    </div>
+                </div>
+
+                {{ form.submit(class="btn btn-primary") }}
+            </form>
+        </div>
+    </div>
+
+
+</div>
+{% endblock %}

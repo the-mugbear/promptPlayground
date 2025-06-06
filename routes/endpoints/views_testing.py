@@ -6,12 +6,11 @@ import json
 
 from extensions import db
 from models.model_Endpoints import Endpoint
-from services.common.http_request_service import replay_post_request
+from services.common.http_request_service import execute_api_request
 from services.common.header_parser_service import parse_raw_headers, headers_from_apiheader_list
-from services.endpoints.api_templates import PAYLOAD_TEMPLATES # For populating create_endpoint form
+from services.endpoints.api_templates import PAYLOAD_TEMPLATES
 
 from . import endpoints_bp
-# from .views_core import get_endpoint_form_data # This import seems unused in this file.
 
 @endpoints_bp.route('/get_suggestions', methods=['GET'])
 @login_required
@@ -124,7 +123,7 @@ def test_endpoint(endpoint_id=None):
         
     headers_str = "\n".join(f"{k}: {v}" for k, v in effective_headers_dict.items())
     
-    result = replay_post_request(processed_hostname, effective_endpoint_path, actual_payload_sent, headers_str)
+    result = execute_api_request(processed_hostname, effective_endpoint_path, actual_payload_sent, headers_str)
     
     test_result_data = {
         'payload_sent': actual_payload_sent,

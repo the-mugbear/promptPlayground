@@ -1,18 +1,17 @@
 # app/endpoints/views_manual_test.py
-from flask import render_template, request, redirect, url_for, jsonify # Removed flash if not used here
-from flask_login import login_required # If manual_test itself requires login
+from flask import render_template, request, redirect, url_for, jsonify 
+from flask_login import login_required 
 
 from extensions import db
 from models.model_ManualTestRecord import ManualTestRecord
-from services.endpoints.api_templates import PAYLOAD_TEMPLATES # Or another source for these
-from services.transformers.registry import TRANSFORM_PARAM_CONFIG, apply_transformation # Adjust path
-from services.common.http_request_service import replay_post_request # Adjust path
-from services.common.header_parser_service import parse_raw_headers # Adjust path
-
+from services.endpoints.api_templates import PAYLOAD_TEMPLATES 
+from services.transformers.registry import TRANSFORM_PARAM_CONFIG, apply_transformation 
+from services.common.http_request_service import execute_api_request 
+from services.common.header_parser_service import parse_raw_headers 
 from . import endpoints_bp
 
 @endpoints_bp.route('/manual_test', methods=['GET', 'POST'])
-# @login_required # Add if this page needs login
+@login_required 
 def manual_test():
     if request.method == 'GET':
         history = ManualTestRecord.query.order_by(ManualTestRecord.created_at.desc()).all()
@@ -46,7 +45,7 @@ def manual_test():
 
 
     final_payload = tpl.replace("{{INJECT_PROMPT}}", transformed_repl_value)
-    result = replay_post_request(host, path, final_payload, assembled_hdrs)
+    result = execute_api_request(host, path, final_payload, assembled_hdrs)
 
     rec = ManualTestRecord(
         hostname=host,

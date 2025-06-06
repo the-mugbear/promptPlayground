@@ -1,7 +1,7 @@
 import random
 import string
 import time
-from services.common.http_request_service import replay_post_request
+from services.common.http_request_service import execute_api_request
 
 def apply_random_transformations(prompt):
     # A simple example of a random transformation
@@ -28,7 +28,7 @@ def evil_agent_jailbreak_generator(adversarial_endpoint, recipient_endpoint, bas
         trial_prompt = apply_random_transformations(base_prompt)
         
         adv_payload = adversarial_endpoint.http_payload.replace("{{INJECT_PROMPT}}", trial_prompt)
-        adv_response = replay_post_request(
+        adv_response = execute_api_request(
             adversarial_endpoint.hostname,
             adversarial_endpoint.endpoint,
             adv_payload,
@@ -36,7 +36,7 @@ def evil_agent_jailbreak_generator(adversarial_endpoint, recipient_endpoint, bas
         )
         
         rec_payload = recipient_endpoint.http_payload.replace("{{INJECT_PROMPT}}", trial_prompt)
-        rec_response = replay_post_request(
+        rec_response = execute_api_request(
             recipient_endpoint.hostname,
             recipient_endpoint.endpoint,
             rec_payload,

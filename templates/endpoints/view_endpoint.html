@@ -78,6 +78,40 @@
     .validation-icon {
         font-weight: bold;
     }
+
+    .method-badge {
+        font-size: 0.9em;
+        padding: 0.4em 0.7em;
+        color: #fff;
+        border-radius: 0.25rem;
+    }
+
+    .method-get {
+        background-color: #0d6efd;
+    }
+
+    /* Blue */
+    .method-post {
+        background-color: #198754;
+    }
+
+    /* Green */
+    .method-put {
+        background-color: #ffc107;
+        color: #000 !important;
+    }
+
+    /* Yellow */
+    .method-delete {
+        background-color: #dc3545;
+    }
+
+    /* Red */
+    .method-patch {
+        background-color: #fd7e14;
+    }
+
+    /* Orange */
 </style>
 {% endblock %}
 
@@ -112,6 +146,22 @@
                 </div>
                 <div class="edit-mode">
                     <input type="text" class="form-control" value="{{ endpoint.hostname }}">
+                </div>
+            </div>
+
+            <div class="editable-field" data-field="method">
+                <label>Method:</label>
+                <div class="view-mode">
+                    <span class="badge method-badge method-{{ endpoint.method|lower }}">{{ endpoint.method }}</span>
+                </div>
+                <div class="edit-mode">
+                    <select class="form-select">
+                        <option value="GET" {% if endpoint.method=='GET' %}selected{% endif %}>GET</option>
+                        <option value="POST" {% if endpoint.method=='POST' %}selected{% endif %}>POST</option>
+                        <option value="PUT" {% if endpoint.method=='PUT' %}selected{% endif %}>PUT</option>
+                        <option value="DELETE" {% if endpoint.method=='DELETE' %}selected{% endif %}>DELETE</option>
+                        <option value="PATCH" {% if endpoint.method=='PATCH' %}selected{% endif %}>PATCH</option>
+                    </select>
                 </div>
             </div>
 
@@ -191,7 +241,7 @@
     <div id="testResultModalContent" class="confirmation-dialog test-result-modal-content">
         <div
             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--neon-blue);">
-            <h3>Test Endpoint Results</h3> 
+            <h3>Test Endpoint Results</h3>
             <span class="close-modal-button"
                 style="font-size: 1.8rem; cursor: pointer; color: var(--neon-pink); line-height: 1;">&times;</span>
         </div>
@@ -199,25 +249,25 @@
         <div class="test-result-modal-body">
             <div class="result-section-modal">
                 <h5>Status Code</h5>
-                <div id="modalStatusCode" class="status-code"></div> 
+                <div id="modalStatusCode" class="status-code"></div>
             </div>
             <hr style="border-color: var(--neon-purple); opacity: 0.2; margin: 0.8rem 0;">
 
             <div class="result-section-modal">
                 <h5>Response Data</h5>
-                <pre id="modalResponseData" class="response-data"></pre> 
+                <pre id="modalResponseData" class="response-data"></pre>
             </div>
             <hr style="border-color: var(--neon-purple); opacity: 0.2; margin: 0.8rem 0;">
 
             <div class="result-section-modal">
                 <h5>Payload Sent to Target</h5>
-                <pre id="modalPayloadSent" class="headers-sent"></pre> 
+                <pre id="modalPayloadSent" class="headers-sent"></pre>
             </div>
             <hr style="border-color: var(--neon-purple); opacity: 0.2; margin: 0.8rem 0;">
 
             <div class="result-section-modal">
                 <h5>Headers Sent to Target</h5>
-                <pre id="modalHeadersSent" class="headers-sent"></pre> 
+                <pre id="modalHeadersSent" class="headers-sent"></pre>
             </div>
         </div>
 

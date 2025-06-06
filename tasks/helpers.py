@@ -55,38 +55,6 @@ def process_prompt_for_case(original_prompt: str, run_filters: list, run_level_t
     logger.debug(f"PromptProcessor: Final prompt: '{current_prompt[:100]}...'")
     return current_prompt
 
-def _recursively_inject_prompt(data_structure, placeholder: str, replacement_value: str) -> bool:
-    """
-    Recursively traverses a data structure (dict or list) and replaces any string
-    value matching the placeholder with the replacement_value.
-
-    Args:
-        data_structure: The dict or list to traverse.
-        placeholder: The string placeholder to search for (e.g., "{{INJECT_PROMPT}}").
-        replacement_value: The string value to replace the placeholder with.
-
-    Returns:
-        True if at least one replacement was made, False otherwise.
-    """
-    injected = False
-    if isinstance(data_structure, dict):
-        for key, value in data_structure.items():
-            if isinstance(value, str) and value == placeholder:
-                data_structure[key] = replacement_value
-                injected = True
-            elif isinstance(value, (dict, list)):
-                if _recursively_inject_prompt(value, placeholder, replacement_value):
-                    injected = True
-    elif isinstance(data_structure, list):
-        for i, item in enumerate(data_structure):
-            if isinstance(item, str) and item == placeholder:
-                data_structure[i] = replacement_value
-                injected = True
-            elif isinstance(item, (dict, list)):
-                if _recursively_inject_prompt(item, placeholder, replacement_value):
-                    injected = True
-    return injected
-
 def emit_run_update(run_id: int, event_name: str, data: Dict[str, Any]) -> None:
     """
     Emit a SocketIO event to all clients in the test-run room.

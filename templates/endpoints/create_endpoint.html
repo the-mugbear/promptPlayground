@@ -34,10 +34,29 @@
           value="{{ request.form.name|default('') }}">
       </div>
 
-      <div class="form-group">
+      <!-- <div class="form-group">
         <label for="hostname">Hostname</label>
         <input type="text" id="hostname" name="hostname" required placeholder="e.g., https://api.example.com"
           value="{{ request.form.hostname|default('') }}">
+      </div> -->
+
+      <div class="row mb-3">
+        <div class="col-md-3">
+          <label for="method" class="form-label">HTTP Method</label>
+          <select class="form-select" id="method" name="method">
+            <option value="POST">POST</option>
+            <option value="GET">GET</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
+            <option value="PATCH">PATCH</option>
+          </select>
+        </div>
+
+        <div class="col-md-9">
+          <label for="hostname" class="form-label">Hostname</label>
+          <input type="text" class="form-control" id="hostname" name="hostname" placeholder="https://api.example.com"
+            value="{{ hostname or '' }}">
+        </div>
       </div>
 
       <div class="form-group">
@@ -51,7 +70,20 @@
         <textarea id="http_payload" name="http_payload" rows="16"
           placeholder='Paste or edit JSON here...'>{{ request.form.http_payload|default('') }}</textarea>
         <button type="button" onclick="formatHttpPayload()">Format JSON</button>
-        <button type="button" id="insertTokenBtn">Insert {{INJECT_PROMPT}} Token</button>
+
+        <button type="button" id="insertTokenBtn">
+          Insert Token: {% raw %}{{INJECT_PROMPT}}{% endraw %}
+        </button>
+        <button type="button" class="dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"
+          aria-expanded="false">
+          <span class="visually-hidden">Toggle Dropdown</span>
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="#" id="insertJsonTokenBtn">
+              For JSON String: {% raw %}{{INJECT_PROMPT | tojson}}{% endraw %}
+            </a></li>
+        </ul>
+
       </div>
 
       <div class="form-group">

@@ -1,25 +1,26 @@
 # tasks/case.py
 # Single test case execution task and its helpers
 
-import json # Used for handling JSON data (dumps for strings, loads for parsing)
-import logging # For logging task activity and errors
-import traceback # For formatting exception tracebacks in error records
-from datetime import datetime # For accurately timestamping events
+import json
+import logging
+import traceback 
+from datetime import datetime
 
-from celery_app import celery # Your Celery application instance
-from tasks.base import ContextTask # Your custom base task for Flask app context
-from extensions import db # Your SQLAlchemy instance for database operations
+from celery_app import celery 
+from tasks.base import ContextTask 
+from extensions import db 
 from models.model_TestRunAttempt import TestRunAttempt
 from models.model_TestCase import TestCase
-# Endpoint model is referenced via run.endpoint, direct import might be optional
-# from models.model_Endpoints import Endpoint 
-from models.model_TestExecution import TestExecution # To create execution records
-from models.model_TestRun import TestRun # To update progress and get run-level info
+
+from models.model_TestExecution import TestExecution 
+from models.model_TestRun import TestRun 
 from models.model_Endpoints import Endpoint
-from services.common.http_request_service import replay_post_request # Your function for making HTTP calls
-# Helper functions for emitting SocketIO updates, SQLAlchemy session management, and prompt processing
-from .helpers import emit_run_update, emit_execution_update, with_session, process_prompt_for_case, _recursively_inject_prompt
-from sqlalchemy.orm import selectinload, joinedload # For optimizing database queries
+
+from services.common.templating_service import render_string_with_context, TemplateRenderingError
+from services.common.http_request_service import execute_api_request
+
+from .helpers import emit_run_update, emit_execution_update, with_session, process_prompt_for_case
+from sqlalchemy.orm import selectinload, joinedload 
 
 logger = logging.getLogger(__name__) # Module-level logger
 
@@ -30,38 +31,31 @@ logger = logging.getLogger(__name__) # Module-level logger
     name='tasks.execute_single_test_case', # Explicit Celery task name
     rate_limit='1/s' # Added rate limiting: 1 task of this type per second across all workers
 )
-@with_session # Decorator to manage SQLAlchemy session lifecycle (commit/rollback/remove)
+@with_session 
 def execute_single_test_case(
-    self, # The Celery task instance itself
+    self,                     # The Celery task instance itself
     test_run_attempt_id: int, # ID of the parent TestRunAttempt
     test_case_id: int,        # ID of the TestCase to execute
     endpoint_id: int,         # ID of the Endpoint to target (passed by orchestrator)
     test_run_id: int,         # ID of the parent TestRun (passed by orchestrator)
     sequence_num: int         # Sequence number of this test case in the run
 ):
-    task_id = self.request.id # Celery's unique ID for this specific task execution
+    task_id = self.request.id
     logger.info(f"Task {task_id} - TC_ID:{test_case_id}, Seq:{sequence_num}, AttID:{test_run_attempt_id}: Starting.")
-
-    # Initialize variables for robust error reporting and record keeping.
-    # payload_info_for_record will hold the payload dictionary (or an error default)
-    # to be stored in the TestExecution record.
+    
     payload_info_for_record = {"error": "Payload not generated due to an early task error."}
-    execution_record = None # Will hold the TestExecution ORM object to be saved.
-    # Capture a more accurate start time for this specific task execution.
-    actual_execution_started_at = datetime.utcnow() 
+    execution_record = None
+    actual_execution_started_at = datetime.utcnow()
 
     try:
-        # --- Initial Data Fetching ---
-        # Fetch the TestRunAttempt which links to the TestRun.
+        # --- Initial Data Fetching --- 
         attempt = db.session.get(TestRunAttempt, test_run_attempt_id)
-        # Fetch the TestRun, eagerly loading its related filters and endpoint.
-        # 'test_run_id' is passed by the orchestrator.
         run = db.session.query(TestRun).options(
-            selectinload(TestRun.filters),    # Eagerly load the 'filters' relationship
-            joinedload(TestRun.endpoint)    # Eagerly load the 'endpoint' relationship
+            selectinload(TestRun.filters),
+            joinedload(TestRun.endpoint)
         ).get(test_run_id)
-        # Fetch the specific TestCase object.
         case_obj = db.session.get(TestCase, test_case_id)
+        endpoint_obj = run.endpoint if run else None
         
         # Derive the Endpoint object from the loaded 'run' object.
         # The 'endpoint_id' argument passed to this task is mainly for confirmation or direct use
@@ -71,7 +65,7 @@ def execute_single_test_case(
         # --- Critical Object Validation ---
         # Ensure all necessary ORM objects were successfully fetched before proceeding.
         if not all([attempt, run, case_obj, endpoint_obj]):
-            missing = [] # List to accumulate names of missing objects
+            missing = []
             if not attempt: missing.append(f"AttemptID {test_run_attempt_id}")
             if not run: missing.append(f"RunID {test_run_id}")
             if not case_obj: missing.append(f"CaseID {test_case_id}")
@@ -81,8 +75,6 @@ def execute_single_test_case(
             err_msg = f"Missing critical data: {', '.join(missing)}."
             logger.error(f"Task {task_id}: {err_msg}")
             
-            # Use your create_error_record helper to create a TestExecution record for this setup failure.
-            # payload_info_for_record will still contain the default error message.
             execution_record = create_error_record( 
                  test_run_attempt_id, test_case_id, sequence_num, ValueError(err_msg), 
                  payload_info_for_record, task_id
@@ -91,9 +83,9 @@ def execute_single_test_case(
             # which will then add the record to the session and proceed to finally.
             raise ValueError(err_msg) 
 
-
         # --- 1) Build the final prompt (only once) ---
         original_prompt = case_obj.prompt
+
         # Call the helper function from tasks.helpers to apply filters and transformations.
         final_prompt = process_prompt_for_case(
             original_prompt,
@@ -101,70 +93,58 @@ def execute_single_test_case(
             run.run_transformations or []  # Pass the list of transformation config dicts (or empty list)
         )
 
-        payload_dict = None 
-        if endpoint_obj.http_payload: # Check if the endpoint has an http_payload template string
+        http_payload_str_for_request = "{}" # Default to empty JSON object string
+        if endpoint_obj.http_payload:
             try:
-                # Step 1: Parse the original template string (which should be valid JSON) into a Python dict
-                template_as_dict = json.loads(endpoint_obj.http_payload)
-                
-                # Step 2: Recursively find and replace the placeholder
-                # The _recursively_inject_prompt function will modify template_as_dict in place.
-                prompt_injected = _recursively_inject_prompt(
-                    template_as_dict, 
-                    "{{INJECT_PROMPT}}", # The placeholder string to find
-                    final_prompt         # The actual processed prompt string to inject
+                # 1. Define the context for rendering the Jinja2 template.
+                #    This context will contain all variables your templates might need.
+                render_context = {
+                    "INJECT_PROMPT": final_prompt,
+                    "MODEL_NAME": "gemma-3-12b-it" # USED FOR LOCAL TESTING ONLY
+                }
+
+                # 2. Use the templating service to render the entire payload string.
+                #    This replaces the old, complex logic of recursively injecting the prompt.
+                http_payload_str_for_request = render_string_with_context(
+                    endpoint_obj.http_payload,
+                    render_context
                 )
-                
-                if not prompt_injected:
-                    logger.warning(f"Task {task_id}: Placeholder '{{INJECT_PROMPT}}' not found anywhere in the parsed http_payload template for TC_ID:{case_obj.id}. The prompt was not injected.")
-                # If other placeholders like {{model}} also need replacement,
-                # you could call _recursively_inject_prompt again for them,
-                # or make it handle a dictionary of replacements.
 
-                payload_dict = template_as_dict # template_as_dict is now modified (or not, if placeholder wasn't found)
+                # 3. Parse the final rendered string to store as a dict in the execution record.
+                #    This also serves as validation that the template rendered valid JSON.
+                payload_info_for_record = json.loads(http_payload_str_for_request)
 
-            except json.JSONDecodeError as jde:
-                logger.error(f"Task {task_id}: Failed to parse http_payload template as JSON. Error: {jde}. Template: '{endpoint_obj.http_payload}'")
-                raise # Re-raise to be caught by the main 'except Exception as task_e'
-            except Exception as e_build: # Catch other potential errors during dict manipulation
-                logger.error(f"Task {task_id}: Error processing http_payload template dictionary: {e_build}", exc_info=True)
-                raise
+            except (TemplateRenderingError, json.JSONDecodeError) as e:
+                logger.error(f"Task {task_id}: Failed to build payload from template. Error: {e}. Template: '{endpoint_obj.http_payload}'", exc_info=True)
+                raise # Re-raise to be caught by the main exception handler
         else:
-            # Fallback if no http_payload template is defined on the endpoint.
-            logger.warning(f"Task {task_id}: Endpoint {endpoint_obj.id} has no http_payload. Using default {{'prompt': ...}}.")
-            payload_dict = {"prompt": final_prompt}
+            # The improved fallback logic creates a 'messages' array automatically
+            logger.warning(f"Task {task_id}: Endpoint {endpoint_obj.id} has no http_payload. Falling back to default 'messages' array.")
+            payload_dict = {
+                "messages": [{"role": "user", "content": final_prompt}]
+            }
+            http_payload_str_for_request = json.dumps(payload_dict)
+            payload_info_for_record = payload_dict
         
-        # Update payload_info_for_record with the actual payload dictionary.
-        # This dictionary is suitable for storing in TestExecution.request_payload (JSONB).
-        payload_info_for_record = payload_dict 
-
-        logger.info(f"Task {task_id}: Making POST to {endpoint_obj.hostname}{endpoint_obj.endpoint} for TC_ID:{case_obj.id}")
-        
-        # headers_dict is correctly created as a Python dictionary:
+        # Prepare headers directly as a dictionary. No need to convert to a raw string.
         headers_dict = {h.key: h.value for h in (endpoint_obj.headers or [])}
-        
-        # Convert the headers_dict to a multi-line string format
-        # that parse_raw_headers_with_cookies expects.
-        raw_headers_string_for_request = "\n".join(f"{k}: {v}" for k, v in headers_dict.items())
-        
-        # Convert payload_dict to a JSON string because replay_post_request expects a string
-        # for its internal json.loads() call.
-        http_payload_str_for_request = json.dumps(payload_dict)
+        logger.info(f"HTTP payload being sent: {http_payload_str_for_request}")
 
         # --- 2) Make HTTP call ---
         # This nested try-except is specifically for handling errors from the HTTP request itself
         # or from processing its immediate response.
         try:
-            resp = replay_post_request(
-                endpoint_obj.hostname,
-                endpoint_obj.endpoint,
-                http_payload_str_for_request, # Pass the JSON STRING to replay_post_request
-                raw_headers_string_for_request,
-                timeout=10                    # Set a timeout for the request
+            # Use the refactored service function. Note the cleaner arguments.
+            resp = execute_api_request(
+                method=endpoint_obj.method,
+                hostname_url=endpoint_obj.hostname,
+                endpoint_path=endpoint_obj.endpoint,
+                raw_headers_or_dict=headers_dict, # Pass the dictionary directly
+                http_payload_as_string=http_payload_str_for_request
             )
             status_code = resp.get("status_code")
-            body = resp.get("response_text") # Raw text or pretty-printed JSON string from replay_post_request
-            error_msg_http = resp.get("error") # Error message from replay_post_request (e.g., connection error)
+            body = resp.get("response_body")     
+            error_msg_http = resp.get("error_message") 
 
             # Determine error message for the TestExecution record based on HTTP outcome.
             if error_msg_http and status_code is None: # E.g. connection error, ReadTimeout
@@ -194,9 +174,8 @@ def execute_single_test_case(
                 processed_prompt_str=final_prompt 
             )
 
-        except Exception as http_e: # Catches errors from replay_post_request or subsequent logic within this try
+        except Exception as http_e: # Catches errors from execute_api_request or subsequent logic within this try
             logger.error(f"Task {task_id}: HTTP call or response processing failed for TC_ID:{case_obj.id if 'case_obj' in locals() else test_case_id}: {http_e}", exc_info=True)
-            # Use your create_error_record helper.
             # payload_info_for_record will contain the actual payload if generated, or the default error dict.
             execution_record = create_error_record(
                 test_run_attempt_id, test_case_id, sequence_num, http_e, 
@@ -206,7 +185,6 @@ def execute_single_test_case(
 
     except Exception as task_e: # Catches any preceding errors (data fetch, prompt processing, initial setup)
         logger.error(f"Task {task_id}: Broader error for TC_ID:{test_case_id}: {task_e}", exc_info=True)
-        # Use your create_error_record helper.
         # payload_info_for_record will be the default error payload if task_e occurred very early.
         execution_record = create_error_record(
             test_run_attempt_id, test_case_id, sequence_num, task_e,
@@ -216,7 +194,6 @@ def execute_single_test_case(
     finally: # This block will always execute, ensuring record persistence and updates.
         if execution_record:
             db.session.add(execution_record)
-            # The @with_session decorator handles db.session.commit() or rollback() & db.session.remove()
 
             # --- Debugging logs for test_run_id (can be removed after confirming type) ---
             logger.info(f"Task {task_id}: Attempting to update progress for TestRun ID: {test_run_id}")
@@ -224,8 +201,6 @@ def execute_single_test_case(
             # --- End Debugging ---
 
             # --- 4) Atomically increment TestRun.progress_current by 1 ---
-            # This IS needed for the "simple group diagnostic" test where handle_batch_completion is not used.
-            # It should only run if an execution_record was successfully created (either a success or error record).
             if isinstance(test_run_id, int): # Safety check for test_run_id type
                 db.session.query(TestRun).filter_by(id=test_run_id).update(
                     {TestRun.progress_current: TestRun.progress_current + 1},
@@ -254,55 +229,7 @@ def execute_single_test_case(
     # Return status and ID of the execution record.
     return {'status': 'PROCESSED', 'execution_id': execution_record.id if execution_record else None}
 
-
-# --- Helper Functions (as you provided in your file) ---
-# These helpers are defined locally in this file.
-
-def fetch_objects(attempt_id, case_id, endpoint_id):
-    # This helper is NOT currently used by the main execute_single_test_case function above.
-    # The main function performs direct fetches. Consider refactoring to use this or removing it.
-    attempt = db.session.get(TestRunAttempt, attempt_id)
-    case = db.session.get(TestCase, case_id)
-    endpoint = db.session.get(Endpoint, endpoint_id) 
-    missing = [name for name, obj in (('Attempt', attempt), ('Case', case), ('Endpoint', endpoint)) if obj is None]
-    if missing:
-        raise ValueError(f"Missing objects: {', '.join(missing)}")
-    return attempt, case, endpoint
-
-def build_payload(template, prompt):
-    # This helper is NOT currently used by the main execute_single_test_case function above.
-    # The main function has its own, more robust, inline logic for payload creation.
-    # This helper also uses a different placeholder "{{INJECT_PROMPT}}" and a potentially risky
-    # string manipulation `json.dumps(prompt)[1:-1]`. It's recommended to use the inline logic
-    # from the main task or adapt this helper significantly if it's to be used.
-    if not template:
-        return json.dumps({"prompt": prompt}) # Returns a JSON string. Main task works with dicts then dumps.
-    injected = json.dumps(prompt)[1:-1] # Strips quotes, can be problematic.
-    if "{{INJECT_PROMPT}}" in template: # Different placeholder.
-        return template.replace("{{INJECT_PROMPT}}", injected)
-    raise ValueError("Payload template missing placeholder")
-
-def call_endpoint(endpoint, payload):
-    # This helper is NOT currently used by the main execute_single_test_case function above.
-    # Main task calls replay_post_request directly. This helper also constructs header_str
-    # differently than how replay_post_request might expect if it takes a dict.
-    headers = {h.key: h.value for h in (endpoint.headers or [])}
-    header_str = "\n".join(f"{k}: {v}" for k, v in headers.items()) # replay_post_request takes a dict
-    result = replay_post_request(endpoint.hostname, endpoint.endpoint, payload, header_str) # Header mismatch
-    # ... (rest of this helper needs review if used) ...
-    if not result:
-        return None, None, "No response from HTTP service"
-    code = result.get("status_code")
-    body = result.get("response_text")
-    if code is None: # This implies an error in the request itself
-        return None, None, body # 'body' here might be an error message from replay_post_request
-    return code, body, None # error_msg is None if code is present
-
-# Ensure this helper's 'payload_dict' argument receives the Python dictionary,
-# as TestExecution.request_payload is JSONB.
-# The call in the main function passes 9 arguments (including task_id, started_at_time).
-# Your definition from the file takes 7 (missing task_id, started_at_time).
-# I'm updating the definition here to match the 9-argument call.
+# --- Helper Functions ---
 def create_execution_record(attempt, case, seq, payload_dict, status_code, body, error_msg, started_at_time,processed_prompt_str):
     disposition = (
         "pass" if status_code and 200 <= status_code < 300 else
@@ -323,8 +250,6 @@ def create_execution_record(attempt, case, seq, payload_dict, status_code, body,
         processed_prompt=processed_prompt_str
     )
 
-# This helper takes IDs and the payload_dict (which is correct for TestExecution.request_payload being JSONB).
-# It also correctly takes task_id.
 def create_error_record(attempt_id, case_id, sequence_num, error_exception, payload_dict, processed_prompt_str=None):
     err_detail = ( # Format a detailed error message including traceback
         f"Exception {type(error_exception).__name__}: {error_exception}\n"
