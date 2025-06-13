@@ -197,6 +197,7 @@ select option {
   overflow-wrap: break-word;
   word-break: break-all;
   font-family: var(--main-font);
+  text-decoration: none; 
 }
 
 /* For collapsible sections */

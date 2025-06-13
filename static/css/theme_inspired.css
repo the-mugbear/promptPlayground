@@ -333,6 +333,7 @@ pre {
     white-space: pre; /* Keep pre formatting */
     font-family: var(--main-font);
     font-size: 0.9em;
+    text-decoration: none; 
 }
 
 /* For collapsible sections - Basic structure kept, subtle styling */

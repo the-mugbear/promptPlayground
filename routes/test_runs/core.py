@@ -17,32 +17,37 @@ from models.model_TestExecution import TestExecution
 from models.model_PromptFilter import PromptFilter
 from . import test_runs_bp
 
+
 @test_runs_bp.route('/', methods=['GET'])
-@login_required 
+@login_required
 def list_test_runs():
     """
     Display a paginated list of all test runs.
-    
+
     Returns:
         Rendered template with paginated test runs list
     """
     page = request.args.get('page', 1, type=int)
     pagination = (TestRun.query
-                 .options(selectinload(TestRun.user))
-                 .order_by(TestRun.id.desc())
-                 .paginate(page=page, per_page=10, error_out=False))
+                  .options(
+                      selectinload(TestRun.user),
+                      selectinload(TestRun.endpoint)
+                  )
+                  .order_by(TestRun.id.desc())
+                  .paginate(page=page, per_page=10, error_out=False))
     runs = pagination.items
     return render_template('test_runs/list_test_runs.html', test_runs=runs, pagination=pagination)
 
+
 @test_runs_bp.route('/<int:run_id>', methods=['GET'])
-@login_required 
+@login_required
 def view_test_run(run_id):
     """
     View detailed information about a specific test run.
-    
+
     Args:
         run_id: The ID of the test run to view
-        
+
     Returns:
         Rendered template with test run details including:
         - Test case responses and status
@@ -57,17 +62,17 @@ def view_test_run(run_id):
         TestRun.query
         .options(
             selectinload(TestRun.endpoint),
-            selectinload(TestRun.test_suites).selectinload(TestSuite.test_cases),
+            selectinload(TestRun.test_suites).selectinload(
+                TestSuite.test_cases),
             selectinload(TestRun.attempts)
-                .selectinload(TestRunAttempt.executions)
-                .selectinload(TestExecution.test_case)
+            .selectinload(TestRunAttempt.executions)
+            .selectinload(TestExecution.test_case)
         )
         .get_or_404(run_id)
     )
 
     # 2) Deserialize run‐level transformations JSON into a Python list
     run_transformations = run.run_transformations if run.run_transformations is not None else []
-
 
     # 3) Build a map of test_case_id → { test_case, attempts: [ … ] }
     test_case_map = {}
@@ -161,12 +166,13 @@ def view_test_run(run_id):
         prompt_filters=all_filters
     )
 
+
 @test_runs_bp.route('/create', methods=['GET'])
 @login_required
 def create_test_run_form():
     """
     Display the form for creating a new test run.
-    
+
     Returns:
         Rendered template with:
         - Paginated list of available test suites
@@ -179,7 +185,8 @@ def create_test_run_form():
     # Filter test suites by search term if provided
     suites_query = TestSuite.query
     if search:
-        suites_query = suites_query.filter(TestSuite.description.ilike(f'%{search}%'))
+        suites_query = suites_query.filter(
+            TestSuite.description.ilike(f'%{search}%'))
 
     pagination = suites_query.paginate(page=page, per_page=10, error_out=False)
     test_suites = pagination.items
@@ -195,19 +202,20 @@ def create_test_run_form():
         prompt_filters=prompt_filters
     )
 
+
 @test_runs_bp.route('/create', methods=['POST'])
 @login_required
 def create_test_run():
     """
     Handle the submission of the test run creation form.
-    
+
     Creates a new test run with:
     - Associated endpoint
     - Selected test suites
     - Selected prompt filters
     - Initial test run attempt
     - Pending test executions for each test case
-    
+
     Returns:
         Redirect to the new test run's view page on success,
         or back to the creation form with error message on failure
@@ -255,7 +263,7 @@ def create_test_run():
             # All other transforms have no extra parameters
             transform_configs.append({'name': transform_name, 'params': {}})
 
-    #run_transformations_json = json.dumps(transform_configs)
+    # run_transformations_json = json.dumps(transform_configs)
 
     # Generate default name if none provided
     if not run_name:
@@ -268,12 +276,14 @@ def create_test_run():
         # Validate and update endpoint if payload override provided
         endpoint_to_update = Endpoint.query.get(endpoint_id)
         if not endpoint_to_update:
-            flash(f"Selected endpoint with ID {endpoint_id} not found.", 'error')
+            flash(
+                f"Selected endpoint with ID {endpoint_id} not found.", 'error')
             return redirect(url_for('test_runs_bp.create_test_run_form'))
 
         if payload_override and payload_override.strip():
             if "{{INJECT_PROMPT}}" not in payload_override:
-                flash("Error: The overridden payload must still contain '{{INJECT_PROMPT}}'. Endpoint not updated.", 'error')
+                flash(
+                    "Error: The overridden payload must still contain '{{INJECT_PROMPT}}'. Endpoint not updated.", 'error')
             else:
                 endpoint_to_update.http_payload = payload_override
 
@@ -310,44 +320,45 @@ def create_test_run():
         flash(f"Failed to create test run: {e}", 'error')
         return redirect(url_for('test_runs_bp.create_test_run_form'))
 
+
 @test_runs_bp.route('/<int:run_id>/delete', methods=['POST'])
 @login_required
 def delete_test_run(run_id):
     """
     Delete a test run and all its associated data.
-    
+
     This includes:
     - All test executions
     - All test run attempts
     - Associations with test suites and filters
     - The test run itself
-    
+
     Args:
         run_id: The ID of the test run to delete
-        
+
     Returns:
         Redirect to test runs list with success/error message
     """
     run = TestRun.query.get_or_404(run_id)
-    
+
     # Delete all attempts and their executions
     for attempt in run.attempts:
         for execution in attempt.executions:
             db.session.delete(execution)
         db.session.delete(attempt)
-    
+
     # Remove associations with test suites and filters
     run.test_suites = []
     run.filters = []
-    
+
     # Delete the test run
     db.session.delete(run)
-    
+
     try:
         db.session.commit()
         flash('Test run deleted successfully', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error deleting test run: {str(e)}', 'error')
-    
-    return redirect(url_for('test_runs_bp.list_test_runs')) 
+
+    return redirect(url_for('test_runs_bp.list_test_runs'))

@@ -15,7 +15,8 @@ celery = Celery(
         'tasks.orchestrator',  
         'tasks.case',           
         'tasks.helpers',
-        'tasks.batch'       
+        'tasks.batch',
+        'tasks.chain_tasks'       
     ]
 )
 

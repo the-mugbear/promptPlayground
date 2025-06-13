@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="pt-3 mb-4">
+        <h1>{{ title }} for <a href="{{ url_for('chains_bp.view_chain', chain_id=chain.id) }}">{{ chain.name }}</a></h1>
+        <p class="text-muted">Modify the details for Step {{ step.step_order }}.</p>
+    </div>
+
+    <div class="content-card">
+        <div class="card-body">
+            <form action="{{ url_for('chains_bp.edit_step', chain_id=chain.id, step_id=step.id) }}" method="POST" novalidate>
+                {{ form.hidden_tag() }} {# Includes CSRF token #}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.endpoint.label(class="form-label") }}
+                            {{ form.endpoint(class="form-select") }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.name.label(class="form-label") }}
+                            {{ form.name(class="form-control") }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ form.data_extraction_rules.label(class="form-label") }}
+                    {{ form.data_extraction_rules(class="form-control font-monospace") }}
+                    <div class="form-text">
+                        Enter a valid JSON array or leave blank.
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('chains_bp.view_chain', chain_id=chain.id) }}" class="btn btn-secondary">Cancel</a>
+                    {# Update the button's text for the edit context #}
+                    {{ form.submit(value="Save Changes", class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

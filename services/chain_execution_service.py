@@ -24,7 +24,7 @@ class APIChainExecutor:
     def __init__(self):
         pass
 
-    def execute_chain(self, chain_id: int):
+    def execute_chain(self, chain_id: int, execute_until_step_id: int = None):
         chain = db.session.get(APIChain, chain_id)
         if not chain:
             raise ChainExecutionError(f"APIChain with ID {chain_id} not found.")
@@ -109,6 +109,11 @@ class APIChainExecutor:
                 # This 'finally' block ensures that the result of the step,
                 # whether it ended in success or error, is always recorded.
                 execution_results.append(step_result)
+            
+            # Check to see if we should stop here ( used in testing the upto link functionality )
+            if execute_until_step_id is not None and step.id == execute_until_step_id:
+                logger.info(f"Partial execution requested. Stopping after step {step.step_order} (ID: {step.id}).")
+                break # Exit the loop
 
         logger.info(f"Chain execution completed for Chain ID: {chain_id}. Final context keys: {list(chain_context.keys())}")
         return {"final_context": chain_context, "step_results": execution_results}

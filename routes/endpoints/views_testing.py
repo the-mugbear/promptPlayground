@@ -9,8 +9,10 @@ from models.model_Endpoints import Endpoint
 from services.common.http_request_service import execute_api_request
 from services.common.header_parser_service import parse_raw_headers, headers_from_apiheader_list
 from services.endpoints.api_templates import PAYLOAD_TEMPLATES
+from services.common.templating_service import render_string_with_context, TemplateRenderingError
 
 from . import endpoints_bp
+
 
 @endpoints_bp.route('/get_suggestions', methods=['GET'])
 @login_required
@@ -20,9 +22,12 @@ def get_endpoint_suggestions():
     based on existing distinct values in the database.
     Used for autocompletion or suggestions in forms.
     """
-    hostnames = [row.hostname for row in Endpoint.query.with_entities(Endpoint.hostname).distinct().all() if row.hostname]
-    paths = [row.endpoint for row in Endpoint.query.with_entities(Endpoint.endpoint).distinct().all() if row.endpoint]
-    payloads = [row.http_payload for row in Endpoint.query.with_entities(Endpoint.http_payload).distinct().all() if row.http_payload]
+    hostnames = [row.hostname for row in Endpoint.query.with_entities(
+        Endpoint.hostname).distinct().all() if row.hostname]
+    paths = [row.endpoint for row in Endpoint.query.with_entities(
+        Endpoint.endpoint).distinct().all() if row.endpoint]
+    payloads = [row.http_payload for row in Endpoint.query.with_entities(
+        Endpoint.http_payload).distinct().all() if row.http_payload]
 
     return jsonify({
         "hostnames": hostnames,
@@ -30,121 +35,96 @@ def get_endpoint_suggestions():
         "payloads": payloads
     })
 
-@endpoints_bp.route('/test', methods=['POST']) # Route for testing a new, unsaved endpoint configuration (e.g., from create_endpoint.html)
-@endpoints_bp.route('/<int:endpoint_id>/test', methods=['POST']) # Route for testing an existing endpoint (e.g., from view_endpoint.html)
+
+# Route for testing a new, unsaved endpoint configuration
+@endpoints_bp.route('/test', methods=['POST'])
+# Route for testing an existing endpoint (e.g., from view_endpoint.html)
+@endpoints_bp.route('/<int:endpoint_id>/test', methods=['POST'])
 @login_required
 def test_endpoint(endpoint_id=None):
     """
-    Tests an endpoint configuration.
-    This function serves two main scenarios:
-    1. If `endpoint_id` is None (POST to /test):
-       It tests a new configuration, typically submitted from the 'create_endpoint' page.
-       It expects all necessary data (hostname, path, payload, headers) from `request.form`.
-    2. If `endpoint_id` is provided (POST to /<endpoint_id>/test):
-       It tests an existing endpoint. It fetches the endpoint's details from the database.
-       It allows overriding these database values with data from `request.form` if provided
-       (e.g., live edits from 'view_endpoint.html' sent via AJAX FormData).
-
-    Handles both AJAX (returns JSON) and traditional form submissions (returns rendered template with results).
+    Tests an endpoint configuration, handling both AJAX and standard form submissions
+    from both the create and view/edit pages.
     """
-    db_endpoint_obj = None  # To store the endpoint object if fetched from DB
-
-    # Variables to hold the actual values that will be used for the test
-    effective_hostname = None
-    effective_endpoint_path = None
-    effective_payload_template = None
-    effective_headers_dict = {} # Parsed headers (key: value)
-
-    # Determine if the current request is AJAX
-    is_ajax_request = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-
+    db_endpoint_obj = None
     if endpoint_id:
-        # Scenario 2: Testing an existing endpoint (potentially with live edits)
-        db_endpoint_obj = Endpoint.query.options(joinedload(Endpoint.headers)).get_or_404(endpoint_id)
-        
-        form_hostname = request.form.get('hostname')
-        form_endpoint_path = request.form.get('endpoint') 
-        form_http_payload = request.form.get('http_payload')
-        form_raw_headers = request.form.get('raw_headers')
+        db_endpoint_obj = Endpoint.query.options(
+            joinedload(Endpoint.headers)).get_or_404(endpoint_id)
 
-        effective_hostname = form_hostname if form_hostname is not None else db_endpoint_obj.hostname
-        effective_endpoint_path = form_endpoint_path if form_endpoint_path is not None else db_endpoint_obj.endpoint
-        effective_payload_template = form_http_payload if form_http_payload is not None else db_endpoint_obj.http_payload
-
-        if form_raw_headers is not None:
-            effective_headers_dict = parse_raw_headers(form_raw_headers)
-        elif db_endpoint_obj.headers: 
-            effective_headers_dict = headers_from_apiheader_list(db_endpoint_obj.headers)
-            
-    else:
-        # Scenario 1: Testing a new, unsaved configuration
-        effective_hostname = request.form.get('hostname', '').strip()
-        effective_endpoint_path = request.form.get('endpoint', '').strip()
-        effective_payload_template = request.form.get('http_payload', '').strip()
-        raw_headers_from_form = request.form.get('raw_headers', '').strip()
-        effective_headers_dict = parse_raw_headers(raw_headers_from_form) if raw_headers_from_form else {}
-
-    # --- Validation and AJAX-Friendly Error Handling ---
-    if not effective_hostname or not effective_endpoint_path or not effective_payload_template:
-        error_msg = "Hostname, Endpoint Path, and Payload are required for testing."
-        if is_ajax_request: # MODIFIED HERE
-            return jsonify(error=error_msg, status_code=400, response_data=None, headers_sent={}), 400
-        flash(error_msg, "error")
-        return redirect(url_for(".view_endpoint_details", endpoint_id=endpoint_id) if endpoint_id else url_for(".create_endpoint_form"))
-
-    if "{{INJECT_PROMPT}}" not in effective_payload_template:
-        error_msg = "Error: The HTTP payload must contain '{{INJECT_PROMPT}}' token."
-        if is_ajax_request: # MODIFIED HERE
-            return jsonify(error=error_msg, status_code=400, response_data=None, headers_sent={}), 400
-        flash(error_msg, 'error')
-        return redirect(url_for(".view_endpoint_details", endpoint_id=endpoint_id) if endpoint_id else url_for(".create_endpoint_form"))
-
-    test_prompt_value = "What is 4 + 3?" 
-    actual_payload_sent = effective_payload_template.replace("{{INJECT_PROMPT}}", test_prompt_value)
-
-    try:
-        json.loads(actual_payload_sent)
-    except json.JSONDecodeError as e:
-        error_msg = f"Error: Invalid JSON in final payload after injection: {str(e)}"
-        if is_ajax_request: # MODIFIED HERE
-            return jsonify(error=error_msg, status_code=400, response_data=None, headers_sent={}), 400
-        flash(error_msg, 'error')
-        if endpoint_id:
-            return redirect(url_for('.view_endpoint_details', endpoint_id=endpoint_id))
-        else:
-            return redirect(url_for('.create_endpoint_form'))
-
-    # --- Prepare and Execute the Test HTTP Request ---
-    processed_hostname = effective_hostname 
-    if not processed_hostname.startswith(('http://', 'https://')):
-        processed_hostname = 'http://' + processed_hostname
-    if processed_hostname.startswith('http://127.0.0.1') or processed_hostname.startswith('http://localhost'):
-        processed_hostname = processed_hostname.replace('127.0.0.1', 'host.containers.internal').replace('localhost', 'host.containers.internal')
-        
-    headers_str = "\n".join(f"{k}: {v}" for k, v in effective_headers_dict.items())
-    
-    result = execute_api_request(processed_hostname, effective_endpoint_path, actual_payload_sent, headers_str)
-    
-    test_result_data = {
-        'payload_sent': actual_payload_sent,
-        'response_data': result.get("response_text") if result else "Error during replay or no response", # Graceful handling if result is None
-        'status_code': result.get("status_code", "N/A") if result else "N/A",
-        'headers_sent': result.get("headers_sent", {}) if result else {}
+    # Gather effective data from form, with fallback to DB object if it exists
+    form_data = {
+        'hostname': request.form.get('hostname', db_endpoint_obj.hostname if db_endpoint_obj else ''),
+        'endpoint': request.form.get('endpoint', db_endpoint_obj.endpoint if db_endpoint_obj else ''),
+        'http_payload': request.form.get('http_payload', db_endpoint_obj.http_payload if db_endpoint_obj else ''),
+        'method': request.form.get('method', db_endpoint_obj.method if db_endpoint_obj else 'POST'),
+        'raw_headers': request.form.get('raw_headers')
     }
-    
+
+    raw_headers = form_data['raw_headers']
+    if raw_headers is not None:
+        effective_headers_dict = parse_raw_headers(raw_headers)
+    elif db_endpoint_obj and db_endpoint_obj.headers:
+        effective_headers_dict = headers_from_apiheader_list(
+            db_endpoint_obj.headers)
+    else:
+        effective_headers_dict = {}
+
+    is_ajax_request = request.headers.get(
+        'X-Requested-With') == 'XMLHttpRequest'
+
+    # --- Validation ---
+    # Helper function to avoid repetition when handling validation errors
+    def handle_validation_error(error_msg):
+        if is_ajax_request:
+            return jsonify(error=error_msg), 400
+        else:
+            flash(error_msg, 'error')
+            # Re-render the form the user was on, preserving their input
+            template = 'endpoints/view_endpoint.html' if endpoint_id else 'endpoints/create_endpoint.html'
+            return render_template(template, endpoint=db_endpoint_obj, **form_data)
+
+    if not all([form_data['hostname'], form_data['endpoint'], form_data['http_payload']]):
+        return handle_validation_error("Hostname, Endpoint Path, and Payload are required for testing.")
+
+    # --- Payload Rendering ---
+    try:
+        render_context = {
+            "INJECT_PROMPT": "This is a test prompt to validate the template.",
+            "model": "test-model"  # Provide a dummy model for templates that need it
+        }
+        actual_payload_sent = render_string_with_context(
+            form_data['http_payload'], render_context)
+        # Validate that the rendered payload is valid JSON
+        json.loads(actual_payload_sent)
+    except (TemplateRenderingError, json.JSONDecodeError) as e:
+        return handle_validation_error(f"Error in payload template: {e}")
+
+    # --- Execute the Test HTTP Request ---
+    result = execute_api_request(
+        method=form_data['method'].upper(),
+        hostname_url=form_data['hostname'],
+        endpoint_path=form_data['endpoint'],
+        raw_headers_or_dict=effective_headers_dict,
+        http_payload_as_string=actual_payload_sent
+    )
+
+    # --- Prepare Final Result Data ---
+    test_result_data = {
+        'status_code': result.get("status_code", "N/A"),
+        'response_data': result.get("response_body"),
+        'request_headers_sent': result.get("request_headers_sent", {}),
+        'error_message': result.get("error_message")
+    }
+    try:
+        test_result_data['payload_sent'] = json.loads(actual_payload_sent)
+    except json.JSONDecodeError:
+        test_result_data['payload_sent'] = actual_payload_sent
+
     # --- Return Response (AJAX or Rendered Template) ---
-    if is_ajax_request: # MODIFIED HERE
+    if is_ajax_request:
         return jsonify(test_result_data)
     else:
-        if endpoint_id:
-            return render_template('view_endpoint.html', endpoint=db_endpoint_obj, test_result=test_result_data)
-        else:
-            return render_template('create_endpoint.html',
-                                   payload_templates=PAYLOAD_TEMPLATES,
-                                   name=request.form.get('name'), 
-                                   hostname=effective_hostname,
-                                   endpoint=effective_endpoint_path, 
-                                   http_payload=effective_payload_template, 
-                                   raw_headers=request.form.get('raw_headers', ''), 
-                                   test_result=test_result_data
-                                  )
+        # For a standard form post, re-render the page with the results displayed
+        flash("Endpoint test completed!", "info")
+        template = 'endpoints/view_endpoint.html' if endpoint_id else 'endpoints/create_endpoint.html'
+        return render_template(template, endpoint=db_endpoint_obj, test_result=test_result_data, **form_data)

@@ -8,3 +8,4 @@ chains_bp = Blueprint(
 )
 
 from . import views_core
+from . import api
