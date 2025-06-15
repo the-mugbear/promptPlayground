@@ -1,5 +1,4 @@
 # routes/chains/api.py
-
 import logging
 import json
 
@@ -18,7 +17,6 @@ from . import chains_api_bp
 
 logger = logging.getLogger(__name__)
 
-
 @chains_api_bp.route('/test_step_in_isolation', methods=['POST'])
 @login_required
 def test_step_in_isolation():
@@ -28,8 +26,8 @@ def test_step_in_isolation():
     """
     data = request.get_json()
     endpoint_id = data.get('endpoint_id')
-    payload_template = data.get('payload', '{}')
-    headers_template = data.get('headers', '{}')
+    payload_override = data.get('payload', None)
+    headers_override = data.get('headers', None)
     extraction_rules = data.get('data_extraction_rules', [])
     mock_context = data.get('mock_context', {})
 
@@ -41,26 +39,36 @@ def test_step_in_isolation():
         return jsonify({'error': 'Endpoint not found'}), 404
 
     try:
-        # 1. Render templates
+        # 1. Determine the correct templates to use (Step Override > Endpoint Default)
+        payload_template = payload_override if payload_override is not None else endpoint.payload_template.template if endpoint.payload_template else '{}'
+        headers_template = headers_override if headers_override is not None else json.dumps({h.key: h.value for h in endpoint.headers})
+
+        # 2. Render templates
         rendered_payload = render_template_string(payload_template, mock_context)
         rendered_headers_str = render_template_string(headers_template, mock_context)
         
         rendered_headers_dict = {}
-        # Only try to parse if the string is not empty or just whitespace
         if rendered_headers_str and rendered_headers_str.strip():
             try:
                 rendered_headers_dict = json.loads(rendered_headers_str)
             except json.JSONDecodeError as e:
-                # This is the error you were seeing.
                 return jsonify({'error': f'Invalid JSON in rendered Headers: {e}'}), 400
 
-        # 2. Make the HTTP request using the service function
+        # --- Handle Authentication from the Endpoint ---
+        if endpoint.auth_method == 'bearer' and endpoint.credentials_encrypted:
+            rendered_headers_dict['Authorization'] = f'Bearer {endpoint.credentials_encrypted}'
+        elif endpoint.auth_method == 'api_key' and endpoint.credentials_encrypted:
+            # A future improvement could be to make the header name configurable
+            rendered_headers_dict['X-API-Key'] = endpoint.credentials_encrypted
+
+        # 3. Make the HTTP request using the correct Endpoint attributes
         response_data = execute_api_request(
             method=endpoint.method,
-            hostname_url=endpoint.base_url,
-            endpoint_path=endpoint.path,
+            hostname_url=endpoint.base_url, 
+            endpoint_path=endpoint.path,    
             raw_headers_or_dict=rendered_headers_dict,
-            http_payload_as_string=rendered_payload
+            http_payload_as_string=rendered_payload,
+            timeout=endpoint.timeout_seconds 
         )
 
         # 3. Extract data from the response using the service function
@@ -91,8 +99,6 @@ def test_step_in_isolation():
         logger.error(f"Error in test_step_in_isolation: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-
-# --- NEW ENDPOINT FOR THE DEBUGGER ---
 @chains_api_bp.route('/execute_step', methods=['POST'])
 @login_required
 def execute_step():

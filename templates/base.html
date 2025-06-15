@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +9,7 @@
     <!-- Core CSS - Always loaded -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/core/variables.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/core/base.css') }}">
-    
+
     <!-- Theme CSS - Only one loaded at a time -->
     <link id="theme-cyberpunk" rel="stylesheet" href="{{ url_for('static', filename='css/themes/cyberpunk.css') }}">
     <link id="theme-modern" rel="stylesheet" href="{{ url_for('static', filename='css/themes/modern.css') }}" disabled>
@@ -36,7 +37,7 @@
             text-decoration: none;
             transition: var(--transition-fast);
         }
-        
+
         .footer-theme-toggle:hover,
         .footer-theme-toggle:focus {
             text-decoration: underline;
@@ -45,6 +46,7 @@
         }
     </style>
 </head>
+
 <body>
     {% block banner %}
     <header>
@@ -56,55 +58,53 @@
                 <span class="hamburger"></span>
             </button>
             <ul class="nav-links">
-                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
-                    <a href="#">Reports</a>
-                    <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('report_bp.report') }}">Endpoint Reports</a></li>
-                    </ul>
-                </li>
-                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_runs_bp') %}active{% endif %}">
+
+                <li
+                    class="dropdown {% if request.endpoint and request.endpoint.startswith('test_runs_bp') %}active{% endif %}">
                     <a href="#">Run</a>
                     <ul class="dropdown-menu">
                         <li><a href="{{ url_for('test_runs_bp.create_test_run_form') }}">Design a new Test</a></li>
                         <li><a href="{{ url_for('test_runs_bp.list_test_runs') }}">List Existing Tests</a></li>
                     </ul>
                 </li>
-                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('endpoints_bp') %}active{% endif %}">
-                    <a href="#">Endpoints</a>
+
+                <li
+                    class="dropdown {% if request.endpoint and request.endpoint.startswith('chains_bp') %}active{% endif %}">
+                    <a href="#">Chains</a>
                     <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('endpoints_bp.create_endpoint') }}">Register Endpoint</a></li>
-                        <li><a href="{{ url_for('endpoints_bp.list_endpoints') }}">View Endpoints</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a href="{{ url_for('chains_bp.list_chains') }}">View Chains</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a href="{{ url_for('endpoints_bp.manual_test') }}">Manual Tester</a></li>
-                    </ul>
-                </li>
-                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('test_suites_bp') %}active{% endif %}">
-                    <a href="#">Test Suites</a>
-                    <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('test_suites_bp.create_test_suite_form') }}">Create Suite</a></li>
-                        <li><a href="{{ url_for('test_suites_bp.list_test_suites') }}">View Suites</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a href="{{ url_for('test_cases_bp.create_test_case_form') }}">Create Case</a></li>
-                        <li><a href="{{ url_for('test_cases_bp.list_test_cases') }}">View Cases</a></li>
+                        <li><a href="{{ url_for('chains_bp.create_chain') }}">Create New Chain</a></li>
+                        <li><a href="{{ url_for('chains_bp.list_chains') }}">View All Chains</a></li>
                     </ul>
                 </li>
 
-                <li class="dropdown {% if request.endpoint and (request.endpoint.startswith('evil_agent_bp') or request.endpoint.startswith('best_of_n_bp')) %}active{% endif %}">
+                <li
+                    class="dropdown {% if request.endpoint and (request.endpoint.startswith('endpoints_bp') or request.endpoint.startswith('payload_templates_bp') or request.endpoint.startswith('test_suites_bp')) %}active{% endif %}">
+                    <a href="#">Configuration</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('endpoints_bp.list_endpoints') }}">Endpoints</a></li>
+                        <li><a href="{{ url_for('payload_templates_bp.list_templates') }}">Payload Templates</a></li>
+                        <li><a href="{{ url_for('test_suites_bp.list_test_suites') }}">Test Suites</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a href="{{ url_for('endpoints_bp.manual_test') }}">Manual Endpoint Tester</a></li>
+                    </ul>
+                </li>
+
+                <li
+                    class="dropdown {% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
+                    <a href="#">Reports</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('report_bp.report') }}">View Reports</a></li>
+                    </ul>
+                </li>
+
+                <li
+                    class="dropdown {% if request.endpoint and (request.endpoint.startswith('evil_agent_bp') or request.endpoint.startswith('best_of_n_bp')) %}active{% endif %}">
                     <a href="#">Attacks</a>
                     <ul class="dropdown-menu">
                         <li><a href="{{ url_for('evil_agent_bp.evil_agent_index') }}">Evil Agent</a></li>
                         <li><a href="{{ url_for('best_of_n_bp.best_of_n_index') }}">Best of N</a></li>
-                    </ul>
-                </li>
-                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('prompt_filter_bp') %}active{% endif %}">
-                    <a href="#">Utilities</a>
-                    <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('prompt_filter_bp.create_prompt_filter') }}">Create Prompt Filter</a></li>
-                        <li><a href="{{ url_for('prompt_filter_bp.list_prompt_filters') }}">View Prompt Filters</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a href="{{ url_for('utils_bp.risk_calculator') }}">Risk Calculator</a></li>
                     </ul>
                 </li>
 
@@ -112,9 +112,7 @@
                 <li class="dropdown user-menu">
                     <a href="#">{{ current_user.username }}</a>
                     <ul class="dropdown-menu">
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.blueprint == 'user_bp' and request.endpoint.endswith('profile') %}active{% endif %}" href="{{ url_for('user_bp.profile') }}">My Profile</a>
-                        </li>
+                        <li><a href="{{ url_for('user_bp.profile') }}">My Profile</a></li>
                         {% if current_user.is_admin %}
                         <li><a href="{{ url_for('admin_bp.list_invitations') }}">Manage Invitations</a></li>
                         {% endif %}
@@ -123,11 +121,6 @@
                     </ul>
                 </li>
                 {% else %}
-                <li class="{% if request.endpoint == 'auth_bp.login' %}active{% endif %}">
-                    <a href="{{ url_for('auth_bp.login') }}">Login</a>
-                </li>
-                <li class="{% if request.endpoint and request.endpoint.startswith('help_bp') %}active{% endif %}">
-                    <a href="{{ url_for('help_bp.index') }}">Help</a></li>
                 {% endif %}
             </ul>
         </nav>
@@ -136,16 +129,16 @@
 
     <main>
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flash-messages" role="alert" aria-live="polite">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} flash-message {{ category }}">
-                            {{ message }}
-                            <button type="button" class="close-alert flash-close" aria-label="Close message">&times;</button>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
+        {% if messages %}
+        <div class="flash-messages" role="alert" aria-live="polite">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} flash-message {{ category }}">
+                {{ message }}
+                <button type="button" class="close-alert flash-close" aria-label="Close message">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
         {% endwith %}
 
         {% block content %}{% endblock %}
@@ -160,21 +153,21 @@
     <!-- Updated theme switching JavaScript -->
     <script>
         // Theme switching functionality
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const themeToggle = document.getElementById('theme-toggle');
             const cyberpunkTheme = document.getElementById('theme-cyberpunk');
             const modernTheme = document.getElementById('theme-modern');
-            
+
             // Load saved theme preference
             const savedTheme = localStorage.getItem('theme') || 'cyberpunk';
             setTheme(savedTheme);
-            
-            themeToggle.addEventListener('click', function() {
+
+            themeToggle.addEventListener('click', function () {
                 const currentTheme = localStorage.getItem('theme') || 'cyberpunk';
                 const newTheme = currentTheme === 'cyberpunk' ? 'modern' : 'cyberpunk';
                 setTheme(newTheme);
             });
-            
+
             function setTheme(theme) {
                 if (theme === 'modern') {
                     cyberpunkTheme.disabled = true;
@@ -188,23 +181,23 @@
         });
 
         // Flash message close functionality
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const closeButtons = document.querySelectorAll('.flash-close');
             closeButtons.forEach(button => {
-                button.addEventListener('click', function() {
+                button.addEventListener('click', function () {
                     this.closest('.flash-message').remove();
                 });
             });
         });
 
         // Mobile navigation toggle
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const navToggle = document.querySelector('.nav-toggle');
             const navLinks = document.querySelector('.nav-links');
             const hamburger = document.querySelector('.hamburger');
-            
+
             if (navToggle && navLinks) {
-                navToggle.addEventListener('click', function() {
+                navToggle.addEventListener('click', function () {
                     navLinks.classList.toggle('show-nav');
                     hamburger.classList.toggle('active');
                 });
@@ -214,4 +207,5 @@
 
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

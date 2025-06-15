@@ -24,7 +24,7 @@ class Endpoint(db.Model):
 
     # --- Authentication Fields ---
     auth_method = db.Column(db.String(50), default='none', nullable=False) # e.g., 'none', 'bearer', 'api_key'
-    credentials_encrypted = db.Column(db.String(500), nullable=True) # For storing encrypted tokens/keys
+    credentials_encrypted = db.Column(db.Text, nullable=True) # For storing encrypted tokens/keys
     
     # --- Resiliency Fields ---
     timeout_seconds = db.Column(db.Integer, default=60, nullable=False)

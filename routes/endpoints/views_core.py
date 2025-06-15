@@ -5,7 +5,8 @@ from sqlalchemy.orm import joinedload
 
 from extensions import db
 from models import Endpoint, EndpointHeader, PayloadTemplate # Import the new model
-from forms import EndpointForm # Import our new, powerful form
+from forms import EndpointForm 
+from services.common.header_parser_service import parse_raw_headers
 
 from . import endpoints_bp
 
@@ -42,6 +43,14 @@ def create_endpoint():
         )
         db.session.add(new_endpoint)
         db.session.commit()
+
+        if form.raw_headers.data:
+            parsed_headers = parse_raw_headers(form.raw_headers.data)
+            for key, value in parsed_headers.items():
+                header = EndpointHeader(endpoint_id=new_endpoint.id, key=key, value=value)
+                db.session.add(header)
+            db.session.commit() 
+
         flash(f'Endpoint "{new_endpoint.name}" created successfully!', 'success')
         return redirect(url_for('endpoints_bp.edit_endpoint', endpoint_id=new_endpoint.id))
 
@@ -73,6 +82,15 @@ def edit_endpoint(endpoint_id):
         endpoint.timeout_seconds = form.timeout_seconds.data
         endpoint.retry_attempts = form.retry_attempts.data
         endpoint.purpose = form.purpose.data
+
+        # First, remove all existing headers to start fresh
+        EndpointHeader.query.filter_by(endpoint_id=endpoint.id).delete()
+        # Then, add the new ones from the form
+        if form.raw_headers.data:
+            parsed_headers = parse_raw_headers(form.raw_headers.data)
+            for key, value in parsed_headers.items():
+                new_header = EndpointHeader(endpoint_id=endpoint.id, key=key, value=value)
+                db.session.add(new_header)
         
         db.session.commit()
         flash(f'Endpoint "{endpoint.name}" updated successfully!', 'success')
@@ -82,6 +100,12 @@ def edit_endpoint(endpoint_id):
     # so the encrypted value is not exposed in the HTML.
     if request.method == 'GET' and endpoint.credentials_encrypted:
         form.credentials_encrypted.data = "********"
+
+    if request.method == 'GET':
+        # ... (code to populate other fields) ...
+        # --- ADD THIS LINE TO POPULATE HEADERS ---
+        endpoint_headers = {h.key: h.value for h in endpoint.headers}
+        form.raw_headers.data = "\n".join(f"{k}: {v}" for k, v in endpoint_headers.items())
 
     return render_template('endpoints/edit_endpoint.html', form=form, endpoint=endpoint, title="Edit Endpoint")
 

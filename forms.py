@@ -128,6 +128,12 @@ class EndpointForm(FlaskForm):
     auth_method = SelectField('Authentication Method', choices=[('none', 'None'), ('bearer', 'Bearer Token'), ('api_key', 'Custom API Key Header')], default='none')
     credentials_encrypted = StringField('Credentials (Token or Key)', validators=[Optional()], description="Secret value will be encrypted upon saving.")
     
+    raw_headers = TextAreaField(
+        'Raw Headers (Optional)',
+        description="One 'Key: Value' pair per line. These are used for non-sensitive headers like 'Accept'. Sensitive tokens should use the Authentication fields below.",
+        render_kw={"rows": 5}
+    )
+
     # Fields for resiliency, with range validators to ensure sensible values.
     timeout_seconds = IntegerField('Timeout (seconds)', default=60, validators=[DataRequired(), NumberRange(min=1, max=300)])
     retry_attempts = IntegerField('Retry Attempts on Failure', default=0, validators=[DataRequired(), NumberRange(min=0, max=5)])

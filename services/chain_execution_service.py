@@ -214,14 +214,16 @@ class APIChainExecutor:
             # Return a comprehensive result for the debugger UI
             return {
                 'request': {
-                    'url': f"{step.endpoint.hostname.rstrip('/')}/{step.endpoint.endpoint.lstrip('/')}",
+                    'url': f"{endpoint.base_url.rstrip('/')}/{endpoint.path.lstrip('/')}",
                     'headers': rendered_headers_dict,
                     'payload': rendered_payload,
-                    # --- ADD THESE LINES ---
                     'headers_template': headers_template,
                     'payload_template': payload_template
                 },
-                'response': { #...
+                'response': {
+                    'status_code': response_data.get('status_code'),
+                    'headers': response_data.get('response_headers'),
+                    'body': response_data.get('response_body'),
                 },
                 'new_context_variables': new_context_variables
             }
