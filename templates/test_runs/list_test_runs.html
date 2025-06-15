@@ -34,7 +34,7 @@
       <td>{{ run.status or 'pending' }}</td>
       <td>
         {% if run.endpoint %}
-        <a href="{{ url_for('endpoints_bp.view_endpoint_details', endpoint_id=run.endpoint.id) }}">
+        <a href="{{ url_for('endpoints_bp.get_endpoint_details', endpoint_id=run.endpoint.id) }}">
           {{ run.endpoint.name }}
         </a>
         {% else %}

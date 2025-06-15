@@ -9,9 +9,9 @@ from datetime import datetime
 from celery_app import celery 
 from tasks.base import ContextTask 
 from extensions import db 
+
 from models.model_TestRunAttempt import TestRunAttempt
 from models.model_TestCase import TestCase
-
 from models.model_TestExecution import TestExecution 
 from models.model_TestRun import TestRun 
 from models.model_Endpoints import Endpoint
@@ -94,7 +94,7 @@ def execute_single_test_case(
         )
 
         http_payload_str_for_request = "{}" # Default to empty JSON object string
-        if endpoint_obj.http_payload:
+        if endpoint_obj.payload_template:
             try:
                 # 1. Define the context for rendering the Jinja2 template.
                 #    This context will contain all variables your templates might need.
@@ -106,7 +106,7 @@ def execute_single_test_case(
                 # 2. Use the templating service to render the entire payload string.
                 #    This replaces the old, complex logic of recursively injecting the prompt.
                 http_payload_str_for_request = render_template_string(
-                    endpoint_obj.http_payload,
+                    endpoint_obj.payload_template.template,
                     render_context
                 )
 
@@ -142,9 +142,9 @@ def execute_single_test_case(
             # Use the refactored service function. Note the cleaner arguments.
             resp = execute_api_request(
                 method=endpoint_obj.method,
-                hostname_url=endpoint_obj.hostname,
-                endpoint_path=endpoint_obj.endpoint,
-                raw_headers_or_dict=headers_dict, # Pass the dictionary directly
+                hostname_url=endpoint_obj.base_url,
+                endpoint_path=endpoint_obj.path,
+                raw_headers_or_dict=headers_dict,
                 http_payload_as_string=http_payload_str_for_request
             )
             status_code = resp.get("status_code")

@@ -7,6 +7,7 @@
   {{ super() }}
   {# Link to the stylesheets for our themed forms and layouts #}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/endpoints.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -37,6 +38,19 @@
                 {{ render_field(form.path) }}
                 {{ render_field(form.method) }}
                 {{ render_field(form.payload_template) }}
+            </div>
+        </fieldset>
+
+        <fieldset class="form-section full-width">
+            <legend>Headers</legend>
+            <div class="two-column-grid">
+                <div>
+                    {{ render_field(form.raw_headers, rows=10, placeholder="e.g.\nContent-Type: application/json\nX-Custom-Header: value") }}
+                </div>
+                <div>
+                    <div id="suggestionText" class="form-text">Paste headers on the left, and they will be parsed here.</div>
+                    <ul id="suggestion-list" class="headers-list"></ul>
+                </div>
             </div>
         </fieldset>
 
@@ -74,6 +88,7 @@
 {% block scripts %}
 {{ super() }}
 <script>
+const csrfToken = "{{ csrf_token() }}";
 document.addEventListener('DOMContentLoaded', function() {
     const authMethodSelect = document.getElementById('auth_method');
     const credentialsWrapper = document.getElementById('credentials-wrapper');
@@ -93,4 +108,5 @@ document.addEventListener('DOMContentLoaded', function() {
     authMethodSelect.addEventListener('change', toggleCredentialsField);
 });
 </script>
+<script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>
 {% endblock %}
