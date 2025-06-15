@@ -3,6 +3,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentStepIndex = 0;
     const steps = Array.from(document.querySelectorAll('#steps-list .list-group-item'));
 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (!csrfToken) {
+        console.error("CSRF token meta tag not found. AJAX POST requests will be blocked.");
+    }
+
     const runNextBtn = document.getElementById('run-next-btn');
     const resetBtn = document.getElementById('reset-btn');
     const currentContextEl = document.getElementById('current-context');
@@ -10,25 +15,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const lastResponseEl = document.getElementById('last-response');
     const responseStatusEl = document.getElementById('response-status-result');
 
-    // Helper to pretty-print JSON safely
     function prettyPrintJson(element, jsonString) {
         try {
-            // Check if the string is already a JSON object (from parsing before)
             const jsonObj = (typeof jsonString === 'string') ? JSON.parse(jsonString) : jsonString;
             element.textContent = JSON.stringify(jsonObj, null, 2);
         } catch (e) {
-            element.textContent = jsonString; // Show as raw text if not valid JSON
+            element.textContent = jsonString;
         }
+    }
+
+    // Function to update the highlight for the current step
+    function updateCurrentStepHighlight() {
+        steps.forEach((step, index) => {
+            step.classList.remove('current-step');
+            if (index === currentStepIndex) {
+                step.classList.add('current-step');
+            }
+        });
     }
 
     function resetDebugger() {
         context = {};
         currentStepIndex = 0;
-        lastRequestEl.textContent = '';
-        lastResponseEl.textContent = '';
-        responseStatusEl.textContent = '';
-        steps.forEach(s => s.classList.remove('active', 'list-group-item-success', 'list-group-item-danger'));
+        
+        // Clear all results and status classes from steps
+        lastRequestEl.textContent = 'No request sent yet.';
+        lastResponseEl.textContent = 'No response received yet.';
+        responseStatusEl.textContent = 'N/A';
+        steps.forEach(s => {
+            s.classList.remove('active', 'success', 'error', 'current-step');
+        });
+        
         updateUI();
+        updateCurrentStepHighlight(); // Highlight the first step
+        console.log('Debugger reset.');
     }
 
     function updateUI() {
@@ -42,13 +62,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentStepElement = steps[currentStepIndex];
         const stepId = currentStepElement.dataset.stepId;
         
+        // Update UI for the running step
         runNextBtn.disabled = true;
+        currentStepElement.classList.remove('success', 'error');
         currentStepElement.classList.add('active');
-        currentStepElement.classList.remove('list-group-item-success', 'list-group-item-danger');
 
         fetch('/api/chains/execute_step', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
             body: JSON.stringify({ step_id: stepId, context: context })
         })
         .then(response => response.json())
@@ -56,35 +80,39 @@ document.addEventListener('DOMContentLoaded', function() {
             currentStepElement.classList.remove('active');
 
             if (result.error) {
-                currentStepElement.classList.add('list-group-item-danger');
+                currentStepElement.classList.add('error');
                 responseStatusEl.textContent = 'Error';
                 lastResponseEl.textContent = `Execution Error: ${result.error}`;
-                return;
+                return; // Stop execution on error
             }
             
-            currentStepElement.classList.add('list-group-item-success');
+            currentStepElement.classList.add('success');
             context = { ...context, ...result.new_context_variables };
             
             prettyPrintJson(lastRequestEl, result.request.payload);
             responseStatusEl.textContent = result.response.status_code;
             prettyPrintJson(lastResponseEl, result.response.body);
             
+            // Move to the next step
             currentStepIndex++;
             updateUI();
+            updateCurrentStepHighlight(); // Highlight the next step
         })
         .catch(err => {
             currentStepElement.classList.remove('active');
-            currentStepElement.classList.add('list-group-item-danger');
+            currentStepElement.classList.add('error');
             responseStatusEl.textContent = 'Failed';
             lastResponseEl.textContent = `An unexpected network or server error occurred.`;
             console.error('Error executing step:', err);
         })
         .finally(() => {
+            // Only re-enable the button if there are more steps
             runNextBtn.disabled = currentStepIndex >= steps.length;
         });
     });
 
     resetBtn.addEventListener('click', resetDebugger);
 
-    resetDebugger(); // Initialize the view
+    // Initialize the view on page load
+    resetDebugger();
 });

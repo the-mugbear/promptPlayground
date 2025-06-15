@@ -155,18 +155,18 @@ class APIChainExecutor:
         """
         try:
             payload_template = step.payload if step.payload is not None else step.endpoint.http_payload or '{}'
-            
-            # For headers, we also prioritize the step's definition
             headers_template = step.headers if step.headers is not None else json.dumps({h.key: h.value for h in step.endpoint.headers})
 
             # 1. RENDER TEMPLATES
             rendered_payload = render_template_string(payload_template, context)
             rendered_headers_str = render_template_string(headers_template, context)
 
-            try:
-                rendered_headers_dict = json.loads(rendered_headers_str)
-            except json.JSONDecodeError as e:
-                raise ChainExecutionError(f"Invalid JSON in rendered headers for step {step.step_order}: {e}")
+            rendered_headers_dict = {}
+            if rendered_headers_str and rendered_headers_str.strip():
+                try:
+                    rendered_headers_dict = json.loads(rendered_headers_str)
+                except json.JSONDecodeError as e:
+                    raise ChainExecutionError(f"Invalid JSON in rendered headers for step {step.step_order}: {e}")
 
             # 2. EXECUTE REQUEST
             # Use the actual function from your http_request_service
@@ -198,7 +198,7 @@ class APIChainExecutor:
             # Return a comprehensive result for the debugger UI
             return {
                 'request': {
-                    'url': f"{step.endpoint.base_url.rstrip('/')}/{step.endpoint.path.lstrip('/')}",
+                    'url': f"{step.endpoint.hostname.rstrip('/')}/{step.endpoint.endpoint.lstrip('/')}",
                     'headers': rendered_headers_dict,
                     'payload': rendered_payload,
                 },

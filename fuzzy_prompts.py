@@ -194,7 +194,6 @@ def create_app(config_object=Config): # Pass the class itself
     app.register_blueprint(chains_bp)
     app.register_blueprint(chains_api_bp, url_prefix='/api/chains')
 
-
     # --- Application-Level Error Handlers ---
     @app.errorhandler(500)
     def internal_server_error(error):

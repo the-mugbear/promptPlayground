@@ -36,7 +36,7 @@
                 </div>
 
                 <div class="form-group">
-                    {{ render_field(form.headers, class="form-control", rows="4", placeholder='{ "Content-Type":
+                    {{ render_field(form.headers, class="form-control", rows="6", placeholder='{ "Content-Type":
                     "application/json" }') }}
                     <div class="quick-templates"
                         style="margin-top: var(--spacing-sm); display: flex; gap: var(--spacing-sm);">
@@ -54,7 +54,7 @@
                 </div>
 
                 <div class="form-group">
-                    {{ render_field(form.payload, class="form-control", rows="6", placeholder='{ "key":
+                    {{ render_field(form.payload, class="form-control", rows="8", placeholder='{ "key":
                     "{{variable_from_previous_step}}" }') }}
                     <div class="quick-templates"
                         style="margin-top: var(--spacing-sm); display: flex; gap: var(--spacing-sm);">
@@ -72,7 +72,7 @@
                 </div>
 
                 <div class="form-group">
-                    {{ render_field(form.data_extraction_rules, class="form-control", rows="4", placeholder='result =
+                    {{ render_field(form.data_extraction_rules, class="form-control", rows="8", placeholder='result =
                     response.json()[\"data\"]') }}
                     <small class="form-text">Use 'response' to access the full response object.</small>
                     <div class="quick-templates"
@@ -107,7 +107,7 @@
 
             <div class="form-group">
                 <label for="mock_context">Mock Context (JSON)</label>
-                <textarea id="mock_context" class="form-control" rows="5"
+                <textarea id="mock_context" class="form-control" rows="8"
                     placeholder='{"variable_name": "sample_value", "token": "abc123"}'></textarea>
                 <div id="mock-context-error" class="invalid-feedback"></div>
             </div>

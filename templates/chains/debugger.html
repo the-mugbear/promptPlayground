@@ -1,50 +1,85 @@
 {% extends "base.html" %}
 
+{% block title %}Debugger: {{ chain.name }}{% endblock %}
+
+{% block head %}
+{{ super() }}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chains/details.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <h1 class="mb-4">Chain Debugger: <span class="text-primary">{{ chain.name }}</span></h1>
-    <p class="text-muted">Execute this chain step-by-step to debug its behavior and inspect the context at each stage.</p>
-    
-    <div class="row">
-        <div class="col-md-5">
-            <div class="card">
-                <div class="card-header">
-                    <h4>Steps</h4>
-                </div>
-                <div id="steps-list" class="list-group list-group-flush">
-                    {% for step in chain.steps|sort(attribute='step_order') %}
-                    <a href="#" class="list-group-item list-group-item-action" data-step-id="{{ step.id }}">
-                        <strong>Step {{ step.step_order }}:</strong> {{ step.name or step.endpoint.name }}
-                        <span class="badge bg-secondary float-end mt-1">{{ step.endpoint.method }}</span>
-                    </a>
-                    {% endfor %}
-                </div>
-                <div class="card-footer">
-                    <button id="run-next-btn" class="btn btn-success"><i class="fas fa-play"></i> Run Next Step</button>
-                    <button id="reset-btn" class="btn btn-warning float-end"><i class="fas fa-redo"></i> Reset</button>
-                </div>
-            </div>
+<div class="container">
+
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">Chain Debugger</h1>
+            <p class="page-subtitle">For Chain: <a href="{{ url_for('chains_bp.chain_details', chain_id=chain.id) }}">{{
+                    chain.name }}</a></p>
         </div>
+        <div class="header-actions">
+            <a href="{{ url_for('chains_bp.chain_details', chain_id=chain.id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left fa-fw"></i>
+                <span class="button-text">Back to Chain</span>
+            </a>
+        </div>
+    </header>
 
-        <div class="col-md-7">
-            <div class="card">
-                <div class="card-header">
-                    <h4>Execution Details</h4>
-                </div>
-                <div class="card-body">
-                    <h5>Current Context</h5>
-                    <pre><code id="current-context" class="language-json rounded p-2 bg-light">{}</code></pre>
-
-                    <h5 class="mt-4">Last Request Payload</h5>
-                    <pre><code id="last-request" class="language-json rounded p-2 bg-light"></code></pre>
-                    
-                    <h5 class="mt-4">Last Response Body (Status: <span id="response-status-result" class="fw-bold"></span>)</h5>
-                    <pre><code id="last-response" class="language-json rounded p-2 bg-light"></code></pre>
-                </div>
+    <div class="content-card">
+        <div class="card-header">
+            <h3><i class="fas fa-list-ol fa-fw"></i> Steps</h3>
+        </div>
+        <div id="steps-list" class="list-group list-group-flush">
+            {% for step in chain.steps|sort(attribute='step_order') %}
+            <div class="list-group-item" data-step-id="{{ step.id }}">
+                <span class="step-order-badge">{{ step.step_order }}</span>
+                <span class="step-name-debugger">{{ step.name or step.endpoint.name }}</span>
+                <span class="http-method-debugger http-{{ step.endpoint.method.lower() }}">{{ step.endpoint.method
+                    }}</span>
+                <i class="fas fa-check-circle step-status-icon success-icon"></i>
+                <i class="fas fa-times-circle step-status-icon error-icon"></i>
+                <i class="fas fa-spinner fa-spin step-status-icon active-icon"></i>
             </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="debugger-controls">
+        <button id="run-next-btn" class="btn btn-primary"><i class="fas fa-play fa-fw"></i> Run Next Step</button>
+        <button id="reset-btn" class="btn btn-danger"><i class="fas fa-redo fa-fw"></i> Reset</button>
+    </div>
+
+    <div class="content-card">
+        <div class="card-header">
+            <h3><i class="fas fa-file-alt fa-fw"></i> Execution Details</h3>
+        </div>
+        <div class="card-body">
+            <details class="collapsible-section" open>
+                <summary class="collapsible-header">Current Context</summary>
+                <div class="results-box">
+                    <pre id="current-context">{}</pre>
+                </div>
+            </details>
+            <details class="collapsible-section" open>
+                <summary class="collapsible-header">Last Request</summary>
+                <div class="results-box">
+                    <pre id="last-request">No request sent yet.</pre>
+                </div>
+            </details>
+            <details class="collapsible-section" open>
+                <summary class="collapsible-header">Last Response</summary>
+                <div class="results-box">
+                    <strong>Status:</strong> <span id="response-status-result">N/A</span>
+                    <hr>
+                    <strong>Body:</strong>
+                    <pre id="last-response">No response received yet.</pre>
+                </div>
+            </details>
         </div>
     </div>
 </div>
 
+{# The existing debugger.js will work with this new HTML #}
 <script src="{{ url_for('static', filename='js/chains/debugger.js') }}"></script>
 {% endblock %}
