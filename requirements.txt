@@ -62,7 +62,7 @@ python-socketio==5.11.1
 pytz==2025.2
 PyYAML==6.0.2
 reportlab==4.4.0
-requests==2.32.3
+requests>=2.32.4
 simple-websocket==1.1.0
 six==1.17.0
 soupsieve==2.7
