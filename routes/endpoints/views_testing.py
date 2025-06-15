@@ -9,10 +9,9 @@ from models.model_Endpoints import Endpoint
 from services.common.http_request_service import execute_api_request
 from services.common.header_parser_service import parse_raw_headers, headers_from_apiheader_list
 from services.endpoints.api_templates import PAYLOAD_TEMPLATES
-from services.common.templating_service import render_string_with_context, TemplateRenderingError
+from services.common.templating_service import render_template_string
 
 from . import endpoints_bp
-
 
 @endpoints_bp.route('/get_suggestions', methods=['GET'])
 @login_required
@@ -46,26 +45,26 @@ def test_endpoint(endpoint_id=None):
     Tests an endpoint configuration, handling both AJAX and standard form submissions
     from both the create and view/edit pages.
     """
-    db_endpoint_obj = None
-    if endpoint_id:
-        db_endpoint_obj = Endpoint.query.options(
-            joinedload(Endpoint.headers)).get_or_404(endpoint_id)
+    endpoint = db.session.get(Endpoint, endpoint_id)
+    if not endpoint:
+        flash("Endpoint not found.", "danger")
+        return redirect(url_for('endpoints_bp.list_endpoints'))
 
     # Gather effective data from form, with fallback to DB object if it exists
     form_data = {
-        'hostname': request.form.get('hostname', db_endpoint_obj.hostname if db_endpoint_obj else ''),
-        'endpoint': request.form.get('endpoint', db_endpoint_obj.endpoint if db_endpoint_obj else ''),
-        'http_payload': request.form.get('http_payload', db_endpoint_obj.http_payload if db_endpoint_obj else ''),
-        'method': request.form.get('method', db_endpoint_obj.method if db_endpoint_obj else 'POST'),
+        'hostname': request.form.get('hostname', endpoint.hostname if endpoint else ''),
+        'endpoint': request.form.get('endpoint', endpoint.endpoint if endpoint else ''),
+        'http_payload': request.form.get('http_payload', endpoint.http_payload if endpoint else ''),
+        'method': request.form.get('method', endpoint.method if endpoint else 'POST'),
         'raw_headers': request.form.get('raw_headers')
     }
 
     raw_headers = form_data['raw_headers']
     if raw_headers is not None:
         effective_headers_dict = parse_raw_headers(raw_headers)
-    elif db_endpoint_obj and db_endpoint_obj.headers:
+    elif endpoint and endpoint.headers:
         effective_headers_dict = headers_from_apiheader_list(
-            db_endpoint_obj.headers)
+            endpoint.headers)
     else:
         effective_headers_dict = {}
 
@@ -81,7 +80,7 @@ def test_endpoint(endpoint_id=None):
             flash(error_msg, 'error')
             # Re-render the form the user was on, preserving their input
             template = 'endpoints/view_endpoint.html' if endpoint_id else 'endpoints/create_endpoint.html'
-            return render_template(template, endpoint=db_endpoint_obj, **form_data)
+            return render_template(template, endpoint=endpoint, **form_data)
 
     if not all([form_data['hostname'], form_data['endpoint'], form_data['http_payload']]):
         return handle_validation_error("Hostname, Endpoint Path, and Payload are required for testing.")
@@ -92,11 +91,17 @@ def test_endpoint(endpoint_id=None):
             "INJECT_PROMPT": "This is a test prompt to validate the template.",
             "model": "test-model"  # Provide a dummy model for templates that need it
         }
-        actual_payload_sent = render_string_with_context(
+        # Use the new function name
+        actual_payload_sent = render_template_string(
             form_data['http_payload'], render_context)
+        
         # Validate that the rendered payload is valid JSON
         json.loads(actual_payload_sent)
-    except (TemplateRenderingError, json.JSONDecodeError) as e:
+
+    # Catch specific JSON error or a generic one for other template issues
+    except json.JSONDecodeError as e:
+        return handle_validation_error(f"Rendered payload is not valid JSON: {e}")
+    except Exception as e:
         return handle_validation_error(f"Error in payload template: {e}")
 
     # --- Execute the Test HTTP Request ---
@@ -127,4 +132,4 @@ def test_endpoint(endpoint_id=None):
         # For a standard form post, re-render the page with the results displayed
         flash("Endpoint test completed!", "info")
         template = 'endpoints/view_endpoint.html' if endpoint_id else 'endpoints/create_endpoint.html'
-        return render_template(template, endpoint=db_endpoint_obj, test_result=test_result_data, **form_data)
+        return render_template(template, endpoint=endpoint, test_result=test_result_data, **form_data)

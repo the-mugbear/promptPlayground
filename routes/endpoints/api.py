@@ -1,5 +1,6 @@
 # app/endpoints/api.py
 import logging
+import json
 from flask import request, jsonify
 from flask_login import login_required
 
@@ -130,3 +131,24 @@ def delete_endpoint_header(endpoint_id, header_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+    
+@endpoints_bp.route('/<int:endpoint_id>/details', methods=['GET'])
+@login_required
+def get_endpoint_details(endpoint_id):
+    """
+    Returns the default headers and payload for a specific endpoint.
+    """
+    endpoint = db.session.get(Endpoint, endpoint_id)
+    if not endpoint:
+        return jsonify({'error': 'Endpoint not found'}), 404
+
+    # Convert the list of header objects into a dictionary
+    headers_dict = {h.key: h.value for h in endpoint.headers}
+    
+    # Return the details in a JSON response
+    return jsonify({
+        # Format the headers as a nicely indented JSON string for the textarea
+        'headers': json.dumps(headers_dict, indent=2) if headers_dict else '{}',
+        # Provide the default payload, or an empty JSON object string
+        'payload': endpoint.http_payload or '{}'
+    })

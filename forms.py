@@ -72,18 +72,26 @@ class ChainForm(FlaskForm):
 
 class ChainStepForm(FlaskForm):
     """Form for adding or editing a step in an API Chain."""
-    # QuerySelectField is perfect for creating a dropdown from database objects.
-    # It requires the `get_pk` argument to know what to use for the option's `value`.
     endpoint = SelectField('Endpoint', coerce=int, validators=[DataRequired()])
     name = StringField(
         'Step Name (Optional)', 
-        validators=[Optional(), Length(max=100)],
-        render_kw={"placeholder": "e.g., Authenticate and Get Token"}
+        validators=[Optional(), Length(max=100)]
     )
-    # This will store the JSON for data extraction rules.
-    # We can use a TextArea and validate it as JSON on the server.
+    
+    # --- ADD THESE FIELDS BACK ---
+    headers = TextAreaField(
+        'Headers Template', 
+        validators=[Optional()],
+        description="Optional. Overrides the endpoint's default headers. Use Jinja2 for dynamic values."
+    )
+    payload = TextAreaField(
+        'Payload Template', 
+        validators=[Optional()], 
+        description="Optional. Overrides the endpoint's default payload. Use Jinja2 for dynamic values."
+    )
+
     data_extraction_rules = TextAreaField(
         'Data Extraction Rules (JSON format)',
-        render_kw={"rows": 5, "placeholder": '[{"variable_name": "my_var", "source_type": "json_body", "source_identifier": "data.id"}]'}
+        validators=[Optional()]
     )
-    submit = SubmitField('Add Step')
+    submit = SubmitField('Save Step')

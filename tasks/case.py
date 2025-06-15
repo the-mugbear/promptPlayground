@@ -16,7 +16,7 @@ from models.model_TestExecution import TestExecution
 from models.model_TestRun import TestRun 
 from models.model_Endpoints import Endpoint
 
-from services.common.templating_service import render_string_with_context, TemplateRenderingError
+from services.common.templating_service import render_template_string
 from services.common.http_request_service import execute_api_request
 
 from .helpers import emit_run_update, emit_execution_update, with_session, process_prompt_for_case
@@ -105,7 +105,7 @@ def execute_single_test_case(
 
                 # 2. Use the templating service to render the entire payload string.
                 #    This replaces the old, complex logic of recursively injecting the prompt.
-                http_payload_str_for_request = render_string_with_context(
+                http_payload_str_for_request = render_template_string(
                     endpoint_obj.http_payload,
                     render_context
                 )
@@ -114,7 +114,12 @@ def execute_single_test_case(
                 #    This also serves as validation that the template rendered valid JSON.
                 payload_info_for_record = json.loads(http_payload_str_for_request)
 
-            except (TemplateRenderingError, json.JSONDecodeError) as e:
+            except json.JSONDecodeError as e:
+                # Catch JSON errors specifically if the template renders invalid JSON
+                logger.error(f"Task {task_id}: Rendered payload is not valid JSON. Error: {e}. Template: '{endpoint_obj.http_payload}'", exc_info=True)
+                raise # Re-raise to be caught by the main exception handler
+            except Exception as e:
+                # Catch any other errors during template rendering
                 logger.error(f"Task {task_id}: Failed to build payload from template. Error: {e}. Template: '{endpoint_obj.http_payload}'", exc_info=True)
                 raise # Re-raise to be caught by the main exception handler
         else:

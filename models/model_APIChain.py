@@ -58,8 +58,10 @@ class APIChainStep(db.Model):
     endpoint_id = db.Column(db.Integer, db.ForeignKey('endpoints.id'), nullable=False)
     # 'joined' eager loading ensures endpoint details are fetched with the step, useful for to_dict
     endpoint = db.relationship('Endpoint', lazy='joined') 
-
     step_order = db.Column(db.Integer, nullable=False)  # Defines execution sequence (e.g., 0, 1, 2...)
+
+    headers = db.Column(db.Text, nullable=True)
+    payload = db.Column(db.Text, nullable=True)
 
     # Rules for extracting data from *this* step's response.
     # This data will be added to a running context for use in *subsequent* steps.

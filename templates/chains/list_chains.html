@@ -19,7 +19,7 @@
                     {% for chain in chains %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <a href="{{ url_for('chains_bp.view_chain', chain_id=chain.id) }}" class="text-decoration-none">
+                                <a href="{{ url_for('chains_bp.chain_details', chain_id=chain.id) }}" class="text-decoration-none">
                                     <strong>{{ chain.name }}</strong>
                                 </a>
                                 <p class="mb-0 text-muted">{{ chain.description }}</p>

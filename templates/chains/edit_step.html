@@ -1,48 +1,253 @@
 {% extends "base.html" %}
+{% from "partials/_formhelpers.html" import render_field %}
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="container">
-    <div class="pt-3 mb-4">
-        <h1>{{ title }} for <a href="{{ url_for('chains_bp.view_chain', chain_id=chain.id) }}">{{ chain.name }}</a></h1>
-        <p class="text-muted">Modify the details for Step {{ step.step_order }}.</p>
+
+    <div style="margin-bottom: var(--spacing-lg);">
+        <h2 style="margin-bottom: var(--spacing-sm);">{{ title }}</h2>
+        <p class="text-muted" style="margin:0;">
+            <i class="fas fa-link"></i> Part of Chain: <a
+                href="{{ url_for('chains_bp.chain_details', chain_id=chain.id) }}">{{ chain.name }}</a>
+        </p>
     </div>
 
-    <div class="content-card">
-        <div class="card-body">
-            <form action="{{ url_for('chains_bp.edit_step', chain_id=chain.id, step_id=step.id) }}" method="POST" novalidate>
-                {{ form.hidden_tag() }} {# Includes CSRF token #}
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            {{ form.endpoint.label(class="form-label") }}
-                            {{ form.endpoint(class="form-select") }}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            {{ form.name.label(class="form-label") }}
-                            {{ form.name(class="form-control") }}
-                        </div>
+
+    <div class="two-column-container">
+        <div class="left-card">
+            <form action="{{ url_for('chains_bp.edit_step', chain_id=chain.id, step_id=step.id) }}" method="POST"
+                novalidate>
+                {{ form.hidden_tag() }}
+
+                <div class="form-group">
+                    {{ render_field(form.name, class="form-control", placeholder="A descriptive name for this step") }}
+                </div>
+
+                <div class="form-group">
+                    {{ render_field(form.endpoint, class="form-select") }}
+                </div>
+
+                <div class="form-group">
+                    {{ render_field(form.headers, class="form-control", rows="4", placeholder='{ "Content-Type":
+                    "application/json" }') }}
+                    <div class="quick-templates"
+                        style="margin-top: var(--spacing-sm); display: flex; gap: var(--spacing-sm);">
+                        <!-- Headers quick templates -->
+                        <button type="button" class="btn insert-template" data-target="headers"
+                            data-template='{"Content-Type":"application/json"}'>
+                            JSON
+                        </button>
+
+                        <button type="button" class="btn insert-template" data-target="headers"
+                            data-template='{"Authorization":"Bearer {{ "{{token}}" }}"}'>
+                            Auth
+                        </button>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    {{ form.data_extraction_rules.label(class="form-label") }}
-                    {{ form.data_extraction_rules(class="form-control font-monospace") }}
-                    <div class="form-text">
-                        Enter a valid JSON array or leave blank.
+                    {{ render_field(form.payload, class="form-control", rows="6", placeholder='{ "key":
+                    "{{variable_from_previous_step}}" }') }}
+                    <div class="quick-templates"
+                        style="margin-top: var(--spacing-sm); display: flex; gap: var(--spacing-sm);">
+
+                        <button type="button" class="btn insert-template" data-target="payload"
+                            data-template='{"key":"{{ "{{variable}}" }}"}'>
+                            JSON Object
+                        </button>
+
+                        <button type="button" class="btn insert-template" data-target="payload"
+                            data-template='[{"item":"{{ "{{value}}" }}"}]'>
+                            JSON Array
+                        </button>
                     </div>
                 </div>
-                
-                <div class="mt-4">
-                    <a href="{{ url_for('chains_bp.view_chain', chain_id=chain.id) }}" class="btn btn-secondary">Cancel</a>
-                    {# Update the button's text for the edit context #}
-                    {{ form.submit(value="Save Changes", class="btn btn-primary") }}
+
+                <div class="form-group">
+                    {{ render_field(form.data_extraction_rules, class="form-control", rows="4", placeholder='result =
+                    response.json()[\"data\"]') }}
+                    <small class="form-text">Use 'response' to access the full response object.</small>
+                    <div class="quick-templates"
+                        style="margin-top: var(--spacing-sm); display: flex; gap: var(--spacing-sm);">
+
+                        <button type="button" class="btn insert-template" data-target="data_extraction_rules"
+                            data-template='[{"variable_name": "my_variable", "source_type": "json_body", "source_identifier": "path.to.data"}]'>
+                            JSON Path Rule
+                        </button>
+
+                        <button type="button" class="btn insert-template" data-target="data_extraction_rules"
+                            data-template='[{"variable_name": "full_body", "source_type": "raw_body", "source_identifier": ""}]'>
+                            Full Body
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-actions" style="display: flex; gap: 1rem; margin-top: var(--spacing-lg);">
+                    <a href="{{ url_for('chains_bp.chain_details', chain_id=chain.id) }}" class="btn">
+                        <i class="fas fa-arrow-left"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
                 </div>
             </form>
         </div>
+
+        <div class="right-card">
+            <h2><i class="fas fa-flask"></i> Step Tester</h2>
+            <p class="text-muted">Test your step configuration with mock context data.</p>
+
+            <div class="form-group">
+                <label for="mock_context">Mock Context (JSON)</label>
+                <textarea id="mock_context" class="form-control" rows="5"
+                    placeholder='{"variable_name": "sample_value", "token": "abc123"}'></textarea>
+                <div id="mock-context-error" class="invalid-feedback"></div>
+            </div>
+
+            <button type="button" id="test-step-btn" class="btn">
+                <i class="fas fa-play"></i> Test Step
+            </button>
+
+            <div id="test-results-container" class="results-container"
+                style="display: none; margin-top: var(--spacing-lg);">
+                <details class="collapsible-section" open>
+                    <summary class="collapsible-header">Rendered Payload</summary>
+                    <div class="results-box">
+                        <pre id="rendered-payload-result"></pre>
+                    </div>
+                </details>
+                <details class="collapsible-section" open>
+                    <summary class="collapsible-header">Response</summary>
+                    <div class="results-box">
+                        <strong>Status:</strong> <span id="test-response-status-result"></span>
+                        <hr>
+                        <strong>Body:</strong>
+                        <pre id="test-response-body-result"></pre>
+                    </div>
+                </details>
+                <details class="collapsible-section" open>
+                    <summary class="collapsible-header">Extracted Data</summary>
+                    <div class="results-box">
+                        <pre id="extracted-data-result"></pre>
+                    </div>
+                </details>
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/chains/step_editor.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const csrfToken = document.getElementById('csrf_token')?.value;
+        if (!csrfToken) {
+            console.error("CSRF token not found. AJAX POST requests will be blocked.");
+        }
+
+        const endpointSelect = document.getElementById('endpoint');
+        const headersTextarea = document.getElementById('headers');
+        const payloadTextarea = document.getElementById('payload');
+        const testBtn = document.getElementById('test-step-btn');
+
+        // --- NEW: Event Listener for the Endpoint Dropdown ---
+        if (endpointSelect) {
+            endpointSelect.addEventListener('change', function () {
+                const endpointId = this.value;
+                if (!endpointId) return;
+
+                // Fetch the details for the selected endpoint
+                fetch(`/api/endpoints/${endpointId}/details`)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Update the textareas with the default values
+                        if (data.headers && headersTextarea) {
+                            headersTextarea.value = data.headers;
+                        }
+                        if (data.payload && payloadTextarea) {
+                            payloadTextarea.value = data.payload;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching endpoint details:', error);
+                        // Optionally, clear the fields or show an error
+                        headersTextarea.value = '{}';
+                        payloadTextarea.value = '{}';
+                    });
+            });
+        }
+
+        // --- The working "Test Step" button logic ---
+        if (testBtn) {
+            testBtn.addEventListener('click', function () {
+                const resultsContainer = document.getElementById('test-results-container');
+
+                // Get all the form values
+                const endpointId = document.getElementById('endpoint').value;
+                const payload = document.getElementById('payload').value;
+                const headers = document.getElementById('headers').value;
+                const dataExtractionRules = JSON.parse(document.getElementById('data_extraction_rules').value || '[]');
+                const mockContext = JSON.parse(document.getElementById('mock_context').value || '{}');
+
+                testBtn.disabled = true;
+                testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+                resultsContainer.style.display = 'block';
+
+                fetch('/api/chains/test_step_in_isolation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        endpoint_id: endpointId,
+                        payload: payload,
+                        headers: headers,
+                        data_extraction_rules: dataExtractionRules,
+                        mock_context: mockContext
+                    })
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        // Logic to display results, same as before
+                        document.getElementById('rendered-payload-result').textContent = JSON.stringify(data.rendered_payload, null, 2);
+                        document.getElementById('test-response-status-result').textContent = data.response?.status_code || 'N/A';
+                        document.getElementById('test-response-body-result').textContent = JSON.stringify(data.response?.body, null, 2);
+                        document.getElementById('extracted-data-result').textContent = JSON.stringify(data.extracted_data, null, 2);
+                    })
+                    .catch(err => {
+                        console.error('Test step failed:', err);
+                        document.getElementById('test-response-body-result').textContent = `Error: ${err.message}`;
+                    })
+                    .finally(() => {
+                        testBtn.disabled = false;
+                        testBtn.innerHTML = '<i class="fas fa-play"></i> Test Step';
+                    });
+            });
+        }
+    });
+
+    document.querySelectorAll('.insert-template').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.dataset.target;    // headers | payload | data_extraction_rules
+            const template = btn.dataset.template;  // the JSON snippet
+            const textarea = document.getElementById(targetId);
+            if (textarea) textarea.value = template;
+        });
+    });
+
+</script>
 {% endblock %}

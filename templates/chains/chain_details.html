@@ -1,157 +1,162 @@
 {% extends "base.html" %}
+{% from "partials/_formhelpers.html" import render_field %}
 
 {% block title %}{{ title }}{% endblock %}
 
 {% block head %}
-  {{ super() }}
-  <style>
-    /* Custom styles for this page's layout */
-    .step-card {
-      /* This class is now applied directly in the HTML below. */
-      /* We only add page-specific overrides here, like margin. */
-      margin-bottom: 1rem;
-    }
-    .step-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      /* Using card-header styles from your theme */
-    }
-    .step-title {
-      margin-bottom: 0;
-    }
-    .step-actions {
-      display: flex;
-      gap: 0.5rem;
-      flex-shrink: 0;
-    }
-    .step-body .text-muted {
-        font-size: 0.9em;
-        color: var(--text-muted-color);
-    }
-    .step-body strong {
-        color: var(--text-color);
-    }
-    /* Simple connector line to show flow */
-    .step-connector {
-      text-align: center;
-      color: var(--border-color-strong, #00FF41);
-      font-size: 1.5rem;
-      margin: -0.5rem 0 0.5rem 0;
-    }
-  </style>
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chains/details.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 {% endblock %}
 
 {% block content %}
 <div class="container">
-  <div class="d-flex justify-content-between align-items-center mb-4 pt-3">
+
+  <header class="page-header">
     <div>
-      <h1>{{ chain.name }}</h1>
-      <p class="text-muted">{{ chain.description or "No description provided." }}</p>
+      <h1 class="page-title">{{ chain.name }}</h1>
+      <p class="page-subtitle">{{ chain.description or 'No description provided.' }}</p>
     </div>
-    <div class="btn-group">
+    <div class="header-actions">
       <a href="{{ url_for('chains_bp.list_chains') }}" class="btn btn-secondary">
-        ← Back to List
+        <i class="fas fa-arrow-left fa-fw"></i>
+        <span class="button-text">Back to Chains</span> 
+      </a>
+      <a href="{{ url_for('chains_bp.chain_debugger', chain_id=chain.id) }}" class="btn btn-primary">
+        <i class="fas fa-vial fa-fw"></i>
+        <span class="button-text">Open Debugger</span>
       </a>
     </div>
-  </div>
+  </header>
 
-  {# ==============================
-     SECTION: List of Existing Steps
-     ============================== #}
-  <div class="mb-4">
-    {% if chain.steps.all() %}
-      {% for step in chain.steps %}
-        <div class="content-card step-card" id="step-{{ step.id }}">
-          <div class="card-body">
-            <div class="step-header">
-              <h2 class="h5 step-title">
-                <span class="badge bg-primary me-2">Step {{ loop.index0 }}</span>
-                {{ step.name or "Unnamed Step" }}
-              </h2>
-              <div class="step-actions">
-                  <button class="btn btn-sm btn-info" onclick="alert('TODO: Implement Test up to step {{ step.id }}');">
-                      <i class="fas fa-vial"></i> Test
-                  </button>
-                  <a href="{{ url_for('chains_bp.edit_step', chain_id=chain.id, step_id=step.id) }}" class="btn btn-sm btn-secondary">
-                      <i class="fas fa-edit"></i> Edit
-                  </a>
-                  <form action="{{ url_for('chains_bp.delete_step', chain_id=chain.id, step_id=step.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this step?');" style="display:inline;">
-                      {{ csrf_token() }}
-                      <button type="submit" class="btn btn-sm btn-danger">
-                          <i class="fas fa-trash"></i>
-                      </button>
-                  </form>
-              </div>
+  <div id="chain-steps-container" class="chain-steps-container">
+    {% for item in processed_steps %}
+    {% set step = item.step_obj %}
+    <div class="step-card" data-step-id="{{ step.id }}">
+      <div class="step-header">
+        <div class="step-title">
+          <span class="step-order-badge">Step {{ step.step_order }}</span>
+          <h2 class="step-name">{{ step.name or 'Unnamed Step' }}</h2>
+        </div>
+        <div class="step-actions">
+          <a href="{{ url_for('chains_bp.edit_step', chain_id=chain.id, step_id=step.id) }}" 
+          class="btn btn-sm btn-ghost btn-icon" title="Edit Step"><i class="fas fa-pen"></i></a>
+    
+          <form action="{{ url_for('chains_bp.delete_step', chain_id=chain.id, step_id=step.id) }}" method="POST"
+            onsubmit="return confirm('Are you sure you want to delete this step?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-ghost btn-danger" title="Delete Step"><i
+                class="fas fa-trash"></i></button>
+          </form>
+          <i class="fas fa-grip-vertical step-handle" title="Drag to reorder"></i>
+        </div>
+      </div>
+      <div class="step-body">
+        <div class="endpoint-chip">
+          <span class="http-method http-{{ step.endpoint.method.lower() }}">{{ step.endpoint.method }}</span>
+          <span class="endpoint-name">{{ step.endpoint.name }}</span>
+        </div>
+
+        <div class="io-grid">
+          <div class="io-box">
+            <h4 class="io-title">Expected Inputs</h4>
+            <div class="io-tags">
+              {% for var in item.inputs %}
+              <span class="io-tag input-tag">{{ var }}</span>
+              {% else %}
+              <span class="io-tag-empty">None</span>
+              {% endfor %}
             </div>
-            <hr>
-            <div class="step-body">
-              <p class="text-muted mb-2">
-                  <strong>Uses Endpoint:</strong> {{ step.endpoint.name }} ({{ step.endpoint.method }} {{ step.endpoint.endpoint }})
-              </p>
-              <p class="mb-1">
-                {{ step.description or "No description provided for this step." }}
-              </p>
-              {% if step.data_extraction_rules %}
-                <div class="mt-3">
-                  <strong>Extraction Rules:</strong>
-                  <pre class="code-block"><code>{{ step.data_extraction_rules | tojson(indent=2) }}</code></pre>
-                </div>
-              {% endif %}
+          </div>
+          <div class="io-box">
+            <h4 class="io-title">Produced Variables</h4>
+            <div class="io-tags">
+              {% for var in item.outputs %}
+              <span class="io-tag output-tag">{{ var }}</span>
+              {% else %}
+              <span class="io-tag-empty">None</span>
+              {% endfor %}
             </div>
           </div>
         </div>
-
-        {# Render a connector line if it's not the last step #}
-        {% if not loop.last %}
-          <div class="step-connector">
-            <i class="fas fa-arrow-down"></i>
-          </div>
-        {% endif %}
-      {% endfor %}
-    {% else %}
-      <div class="content-card">
-          <div class="card-body">
-            <p class="text-muted text-center">This chain has no steps yet. Use the form below to add one.</p>
-          </div>
       </div>
+    </div>
+    {% if not loop.last %}
+    <div class="step-connector">
+      <i class="fas fa-arrow-down"></i>
+    </div>
     {% endif %}
+    {% else %}
+    <div class="empty-state">
+      <h3>This Chain Has No Steps</h3>
+      <p>Add your first step below to get started.</p>
+    </div>
+    {% endfor %}
   </div>
 
-  {# ==============================
-     CARD: Add New Step
-     ============================== #}
-  <div class="content-card">
+  <div class="add-step-card" id="add-step-form">
     <div class="card-header">
-      <h2 class="h5 mb-0">Add New Step</h2>
+      <h3><i class="fas fa-plus-circle fa-fw"></i> Add New Step</h3>
     </div>
     <div class="card-body">
-      <form action="{{ url_for('chains_bp.add_step', chain_id=chain.id) }}" method="POST" novalidate>
+      <form action="{{ url_for('chains_bp.add_step', chain_id=chain.id) }}" method="POST" class="form-grid" novalidate>
         {{ form.hidden_tag() }}
-        <div class="row">
-          <div class="col-md-6">
-            <div class="form-group">
-              {{ form.endpoint.label(class="form-label") }}
-              {{ form.endpoint(class="form-select") }}
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="form-group">
-              {{ form.name.label(class="form-label") }}
-              {{ form.name(class="form-control") }}
-            </div>
-          </div>
+        {{ render_field(form.name) }}
+        {{ render_field(form.endpoint) }}
+        <div class="form-actions-full">
+          <button type="submit" class="btn btn-primary">Add Step to Chain</button>
         </div>
-        <div class="form-group">
-          {{ form.data_extraction_rules.label(class="form-label") }}
-          {{ form.data_extraction_rules(class="form-control font-monospace") }}
-          <div class="form-text">
-            Enter a valid JSON array or leave blank. Example: <code>[{"variable_name": "auth_token", "source_type": "json_body", "source_identifier": "token"}]</code>
-          </div>
-        </div>
-        {{ form.submit(class="btn btn-primary") }}
       </form>
     </div>
   </div>
 </div>
+{% endblock %}
+
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const stepsContainer = document.getElementById('chain-steps-container');
+    if (stepsContainer) {
+      new Sortable(stepsContainer, {
+        animation: 150,
+        handle: '.step-handle', // Use the grab handle to initiate dragging
+        ghostClass: 'step-ghost', // A class for the item being dragged
+        onEnd: function (evt) {
+          const stepElements = stepsContainer.querySelectorAll('.step-card');
+          const orderedIds = Array.from(stepElements).map(el => el.dataset.stepId);
+
+          // Send the new order to the backend
+          fetch(`/api/chains/{{ chain.id }}/reorder_steps`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ ordered_ids: orderedIds })
+          })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                // Optionally, refresh the page or show a success message
+                console.log('Steps reordered successfully.');
+                window.location.reload(); // Easiest way to reflect new order
+              } else {
+                alert('Error reordering steps: ' + data.error);
+                // Optionally, revert the sort in the UI
+              }
+            })
+            .catch(error => {
+              console.error('Failed to send reorder request:', error);
+              alert('A network error occurred while reordering steps.');
+            });
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}

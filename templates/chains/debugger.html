@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Chain Debugger: <span class="text-primary">{{ chain.name }}</span></h1>
+    <p class="text-muted">Execute this chain step-by-step to debug its behavior and inspect the context at each stage.</p>
+    
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Steps</h4>
+                </div>
+                <div id="steps-list" class="list-group list-group-flush">
+                    {% for step in chain.steps|sort(attribute='step_order') %}
+                    <a href="#" class="list-group-item list-group-item-action" data-step-id="{{ step.id }}">
+                        <strong>Step {{ step.step_order }}:</strong> {{ step.name or step.endpoint.name }}
+                        <span class="badge bg-secondary float-end mt-1">{{ step.endpoint.method }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+                <div class="card-footer">
+                    <button id="run-next-btn" class="btn btn-success"><i class="fas fa-play"></i> Run Next Step</button>
+                    <button id="reset-btn" class="btn btn-warning float-end"><i class="fas fa-redo"></i> Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Execution Details</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Current Context</h5>
+                    <pre><code id="current-context" class="language-json rounded p-2 bg-light">{}</code></pre>
+
+                    <h5 class="mt-4">Last Request Payload</h5>
+                    <pre><code id="last-request" class="language-json rounded p-2 bg-light"></code></pre>
+                    
+                    <h5 class="mt-4">Last Response Body (Status: <span id="response-status-result" class="fw-bold"></span>)</h5>
+                    <pre><code id="last-response" class="language-json rounded p-2 bg-light"></code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/chains/debugger.js') }}"></script>
+{% endblock %}
