@@ -6,53 +6,71 @@ from sqlalchemy.dialects.sqlite import JSON  # For storing template data in SQLi
 # Endpoint 
 # ---------------------------------
 class Endpoint(db.Model):
-    """
-    Represents a log of a successful API POST request.
-
-    Attributes:
-        hostname (str): The hostname of the API endpoint.
-        endpoint (str): The path or name of the associated resource.
-        http_payload (str): The HTTP payload sent with the request.
-        timestamp (datetime): The time the log was created.
-        headers (list[EndpointHeader]): A list of headers associated with the request.
-        user_id (int): Foreign key referencing the user who created the endpoint.
-    """
     __tablename__ = 'endpoints'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), nullable=False)
-    hostname = db.Column(db.String(255), nullable=False)
-    endpoint = db.Column(db.String(255), nullable=False)
-    http_payload = db.Column(db.Text, nullable=True)   # HTTP payload sent with the request
-    method = db.Column(db.String(10), nullable=False, default='GET') # e.g., GET, POST, PUT, DELETE
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    timestamp = db.Column(db.DateTime(timezone=True), default=datetime.utcnow) 
-
-    # Foreign key to the User model
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) # Or False if user is mandatory
-    # Relationship to User (optional, for easier access to user object)
-    user = db.relationship('User', backref=db.backref('endpoints', lazy=True))
+    # --- Renamed & Metadata Fields ---
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    base_url = db.Column(db.String(255), nullable=False)  # Renamed from 'hostname'
+    path = db.Column(db.String(255), nullable=False, default='/') # Renamed from 'endpoint'
+    method = db.Column(db.String(10), nullable=False, default='POST')
     
-    # Relationships
-    headers = db.relationship('EndpointHeader', back_populates='endpoint', cascade='all, delete-orphan')
-    test_runs = db.relationship('TestRun', back_populates='endpoint')
+    # --- Decoupled Payload ---
+    payload_template_id = db.Column(db.Integer, db.ForeignKey('payload_templates.id'), nullable=True)
+    payload_template = db.relationship('PayloadTemplate', backref='endpoints')
+
+    # --- Authentication Fields ---
+    auth_method = db.Column(db.String(50), default='none', nullable=False) # e.g., 'none', 'bearer', 'api_key'
+    credentials_encrypted = db.Column(db.String(500), nullable=True) # For storing encrypted tokens/keys
+    
+    # --- Resiliency Fields ---
+    timeout_seconds = db.Column(db.Integer, default=60, nullable=False)
+    retry_attempts = db.Column(db.Integer, default=0, nullable=False)
+        
+    # --- Fields for Configurable Retry Delay ---
+    retry_initial_delay_seconds = db.Column(db.Integer, default=2, nullable=False)
+    retry_backoff_factor = db.Column(db.Float, default=2.0, nullable=False)
+    
+    # --- Other Existing Fields ---
+    purpose = db.Column(db.String(30), nullable=False, default='test_run')
+    headers = db.relationship('EndpointHeader', back_populates='endpoint', lazy='dynamic', cascade="all, delete-orphan")
+    
+    # This creates the "many" side of a one-to-many relationship.
+    # One Endpoint can be used in many TestRuns.
+    test_runs = db.relationship('TestRun', back_populates='endpoint', lazy='dynamic')
     dialogues = db.relationship("Dialogue", back_populates="endpoint", cascade="all, delete-orphan")
 
+    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
     def to_dict(self):
-        """Convert the endpoint log instance into a dictionary."""
+        """Convert the Endpoint instance into a dictionary."""
         return {
             "id": self.id,
-            "hostname": self.hostname,
-            "endpoint": self.endpoint,
-            "http_payload": self.http_payload,
-            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "name": self.name,
+            "description": self.description,
+            "base_url": self.base_url,
+            "path": self.path,
+            "method": self.method,
+            "payload_template_id": self.payload_template_id,
+            "payload_template_name": self.payload_template.name if self.payload_template else None,
+            "auth_method": self.auth_method,
+            "timeout_seconds": self.timeout_seconds,
+            "retry_attempts": self.retry_attempts,
+            "purpose": self.purpose,
             "headers": [header.to_dict() for header in self.headers],
-            "user_id": self.user_id
+            "user_id": self.user_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
 
     def __repr__(self):
-        """String representation of the endpoint log."""
-        return f'<EndpointLog {self.hostname} -> {self.endpoint} @ {self.timestamp}>'
+        """String representation of the Endpoint."""
+        return f'<Endpoint {self.name} ({self.method} {self.base_url}{self.path})>'
+
 
 # ---------------------------------
 # Endpoint Header

@@ -1,0 +1,473 @@
+/* ===================================================================
+   BUTTONS COMPONENT
+   - Extracted from forms.css, bootstrap-overrides.css, and theme files
+   - Uses CSS custom properties for theming
+   =================================================================== */
+
+/* === BASE BUTTON STYLES === */
+.btn,
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-sm, 0.6rem) var(--spacing-lg, 1.5rem);
+    font-family: var(--main-font, monospace);
+    font-size: var(--font-size-base, 1rem);
+    font-weight: bold;
+    color: var(--accent-color, #00FF41);
+    background-color: transparent;
+    border: var(--border-width, 1px) solid var(--accent-color, #00FF41);
+    border-radius: var(--border-radius-sm, 4px);
+    cursor: pointer;
+    transition: var(--transition-normal, all 0.2s ease-in-out);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-decoration: none;
+    margin-top: var(--spacing-sm, 0.5rem);
+    gap: var(--spacing-xs, 0.25rem);
+    min-height: var(--button-height, 2.5rem);
+    line-height: 1;
+    white-space: nowrap;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Hover and Focus States */
+.btn:hover,
+.btn:focus,
+button:hover,
+button:focus,
+input[type="button"]:hover,
+input[type="button"]:focus,
+input[type="submit"]:hover,
+input[type="submit"]:focus,
+input[type="reset"]:hover,
+input[type="reset"]:focus {
+    background-color: var(--accent-color, #00FF41);
+    color: var(--background-color, #0f0f0f);
+    box-shadow: var(--glow-md, 0 0 8px var(--accent-color));
+    outline: none;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+/* Active State */
+.btn:active,
+button:active,
+input[type="button"]:active,
+input[type="submit"]:active,
+input[type="reset"]:active {
+    transform: translateY(0);
+    box-shadow: var(--glow-sm, 0 0 5px var(--accent-color));
+}
+
+/* Disabled State */
+.btn:disabled,
+.btn.disabled,
+button:disabled,
+button.disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled,
+input[type="reset"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+    background-color: transparent;
+    color: var(--accent-color, #00FF41);
+    transform: none;
+}
+
+/* === BUTTON VARIANTS === */
+
+/* Primary Button */
+.btn-primary {
+    color: var(--accent-color, #00FF41);
+    border-color: var(--accent-color, #00FF41);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--accent-color, #00FF41);
+    color: var(--background-color, #000);
+}
+
+/* Secondary Button */
+.btn-secondary {
+    color: var(--secondary-color, #3a86ff);
+    border-color: var(--secondary-color, #3a86ff);
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus {
+    background-color: var(--secondary-color, #3a86ff);
+    color: var(--background-color, #000);
+    box-shadow: 0 0 8px var(--secondary-color, #3a86ff);
+}
+
+/* Success Button */
+.btn-success {
+    color: var(--success-color, #00FF41);
+    border-color: var(--success-color, #00FF41);
+}
+
+.btn-success:hover,
+.btn-success:focus {
+    background-color: var(--success-color, #00FF41);
+    color: var(--background-color, #000);
+    box-shadow: 0 0 8px var(--success-color, #00FF41);
+}
+
+/* Warning Button */
+.btn-warning {
+    color: var(--warning-color, #ffcc00);
+    border-color: var(--warning-color, #ffcc00);
+}
+
+.btn-warning:hover,
+.btn-warning:focus {
+    background-color: var(--warning-color, #ffcc00);
+    color: var(--background-color, #000);
+    box-shadow: 0 0 8px var(--warning-color, #ffcc00);
+}
+
+/* Danger/Error Button */
+.btn-danger,
+.btn-error {
+    color: var(--error-color, #ff4f4f);
+    border-color: var(--error-color, #ff4f4f);
+}
+
+.btn-danger:hover,
+.btn-danger:focus,
+.btn-error:hover,
+.btn-error:focus {
+    background-color: var(--error-color, #ff4f4f);
+    color: var(--background-color, #000);
+    box-shadow: 0 0 8px var(--error-color, #ff4f4f);
+}
+
+/* Info Button */
+.btn-info {
+    color: var(--info-color, #00FFFF);
+    border-color: var(--info-color, #00FFFF);
+}
+
+.btn-info:hover,
+.btn-info:focus {
+    background-color: var(--info-color, #00FFFF);
+    color: var(--background-color, #000);
+    box-shadow: 0 0 8px var(--info-color, #00FFFF);
+}
+
+/* === BUTTON SIZES === */
+
+/* Small Button */
+.btn-sm,
+.btn-small {
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-md, 1rem);
+    font-size: var(--font-size-sm, 0.875rem);
+    min-height: 2rem;
+}
+
+/* Large Button */
+.btn-lg,
+.btn-large {
+    padding: var(--spacing-md, 1rem) var(--spacing-xl, 2rem);
+    font-size: var(--font-size-lg, 1.125rem);
+    min-height: 3rem;
+}
+
+/* Extra Large Button */
+.btn-xl {
+    padding: var(--spacing-lg, 1.5rem) var(--spacing-2xl, 3rem);
+    font-size: var(--font-size-xl, 1.25rem);
+    min-height: 3.5rem;
+}
+
+/* === BUTTON STYLES === */
+
+/* Outline Button */
+.btn-outline {
+    background-color: transparent;
+    border-width: 2px;
+}
+
+/* Ghost Button (no border) */
+.btn-ghost {
+    border: none;
+    background-color: transparent;
+    color: var(--accent-color);
+}
+
+.btn-ghost:hover,
+.btn-ghost:focus {
+    background-color: rgba(0, 255, 65, 0.1);
+    color: var(--accent-color);
+    box-shadow: none;
+}
+
+/* Solid Button */
+.btn-solid {
+    background-color: var(--accent-color);
+    color: var(--background-color);
+    border-color: var(--accent-color);
+}
+
+.btn-solid:hover,
+.btn-solid:focus {
+    background-color: transparent;
+    color: var(--accent-color);
+}
+
+/* === SPECIAL BUTTON EFFECTS === */
+
+/* Neon Hover Effect */
+.btn.neon-hover:hover {
+    box-shadow: var(--glow-lg, 0 0 15px var(--accent-color));
+    text-shadow: var(--glow-sm, 0 0 5px currentColor);
+}
+
+/* Cyberpunk Button with Scan Effect */
+.btn-cyberpunk {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-cyberpunk::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.4), transparent);
+    transition: left 0.6s ease;
+}
+
+.btn-cyberpunk:hover::before {
+    left: 100%;
+}
+
+/* Modern Button with Backdrop */
+.btn-modern {
+    background: linear-gradient(135deg, transparent 0%, rgba(0, 255, 65, 0.1) 100%);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.btn-modern::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+    opacity: 0.7;
+}
+
+/* === BUTTON GROUPS === */
+.btn-group {
+    display: inline-flex;
+    vertical-align: middle;
+}
+
+.btn-group .btn {
+    position: relative;
+    flex: 1 1 auto;
+    margin-top: 0;
+}
+
+.btn-group .btn:not(:first-child) {
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.btn-group .btn:not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.btn-group .btn:focus,
+.btn-group .btn:active,
+.btn-group .btn.active {
+    z-index: 1;
+}
+
+/* === ICON BUTTONS === */
+.btn-icon {
+    padding: var(--spacing-sm, 0.5rem);
+    min-width: var(--button-height, 2.5rem);
+    aspect-ratio: 1;
+}
+
+.btn-icon-sm {
+    padding: var(--spacing-xs, 0.25rem);
+    min-width: 2rem;
+    aspect-ratio: 1;
+}
+
+.btn-icon-lg {
+    padding: var(--spacing-md, 1rem);
+    min-width: 3rem;
+    aspect-ratio: 1;
+}
+
+/* === FLOATING ACTION BUTTON === */
+.btn-fab {
+    border-radius: 50%;
+    box-shadow: var(--shadow-lg, 0 10px 15px rgba(0, 0, 0, 0.1));
+    position: fixed;
+    bottom: var(--spacing-xl, 2rem);
+    right: var(--spacing-xl, 2rem);
+    z-index: var(--z-fixed, 1030);
+    width: 4rem;
+    height: 4rem;
+    padding: 0;
+}
+
+.btn-fab:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl, 0 20px 25px rgba(0, 0, 0, 0.1));
+}
+
+/* === LOADING STATE === */
+.btn-loading {
+    color: transparent;
+    pointer-events: none;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    top: 50%;
+    left: 50%;
+    margin-left: -0.5rem;
+    margin-top: -0.5rem;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    border-right-color: transparent;
+    animation: btn-spin 0.75s linear infinite;
+}
+
+@keyframes btn-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* === SPECIFIC BUTTON TYPES FROM YOUR APP === */
+
+/* Action buttons from cards */
+.action-btn {
+    margin-right: 5px;
+    padding: 2px 6px;
+    font-size: 0.9em;
+    cursor: pointer;
+    min-height: auto;
+    margin-top: 0;
+}
+
+/* Header action buttons */
+.header-actions .btn {
+    margin-top: 0;
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+}
+
+/* Footer theme toggle (special case) */
+.footer-theme-toggle {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    text-align: inherit;
+    display: inline;
+    text-decoration: none;
+    transition: var(--transition-fast);
+    text-transform: none;
+    letter-spacing: normal;
+    min-height: auto;
+}
+
+.footer-theme-toggle:hover,
+.footer-theme-toggle:focus {
+    text-decoration: underline;
+    color: var(--accent-color);
+    outline: none;
+    background: none;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Submit buttons in forms */
+.submit-btn,
+button[type="submit"] {
+    width: 100%;
+    margin-top: var(--spacing-md, 1rem);
+}
+
+/* === RESPONSIVE DESIGN === */
+@media (max-width: 768px) {
+    .btn,
+    button {
+        padding: var(--spacing-xs, 0.25rem) var(--spacing-md, 1rem);
+        font-size: var(--font-size-sm, 0.875rem);
+        min-height: 2.25rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        border-radius: var(--border-radius-sm, 4px);
+        margin-left: 0;
+        margin-top: -1px;
+    }
+    
+    .btn-group .btn:not(:first-child) {
+        border-top-left-radius: var(--border-radius-sm, 4px);
+        border-top-right-radius: var(--border-radius-sm, 4px);
+    }
+    
+    .btn-group .btn:not(:last-child) {
+        border-bottom-left-radius: var(--border-radius-sm, 4px);
+        border-bottom-right-radius: var(--border-radius-sm, 4px);
+    }
+    
+    .btn-fab {
+        width: 3rem;
+        height: 3rem;
+        bottom: var(--spacing-lg, 1.5rem);
+        right: var(--spacing-lg, 1.5rem);
+    }
+}
+
+/* === ACCESSIBILITY === */
+@media (prefers-reduced-motion: reduce) {
+    .btn,
+    button,
+    .btn::before,
+    .btn::after {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .btn,
+    button {
+        border-width: 2px;
+    }
+}

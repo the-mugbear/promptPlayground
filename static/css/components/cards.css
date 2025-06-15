@@ -1,0 +1,443 @@
+/* ===================================================================
+   CARDS COMPONENT
+   - Extracted from cards.css, theme files, and scattered card styles
+   - Uses CSS custom properties for theming
+   =================================================================== */
+
+/* === BASE CARD STYLES === */
+.card,
+.content-card {
+    background-color: var(--card-bg-color, #111);
+    color: var(--text-color);
+    border: var(--border-width-thick, 2px) dashed var(--accent-color);
+    border-radius: var(--border-radius-md, 8px);
+    padding: var(--card-padding, 1.5rem);
+    margin-bottom: var(--spacing-lg, 1.5rem);
+    box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.1));
+    position: relative;
+    transition: var(--transition-normal);
+}
+
+.card:hover,
+.content-card:hover {
+    border-color: var(--secondary-color);
+    box-shadow: var(--shadow-lg, 0 10px 15px rgba(0, 0, 0, 0.1));
+}
+
+/* === CARD HEADER === */
+.card-header {
+    margin-bottom: var(--spacing-md, 1rem);
+    border-bottom: var(--border-width, 1px) solid var(--accent-color);
+    padding-bottom: var(--spacing-md, 1rem);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm, 0.5rem);
+}
+
+.card-header h1,
+.card-header h2,
+.card-header h3,
+.card-header h4 {
+    margin: 0;
+    color: var(--accent-color);
+}
+
+.card-header .action-buttons {
+    display: flex;
+    gap: var(--spacing-sm, 0.5rem);
+    flex-wrap: wrap;
+}
+
+/* === TWO-COLUMN CARDS === */
+.left-card,
+.right-card {
+    flex: 1;
+    background-color: var(--card-bg-color, #111);
+    border: var(--border-width-thick, 2px) dashed var(--accent-color);
+    border-radius: var(--border-radius-md, 8px);
+    padding: var(--card-padding, 1rem);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 50%;
+    margin-bottom: var(--spacing-lg, 1.5rem);
+    box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.1));
+    transition: var(--transition-normal);
+}
+
+.left-card h2,
+.right-card h2 {
+    margin-top: 0;
+    color: var(--accent-color);
+}
+
+.left-card:hover,
+.right-card:hover {
+    border-color: var(--secondary-color);
+    box-shadow: var(--shadow-lg, 0 10px 15px rgba(0, 0, 0, 0.1));
+}
+
+/* === CYBERPUNK ENHANCED CARDS (from best_of_n.css) === */
+.two-column-container .left-card,
+.two-column-container .right-card {
+    border: var(--border-width, 1px) solid var(--accent-color);
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.3), inset 0 0 5px rgba(0, 255, 65, 0.2);
+    background-color: var(--card-bg-color);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle corner details for cyberpunk theme */
+.two-column-container .left-card::before,
+.two-column-container .right-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    border-top: var(--border-width-thick, 2px) solid var(--secondary-color);
+    border-left: var(--border-width-thick, 2px) solid var(--secondary-color);
+    opacity: 0.7;
+}
+
+.two-column-container .left-card::after,
+.two-column-container .right-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    border-bottom: var(--border-width-thick, 2px) solid var(--secondary-color);
+    border-right: var(--border-width-thick, 2px) solid var(--secondary-color);
+    opacity: 0.7;
+}
+
+/* === STEP CARDS (from chains details) === */
+.step-card {
+    background-color: var(--card-bg-color, #1a1a1a);
+    border: var(--border-width, 1px) solid var(--border-color, #333);
+    border-radius: var(--border-radius-md, 8px);
+    width: 100%;
+    max-width: 800px;
+    box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.1));
+    transition: var(--transition-normal);
+    margin-bottom: var(--spacing-lg, 1.5rem);
+}
+
+.step-card:hover {
+    border-color: var(--accent-color);
+    box-shadow: var(--shadow-lg, 0 10px 15px rgba(0, 0, 0, 0.1));
+}
+
+.step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md, 0.75rem) var(--spacing-lg, 1rem);
+    border-bottom: var(--border-width, 1px) solid var(--border-color, #333);
+}
+
+.step-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md, 0.75rem);
+}
+
+.step-name {
+    font-size: var(--font-size-xl, 1.25rem);
+    margin: 0;
+    color: var(--heading-color);
+}
+
+.step-body {
+    padding: var(--spacing-xl, 1.5rem);
+}
+
+.step-order-badge {
+    background-color: var(--accent-color);
+    color: var(--background-color, #000);
+    font-size: var(--font-size-sm, 0.8rem);
+    font-weight: bold;
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.6rem);
+    border-radius: var(--border-radius-full, 99px);
+    display: inline-block;
+}
+
+/* === DATASET CARDS (from forms.css) === */
+.dataset-card {
+    background-color: var(--surface-color, #1a1a1a);
+    border: var(--border-width, 1px) solid var(--border-color, rgba(0, 255, 65, 0.3));
+    border-radius: var(--border-radius-md, 8px);
+    padding: var(--spacing-md, 1rem);
+    transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-shadow: var(--shadow-sm, 0 2px 4px rgba(0, 0, 0, 0.2));
+    margin-bottom: var(--spacing-md, 1rem);
+}
+
+.dataset-card:hover {
+    border-color: var(--accent-color, #00FF41);
+    box-shadow: var(--glow-md, 0 0 8px var(--accent-color));
+}
+
+.dataset-card:has(input[type="checkbox"]:checked) {
+    border-color: var(--accent-color, #00FF41);
+    background-color: rgba(0, 255, 65, 0.05);
+}
+
+/* === ENHANCED CYBERPUNK CARDS (from reports.css) === */
+.report-summary-section,
+.report-runs-section,
+.dialogues.report-section {
+    background-color: var(--card-bg-color, #111);
+    background-image: 
+        linear-gradient(rgba(255, 0, 170, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 0, 170, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+    border: var(--border-width-thick, 2px) solid var(--accent-color);
+    box-shadow: 0 0 15px rgba(255, 0, 170, 0.3);
+    position: relative;
+    overflow: hidden;
+    padding: var(--spacing-xl, 2rem);
+    margin-bottom: var(--spacing-xl, 2rem);
+    border-radius: var(--border-radius-md, 8px);
+}
+
+/* Add circuit decoration to section corners */
+.report-summary-section::before,
+.report-runs-section::before,
+.dialogues.report-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 30px;
+    height: 30px;
+    border-top: var(--border-width-thick, 2px) solid var(--secondary-color);
+    border-left: var(--border-width-thick, 2px) solid var(--secondary-color);
+}
+
+.report-summary-section::after,
+.report-runs-section::after,
+.dialogues.report-section::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 30px;
+    height: 30px;
+    border-bottom: var(--border-width-thick, 2px) solid var(--secondary-color);
+    border-right: var(--border-width-thick, 2px) solid var(--secondary-color);
+}
+
+/* === CHART CONTAINERS === */
+.chart-container {
+    flex: 1;
+    min-width: 300px;
+    border: var(--border-width, 1px) solid var(--secondary-color);
+    padding: var(--spacing-lg, 1rem);
+    border-radius: var(--border-radius-sm, 4px);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: var(--text-color);
+    box-shadow: inset 0 0 8px var(--secondary-color);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: var(--spacing-lg, 1.5rem);
+}
+
+.chart-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--secondary-color), transparent);
+}
+
+.chart-container h3 {
+    text-shadow: var(--glow-sm, 0 0 5px var(--accent-color));
+    letter-spacing: 1px;
+    font-size: var(--font-size-lg, 1em);
+    margin-top: 0;
+    margin-bottom: var(--spacing-md, 1rem);
+    padding-bottom: var(--spacing-sm, 0.5rem);
+    border-bottom: var(--border-width, 1px) dashed var(--accent-color);
+}
+
+/* === TEST RUN CARDS === */
+.test-run-item {
+    border: var(--border-width, 1px) solid var(--secondary-color);
+    border-left: 4px solid var(--secondary-color);
+    padding: var(--spacing-lg, 1rem);
+    border-radius: var(--border-radius-sm, 4px);
+    background-color: rgba(0, 0, 0, 0.7);
+    position: relative;
+    transition: var(--transition-normal);
+    margin-bottom: var(--spacing-md, 1rem);
+}
+
+.test-run-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--glow-md, 0 0 10px var(--secondary-color));
+}
+
+.test-run-item h4 {
+    margin-top: 0;
+    color: var(--accent-color);
+    display: flex;
+    align-items: center;
+}
+
+.test-run-item h4::before {
+    content: '>';
+    margin-right: var(--spacing-sm, 0.5rem);
+    color: var(--text-color);
+    font-weight: bold;
+}
+
+/* === CARD VARIATIONS === */
+
+/* Compact cards */
+.card-compact,
+.card.compact {
+    padding: var(--spacing-md, 1rem);
+    margin-bottom: var(--spacing-md, 1rem);
+}
+
+/* Flush cards (no padding) */
+.card-flush,
+.card.flush {
+    padding: 0;
+}
+
+.card-flush .card-header,
+.card.flush .card-header {
+    padding: var(--spacing-md, 1rem);
+    margin-bottom: 0;
+}
+
+.card-flush .card-body,
+.card.flush .card-body {
+    padding: var(--spacing-md, 1rem);
+}
+
+/* Outlined cards */
+.card-outline,
+.card.outline {
+    background-color: transparent;
+    border-style: solid;
+}
+
+/* Elevated cards */
+.card-elevated,
+.card.elevated {
+    box-shadow: var(--shadow-lg, 0 10px 15px rgba(0, 0, 0, 0.1));
+}
+
+.card-elevated:hover,
+.card.elevated:hover {
+    box-shadow: var(--shadow-xl, 0 20px 25px rgba(0, 0, 0, 0.1));
+    transform: translateY(-4px);
+}
+
+/* === ACTION BUTTONS IN CARDS === */
+.action-buttons {
+    display: flex;
+    gap: var(--spacing-sm, 0.5rem);
+    margin-top: var(--spacing-md, 1rem);
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    margin-right: 5px;
+    padding: 2px 6px;
+    font-size: var(--font-size-sm, 0.9em);
+    cursor: pointer;
+    border: var(--border-width, 1px) solid var(--accent-color);
+    background: transparent;
+    color: var(--accent-color);
+    border-radius: var(--border-radius-sm, 4px);
+    transition: var(--transition-fast);
+}
+
+.action-btn:hover {
+    background: var(--accent-color);
+    color: var(--background-color);
+}
+
+/* === CARD GRIDS === */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-lg, 1.5rem);
+    margin: var(--spacing-lg, 1.5rem) 0;
+}
+
+.cards-grid-sm {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-md, 1rem);
+}
+
+.cards-grid-lg {
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: var(--spacing-xl, 2rem);
+}
+
+/* === RESPONSIVE DESIGN === */
+@media (max-width: 768px) {
+    .left-card,
+    .right-card {
+        width: 100%;
+        margin-bottom: var(--spacing-md, 1rem);
+    }
+    
+    .step-card {
+        max-width: 100%;
+    }
+    
+    .chart-container {
+        min-width: 100%;
+        margin-bottom: var(--spacing-md, 1rem);
+    }
+    
+    .cards-grid,
+    .cards-grid-sm,
+    .cards-grid-lg {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md, 1rem);
+    }
+    
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .action-buttons {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+/* === ACCESSIBILITY === */
+.card:focus-within {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* Ensure proper contrast for card content */
+@media (prefers-contrast: high) {
+    .card,
+    .content-card,
+    .left-card,
+    .right-card {
+        border-width: 3px;
+        background-color: var(--background-color);
+    }
+}

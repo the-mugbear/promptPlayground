@@ -1,0 +1,150 @@
+/* ===================================================================
+   CYBERPUNK THEME
+   - Overrides default variables for cyberpunk aesthetic
+   - Neon colors, high contrast, retro gaming feel
+   =================================================================== */
+
+:root {
+    /* === CYBERPUNK COLOR OVERRIDES === */
+    --background-color: #000000;
+    --surface-color: #111111;
+    --card-bg-color: #1a1a1a;
+    
+    /* Text Colors */
+    --text-color: #00FF41;           /* Neon green text */
+    --text-muted-color: #666666;
+    --heading-color: #FF00AA;        /* Magenta headings */
+    
+    /* Accent Colors */
+    --accent-color: #FF00AA;         /* Magenta primary */
+    --secondary-color: #00FFFF;      /* Cyan secondary */
+    --tertiary-color: #00FF41;       /* Green tertiary */
+    
+    /* Border Colors */
+    --border-color: rgba(255, 0, 170, 0.5);
+    --border-color-strong: rgba(255, 0, 170, 0.8);
+    --border-color-subtle: rgba(255, 0, 170, 0.2);
+    
+    /* Typography */
+    --main-font: 'Press Start 2P', monospace;
+    --heading-font: 'Press Start 2P', monospace;
+    
+    /* Enhanced Shadows with Neon Glow */
+    --shadow-sm: 0 0 5px var(--accent-color);
+    --shadow-md: 0 0 10px var(--accent-color);
+    --shadow-lg: 0 0 20px var(--accent-color);
+    --shadow-xl: 0 0 30px var(--accent-color);
+}
+
+/* === CYBERPUNK-SPECIFIC STYLES === */
+
+/* Neon text effects */
+.glitch {
+    position: relative;
+    color: var(--accent-color);
+    animation: glitch 2s infinite steps(2, end);
+}
+
+@keyframes glitch {
+    0%, 100% {
+        text-shadow: -1px -1px 0 var(--secondary-color), 
+                     1px 1px 0 var(--tertiary-color);
+        transform: translate(0, 0);
+        clip-path: inset(10% 0 80% 0);
+    }
+    50% {
+        text-shadow: 1px 1px 0 var(--secondary-color), 
+                     -1px -1px 0 var(--tertiary-color);
+        transform: translate(2px, -1px);
+        clip-path: inset(40% 0 30% 0);
+    }
+}
+
+/* Scanline effect */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 1px,
+        rgba(0, 0, 0, 0.1) 1px,
+        rgba(0, 0, 0, 0.1) 2px
+    );
+    z-index: var(--z-tooltip);
+    opacity: 0.3;
+}
+
+/* Grid pattern background */
+.cyberpunk-grid {
+    background-image: 
+        linear-gradient(rgba(255, 0, 170, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 0, 170, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Circuit board decorations */
+.circuit-corners::before,
+.circuit-corners::after {
+    content: '';
+    position: absolute;
+}
+
+.circuit-corners::before {
+    top: 0;
+    left: 0;
+    width: 30px;
+    height: 30px;
+    border-top: 2px solid var(--secondary-color);
+    border-left: 2px solid var(--secondary-color);
+}
+
+.circuit-corners::after {
+    bottom: 0;
+    right: 0;
+    width: 30px;
+    height: 30px;
+    border-bottom: 2px solid var(--secondary-color);
+    border-right: 2px solid var(--secondary-color);
+}
+
+/* Neon hover effects */
+.neon-hover:hover {
+    box-shadow: var(--glow-md);
+    text-shadow: var(--glow-sm);
+}
+
+.neon-box {
+    box-shadow: var(--glow-lg);
+}
+
+/* Terminal cursor */
+.terminal-cursor::after {
+    content: "_";
+    display: inline-block;
+    animation: blink 1s infinite;
+    color: var(--accent-color);
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* Dashed borders for that retro computer feel */
+.dashed-border {
+    border-style: dashed !important;
+}
+
+/* Matrix-style effects */
+.matrix-text {
+    font-family: var(--mono-font);
+    color: var(--tertiary-color);
+    text-shadow: var(--glow-sm);
+    letter-spacing: 0.1em;
+}

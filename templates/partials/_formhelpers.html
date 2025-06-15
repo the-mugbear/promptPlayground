@@ -1,94 +1,52 @@
-{# templates/partials/_formhelpers.html #}
-{% macro render_field(field, label_visible=true, class="") %}
-<div class="form-group mb-3">
-    {% if label_visible and field.label %}
-        {{ field.label(class="form-label") }}
-    {% endif %}
-    {# 'kwargs' here will be a dictionary of any extra keyword arguments passed to the macro #}
-    {{ field(class="form-control " + class, **kwargs) }}
-    {% if field.errors %}
-        {% for error in field.errors %}
-            <div class="invalid-feedback d-block">
-                {{ error }}
-            </div>
-        {% endfor %}
-    {% endif %}
-    {% if field.description %}
-        <small class="form-text text-muted">{{ field.description }}</small>
-    {% endif %}
-</div>
-{% endmacro %}
+{% macro render_field(field, with_label=True, with_description=True, class="", placeholder=None, rows=None) %}
+    {#
+        A single, powerful macro to render any WTForms field.
+        It automatically determines the correct CSS class and handles validation errors.
+    #}
 
-{% macro render_select_field(field, label_visible=true, class="") %}
-<div class="form-group mb-3">
-    {% if label_visible and field.label %}
-        {{ field.label(class="form-label") }}
+    {# --- 1. Determine the correct default CSS class based on the field type --- #}
+    {% set field_type = field.type | lower %}
+    {% if 'select' in field_type %}
+        {% set default_class = 'form-select' %}
+    {% elif 'radio' in field_type or 'boolean' in field_type %}
+        {% set default_class = 'form-check-input' %}
+    {% else %}
+        {% set default_class = 'form-control' %}
     {% endif %}
-    {{ field(class="form-select " + class, **kwargs) }}
-    {% if field.errors %}
-        {% for error in field.errors %}
-            <div class="invalid-feedback d-block">
-                {{ error }}
-            </div>
-        {% endfor %}
-    {% endif %}
-    {% if field.description %}
-        <small class="form-text text-muted">{{ field.description }}</small>
-    {% endif %}
-</div>
-{% endmacro %}
 
-{% macro render_radio_field(field, label_visible=true, class="") %}
-<div class="form-group form-group-radio mb-3">
-    {% if label_visible and field.label %}
-        <label class="form-label d-block">{{ field.label }}</label> {# Label for the whole group #}
+    {# --- 2. Build the final class string, adding 'is-invalid' on error --- #}
+    {% set final_class = default_class + ' ' + class %}
+    {% if field.errors %}
+        {% set final_class = final_class + ' is-invalid' %}
     {% endif %}
-    <div> {# Wrapper for radio buttons for flex layout #}
-    {% for subfield in field %}
-        <div class="form-check form-check-inline">
-            {# Be mindful if kwargs passed to render_radio_field are intended for subfields #}
-            {{ subfield(class="form-check-input " + class, **kwargs) }}
-            {{ subfield.label(class="form-check-label") }}
-        </div>
-    {% endfor %}
+
+    {# --- 3. Build the dictionary of HTML attributes for the field --- #}
+    {% set field_attrs = {'class': final_class} %}
+    
+    {# This is a Jinja2 trick to update a dictionary without using the {% do %} tag #}
+    {% if placeholder is not none %}{% set _ = field_attrs.update({'placeholder': placeholder}) %}{% endif %}
+    {% if rows is not none %}{% set _ = field_attrs.update({'rows': rows}) %}{% endif %}
+
+
+    {# --- 4. Render the final HTML structure --- #}
+    <div class="form-group mb-3">
+        {% if with_label and field.label %}
+            {{ field.label(class="form-label") }}
+        {% endif %}
+
+        {# Unpack the attributes dictionary to render the field #}
+        {{ field(**field_attrs) }}
+
+        {% if field.errors %}
+            <div class="invalid-feedback d-block">
+                {% for error in field.errors %}
+                    <span>{{ error }}</span><br>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if with_description and field.description %}
+            <small class="form-text text-muted">{{ field.description }}</small>
+        {% endif %}
     </div>
-    {% if field.errors %}
-        {% for error in field.errors %}
-            <div class="invalid-feedback d-block">
-                {{ error }}
-            </div>
-        {% endfor %}
-    {% endif %}
-    {% if field.description %}
-        <small class="form-text text-muted">{{ field.description }}</small>
-    {% endif %}
-</div>
-{% endmacro %}
-
-{% macro render_checkbox_field(field, label_visible=true) %} 
-{# Note: I removed 'class=""' as it wasn't used in the original field rendering for checkboxes. 
-   If you need to pass a class specifically for the checkbox input, you can add it to the call 
-   or re-add 'class=""' to the signature and use it like: 
-   {{ field(class="form-check-input " + class, **kwargs) }} 
-#}
-<div class="form-check mb-3">
-    {{ field(class="form-check-input", **kwargs) }}
-    {% if label_visible and field.label %}
-        {{ field.label(class="form-check-label") }}
-    {% endif %}
-    {% if field.errors %}
-        {% for error in field.errors %}
-            <div class="invalid-feedback d-block">
-                {{ error }}
-            </div>
-        {% endfor %}
-    {% endif %}
-    {% if field.description %}
-        <small class="form-text text-muted">{{ field.description }}</small>
-    {% endif %}
-</div>
-{% endmacro %}
-
-{% macro render_submit_field(field) %}
-    {{ field(class="btn btn-primary", **kwargs) }}
 {% endmacro %}

@@ -1,0 +1,113 @@
+/* ===================================================================
+   CSS CUSTOM PROPERTIES (VARIABLES)
+   - All theming variables in one place
+   - Default values (can be overridden by theme files)
+   =================================================================== */
+
+:root {
+    /* === COLORS - DEFAULT (CYBERPUNK THEME) === */
+    --background-color: #0f0f0f;
+    --surface-color: #1a1a1a;
+    --card-bg-color: #111;
+    
+    /* Text Colors */
+    --text-color: #e0e0e0;
+    --text-muted-color: #888;
+    --heading-color: #00FF41;
+    
+    /* Accent Colors */
+    --accent-color: #00FF41;        /* Primary green */
+    --secondary-color: #FF00AA;     /* Magenta/pink */
+    --tertiary-color: #00FFFF;      /* Cyan */
+    
+    /* Semantic Colors */
+    --error-color: #ff4f4f;
+    --warning-color: #ffcc00;
+    --success-color: var(--accent-color);
+    --info-color: var(--tertiary-color);
+    
+    /* Border Colors */
+    --border-color: rgba(0, 255, 65, 0.3);
+    --border-color-strong: rgba(0, 255, 65, 0.6);
+    --border-color-subtle: rgba(0, 255, 65, 0.1);
+    
+    /* === TYPOGRAPHY === */
+    --main-font: 'Press Start 2P', 'Consolas', 'Monaco', 'Courier New', monospace;
+    --heading-font: 'Orbitron', var(--main-font), sans-serif;
+    --mono-font: 'Courier New', 'Consolas', 'Monaco', monospace;
+    
+    /* Font Sizes */
+    --font-size-xs: 0.75rem;   /* 12px */
+    --font-size-sm: 0.875rem;  /* 14px */
+    --font-size-base: 1rem;    /* 16px */
+    --font-size-lg: 1.125rem;  /* 18px */
+    --font-size-xl: 1.25rem;   /* 20px */
+    --font-size-2xl: 1.5rem;   /* 24px */
+    --font-size-3xl: 1.875rem; /* 30px */
+    --font-size-4xl: 2.25rem;  /* 36px */
+    
+    /* Line Heights */
+    --line-height-tight: 1.25;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
+    
+    /* === SPACING === */
+    --spacing-xs: 0.25rem;  /* 4px */
+    --spacing-sm: 0.5rem;   /* 8px */
+    --spacing-md: 1rem;     /* 16px */
+    --spacing-lg: 1.5rem;   /* 24px */
+    --spacing-xl: 2rem;     /* 32px */
+    --spacing-2xl: 3rem;    /* 48px */
+    --spacing-3xl: 4rem;    /* 64px */
+    
+    /* === BORDERS === */
+    --border-width: 1px;
+    --border-width-thick: 2px;
+    --border-radius-sm: 4px;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --border-radius-xl: 16px;
+    --border-radius-full: 9999px;
+    
+    /* === SHADOWS === */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+    
+    /* Neon/Glow Effects */
+    --glow-sm: 0 0 5px currentColor;
+    --glow-md: 0 0 10px currentColor;
+    --glow-lg: 0 0 20px currentColor;
+    
+    /* === TRANSITIONS === */
+    --transition-fast: all 0.15s ease-in-out;
+    --transition-normal: all 0.2s ease-in-out;
+    --transition-slow: all 0.3s ease-in-out;
+    
+    /* === Z-INDEX SCALE === */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-modal: 1050;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
+    
+    /* === BREAKPOINTS (for CSS only) === */
+    --breakpoint-sm: 576px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 992px;
+    --breakpoint-xl: 1200px;
+    --breakpoint-2xl: 1400px;
+    
+    /* === LAYOUT === */
+    --container-max-width: 1200px;
+    --navbar-height: 70px;
+    
+    /* === COMPONENT SPECIFIC === */
+    --input-height: 2.5rem;
+    --button-height: 2.5rem;
+    --card-padding: var(--spacing-lg);
+    --form-group-spacing: var(--spacing-lg);
+}

@@ -1,0 +1,308 @@
+/* ===================================================================
+   TABLES COMPONENT
+   - Extracted from tables.css, bootstrap-overrides.css, and other files
+   - Uses CSS custom properties for theming
+   =================================================================== */
+
+/* === BASE TABLE STYLES === */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--spacing-lg, 1.5rem) 0;
+    background-color: var(--surface-color, #1a1a1a);
+    border-radius: var(--border-radius-md, 8px);
+    overflow: hidden;
+    box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+th, td {
+    padding: var(--spacing-md, 0.75rem) var(--spacing-lg, 1rem);
+    text-align: left;
+    border-bottom: var(--border-width, 1px) solid var(--border-color, rgba(0, 255, 65, 0.3));
+    vertical-align: top;
+}
+
+th {
+    background-color: var(--background-color, #111);
+    color: var(--accent-color, #00FF41);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: var(--font-size-sm, 0.875rem);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+td {
+    background-color: var(--surface-color, #1a1a1a);
+    color: var(--text-color, #e0e0e0);
+}
+
+/* Remove border from last row */
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* === HOVER EFFECTS === */
+tbody tr:hover {
+    background-color: var(--background-color, #111);
+    transition: background-color 0.2s ease;
+}
+
+tbody tr:hover td {
+    background-color: var(--background-color, #111);
+}
+
+/* === STRIPED TABLES === */
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 0, 170, 0.05);
+}
+
+.table-striped tbody tr:nth-of-type(odd):hover {
+    background-color: var(--background-color, #111);
+}
+
+/* === RESPONSIVE TABLES === */
+.table-responsive {
+    overflow-x: auto;
+    margin: var(--spacing-lg, 1.5rem) 0;
+    border: var(--border-width, 1px) solid var(--border-color, rgba(0, 255, 65, 0.3));
+    border-radius: var(--border-radius-md, 8px);
+}
+
+.table-responsive table {
+    margin: 0;
+    border: none;
+}
+
+/* === TABLE VARIANTS === */
+
+/* Compact table */
+.table-sm th,
+.table-sm td {
+    padding: var(--spacing-sm, 0.5rem);
+}
+
+/* Bordered table */
+.table-bordered {
+    border: var(--border-width, 1px) solid var(--border-color, rgba(0, 255, 65, 0.3));
+}
+
+.table-bordered th,
+.table-bordered td {
+    border: var(--border-width, 1px) solid var(--border-color, rgba(0, 255, 65, 0.3));
+}
+
+/* Borderless table */
+.table-borderless th,
+.table-borderless td,
+.table-borderless thead th,
+.table-borderless tbody + tbody {
+    border: 0;
+}
+
+/* === SPECIFIC TABLE STYLES === */
+
+/* Test Suites Table (from list_test_suites.css) */
+#suitesTable {
+    margin-top: 1rem;
+    border: none;
+}
+
+#suitesTable thead {
+    background-color: transparent;
+    color: var(--accent-color);
+    border-bottom: 2px dashed var(--accent-color);
+}
+
+#suitesTable th,
+#suitesTable td {
+    padding: 0.75rem;
+    text-align: left;
+    border: none;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+/* Test cases container within tables */
+.test-cases-container {
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--secondary-color, #00FFFF);
+    padding: 1rem;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+}
+
+.test-cases-container li {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    white-space: normal;
+    line-height: 1.4;
+}
+
+/* Table action buttons */
+.view-test-cases-btn {
+    background: transparent;
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: var(--border-radius-sm, 4px);
+    font-size: var(--font-size-sm, 0.875rem);
+}
+
+.view-test-cases-btn:hover {
+    background: var(--accent-color);
+    color: var(--background-color, #000);
+}
+
+.delete-btn {
+    background: transparent;
+    border: 1px solid var(--error-color, #FF0000);
+    color: var(--error-color, #FF0000);
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: var(--border-radius-sm, 4px);
+    font-size: var(--font-size-sm, 0.875rem);
+}
+
+.delete-btn:hover {
+    background: var(--error-color, #FF0000);
+    color: var(--background-color, #000);
+}
+
+/* === TABLE UTILITIES === */
+
+/* Center aligned columns */
+.text-center th,
+.text-center td {
+    text-align: center;
+}
+
+/* Right aligned columns */
+.text-right th,
+.text-right td {
+    text-align: right;
+}
+
+/* Nowrap columns */
+.text-nowrap {
+    white-space: nowrap;
+}
+
+/* Fixed width table */
+.table-fixed {
+    table-layout: fixed;
+}
+
+/* === STATUS INDICATORS IN TABLES === */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+    border-radius: var(--border-radius-sm, 4px);
+    font-size: var(--font-size-xs, 0.75rem);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid currentColor;
+}
+
+.status-success {
+    color: var(--success-color, #00FF41);
+    background-color: rgba(0, 255, 65, 0.1);
+}
+
+.status-failure {
+    color: var(--error-color, #FF3A3A);
+    background-color: rgba(255, 58, 58, 0.1);
+}
+
+.status-error {
+    color: var(--error-color, #FF00AA);
+    background-color: rgba(255, 0, 170, 0.1);
+}
+
+.status-warning {
+    color: var(--warning-color, #FFFF00);
+    background-color: rgba(255, 255, 0, 0.1);
+}
+
+.status-info {
+    color: var(--info-color, #00FFFF);
+    background-color: rgba(0, 255, 255, 0.1);
+}
+
+/* === MOBILE RESPONSIVENESS === */
+@media (max-width: 768px) {
+    /* Stack table on mobile */
+    .table-mobile-stack {
+        display: block;
+    }
+    
+    .table-mobile-stack thead {
+        display: none;
+    }
+    
+    .table-mobile-stack tbody,
+    .table-mobile-stack tr,
+    .table-mobile-stack td {
+        display: block;
+        width: 100%;
+    }
+    
+    .table-mobile-stack tr {
+        border: var(--border-width, 1px) solid var(--border-color, rgba(0, 255, 65, 0.3));
+        border-radius: var(--border-radius-sm, 4px);
+        margin-bottom: var(--spacing-md, 1rem);
+        padding: var(--spacing-md, 1rem);
+        background-color: var(--surface-color, #1a1a1a);
+    }
+    
+    .table-mobile-stack td {
+        border: none;
+        padding: var(--spacing-xs, 0.25rem) 0;
+        text-align: left !important;
+    }
+    
+    .table-mobile-stack td:before {
+        content: attr(data-label) ": ";
+        font-weight: bold;
+        color: var(--accent-color);
+        text-transform: uppercase;
+        font-size: var(--font-size-sm, 0.875rem);
+    }
+    
+    /* Horizontal scroll for complex tables */
+    .table-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .table-scroll table {
+        min-width: 600px;
+    }
+}
+
+/* === ACCESSIBILITY === */
+table caption {
+    padding: var(--spacing-md, 1rem);
+    color: var(--text-muted-color, #888);
+    text-align: left;
+    caption-side: top;
+    font-size: var(--font-size-sm, 0.875rem);
+}
+
+/* Focus states for interactive elements in tables */
+.table tr:focus-within {
+    outline: 2px solid var(--accent-color);
+    outline-offset: -2px;
+}
+
+.table button:focus,
+.table a:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}

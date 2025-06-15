@@ -1,0 +1,368 @@
+/* ===================================================================
+   FORMS COMPONENT
+   - Extracted and consolidated from forms.css, theme_inspired.css, and other files
+   - Uses CSS custom properties for theming
+   =================================================================== */
+
+/* === FORM STRUCTURE === */
+.form-card {
+    background-color: var(--surface-color, #111);
+    max-width: 700px;
+    margin: var(--spacing-xl, 2rem) auto;
+    border: 1px solid var(--border-color, rgba(0, 255, 65, 0.3));
+    border-radius: var(--border-radius-md, 8px);
+    padding: var(--spacing-lg, 1.5rem) var(--spacing-xl, 2rem);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.form-card h2 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-lg, 1.5rem);
+    color: var(--accent-color);
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: var(--spacing-md, 1rem);
+}
+
+.form-group {
+    margin-bottom: var(--spacing-lg, 1.5rem);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--spacing-sm, 0.5rem);
+    color: var(--accent-color, #00FF41);
+    font-weight: bold;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* === FORM INPUTS === */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="url"],
+input[type="search"],
+input[type="number"],
+textarea,
+select {
+    display: block;
+    width: 100%;
+    padding: var(--spacing-sm, 0.6rem) var(--spacing-md, 1rem);
+    font-family: var(--main-font, monospace);
+    font-size: 1rem;
+    color: var(--text-color, #e0e0e0);
+    background-color: var(--surface-color, #1a1a1a);
+    border: 1px solid var(--border-color, rgba(0, 255, 65, 0.3));
+    border-radius: var(--border-radius-sm, 4px);
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    margin: 0;
+}
+
+/* Focus States */
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="url"]:focus,
+input[type="search"]:focus,
+input[type="number"]:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--accent-color, #00FF41);
+    box-shadow: 0 0 6px var(--accent-color, #00FF41);
+}
+
+/* Textarea specific */
+textarea {
+    min-height: 120px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+/* Select dropdowns */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2300FF41'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.03a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 1 0-1.06-1.06L8 8.94 4.22 6.03Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--spacing-md, 1rem) center;
+    background-size: 1em;
+    padding-right: calc(var(--spacing-md, 1rem) * 2.5);
+}
+
+select option {
+    background-color: var(--surface-color, #1a1a1a);
+    color: var(--text-color, #e0e0e0);
+}
+
+/* === CHECKBOXES AND RADIOS === */
+.form-group label input[type="checkbox"],
+.form-group label input[type="radio"] {
+    display: inline-block;
+    width: auto;
+    margin-right: var(--spacing-sm, 0.5rem);
+    vertical-align: middle;
+    accent-color: var(--accent-color, #00FF41);
+    margin-top: -0.1em;
+}
+
+.form-group label:has(input[type="checkbox"]),
+.form-group label:has(input[type="radio"]) {
+    display: flex;
+    align-items: center;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 1rem;
+    font-weight: normal;
+    color: var(--text-color, #e0e0e0);
+    cursor: pointer;
+}
+
+/* === VALIDATION STATES === */
+.form-group input.is-invalid,
+.form-group textarea.is-invalid,
+.form-group select.is-invalid {
+    border-color: var(--error-color, #ff4f4f);
+}
+
+.form-group input.is-invalid:focus,
+.form-group textarea.is-invalid:focus,
+.form-group select.is-invalid:focus {
+    box-shadow: 0 0 6px var(--error-color, #ff4f4f);
+}
+
+.form-group input.is-valid,
+.form-group textarea.is-valid,
+.form-group select.is-valid {
+    border-color: var(--success-color, #00FF41);
+}
+
+.form-group input.is-valid:focus,
+.form-group textarea.is-valid:focus,
+.form-group select.is-valid:focus {
+    box-shadow: 0 0 6px var(--success-color, #00FF41);
+}
+
+/* Feedback Messages */
+.invalid-feedback,
+.valid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: var(--spacing-xs, 0.25rem);
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.invalid-feedback {
+    color: var(--error-color, #ff4f4f);
+}
+
+.valid-feedback {
+    color: var(--success-color, #00FF41);
+}
+
+input.is-invalid ~ .invalid-feedback,
+textarea.is-invalid ~ .invalid-feedback,
+select.is-invalid ~ .invalid-feedback,
+input.is-valid ~ .valid-feedback,
+textarea.is-valid ~ .valid-feedback,
+select.is-valid ~ .valid-feedback {
+    display: block;
+}
+
+/* === DISABLED & READONLY STATES === */
+input:disabled,
+textarea:disabled,
+select:disabled {
+    background-color: #333;
+    border-color: #444;
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+input:read-only,
+textarea:read-only {
+    background-color: #2a2a2a;
+    border-style: dotted;
+    cursor: default;
+    box-shadow: none;
+}
+
+input:read-only:focus,
+textarea:read-only:focus {
+    border-color: var(--border-color, rgba(0, 255, 65, 0.3));
+    box-shadow: none;
+}
+
+/* === HELP TEXT === */
+.form-text,
+.help-text,
+.form-group small {
+    display: block;
+    margin-top: var(--spacing-xs, 0.25rem);
+    font-size: 0.85rem;
+    color: var(--text-muted-color, #888);
+    line-height: 1.4;
+    font-weight: normal;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+/* === DATASET IMPORT SELECTION GRID (from forms.css) === */
+.datasets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: var(--spacing-md, 1rem);
+    margin-top: var(--spacing-sm, 0.5rem);
+}
+
+.dataset-card {
+    background-color: var(--surface-color, #1a1a1a);
+    border: 1px solid var(--border-color, rgba(0, 255, 65, 0.3));
+    border-radius: var(--border-radius-md, 8px);
+    padding: var(--spacing-md, 1rem);
+    transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.dataset-card:hover {
+    border-color: var(--accent-color, #00FF41);
+    box-shadow: 0 0 8px var(--accent-color, #00FF41);
+}
+
+.dataset-card:has(input[type="checkbox"]:checked) {
+    border-color: var(--accent-color, #00FF41);
+    background-color: #222;
+}
+
+.dataset-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm, 0.5rem);
+    margin-bottom: var(--spacing-md, 1rem);
+}
+
+.dataset-card-header input[type="checkbox"] {
+    margin-top: 0.3em;
+    flex-shrink: 0;
+    width: 1.1em;
+    height: 1.1em;
+    cursor: pointer;
+    accent-color: var(--accent-color, #00FF41);
+}
+
+.dataset-card-header label {
+    font-weight: normal;
+    cursor: pointer;
+    margin: 0;
+    flex-grow: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 1rem;
+    line-height: 1.3;
+    color: var(--text-color, #e0e0e0);
+}
+
+.dataset-card-header label h4 {
+    margin: 0;
+    color: var(--accent-color, #00FF41);
+    font-size: 1.1em;
+    font-family: var(--heading-font, var(--main-font));
+    line-height: inherit;
+}
+
+.dataset-card-body {
+    font-size: 0.85rem;
+    flex-grow: 1;
+    color: var(--text-muted-color, #888);
+}
+
+.dataset-meta {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--spacing-sm, 0.5rem) 0;
+}
+
+.dataset-meta li {
+    margin-bottom: var(--spacing-xs, 0.25rem);
+    line-height: 1.4;
+}
+
+.dataset-meta-label {
+    font-weight: bold;
+    color: var(--text-color, #e0e0e0);
+    margin-right: var(--spacing-xs, 0.25rem);
+}
+
+.dataset-description {
+    color: var(--text-muted-color, #888);
+    font-size: 0.9em;
+    line-height: 1.5;
+    margin-top: var(--spacing-sm, 0.5rem);
+}
+
+/* === SEARCH BAR (from search.css) === */
+.search-bar {
+    width: 100%;
+    padding: 0.5rem;
+    background-color: var(--surface-color, #111);
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    color: var(--text-color);
+    font-family: var(--main-font);
+    margin-bottom: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-bar:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 5px var(--secondary-color);
+}
+
+.search-bar::placeholder {
+    color: rgba(0, 255, 65, 0.5);
+}
+
+input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    height: 1em;
+    width: 1em;
+    border-radius: 50em;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2300FF41'><path d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/></svg>") no-repeat 50% 50%;
+    background-size: contain;
+    opacity: 0;
+    pointer-events: none;
+}
+
+input[type="search"]:focus::-webkit-search-cancel-button {
+    opacity: 1;
+    pointer-events: all;
+}
+
+#suggestion-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background: var(--surface-color, #111);
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+#suggestion-list li {
+    padding: 0.5rem;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+}
+
+#suggestion-list li:hover {
+    background-color: rgba(0, 255, 65, 0.1);
+}

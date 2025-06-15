@@ -154,28 +154,44 @@ class APIChainExecutor:
                   context variables that were extracted.
         """
         try:
-            payload_template = step.payload if step.payload is not None else step.endpoint.http_payload or '{}'
-            headers_template = step.headers if step.headers is not None else json.dumps({h.key: h.value for h in step.endpoint.headers})
+            endpoint = step.endpoint
+            
+            # --- Determine the correct templates to use (Step > Endpoint) ---
+            payload_template = step.payload if step.payload is not None else endpoint.payload_template.template if endpoint.payload_template else '{}'
+            headers_template = step.headers if step.headers is not None else json.dumps({h.key: h.value for h in endpoint.headers})
 
-            # 1. RENDER TEMPLATES
+            # 1. Render Templates
             rendered_payload = render_template_string(payload_template, context)
             rendered_headers_str = render_template_string(headers_template, context)
-
+            
             rendered_headers_dict = {}
             if rendered_headers_str and rendered_headers_str.strip():
                 try:
                     rendered_headers_dict = json.loads(rendered_headers_str)
                 except json.JSONDecodeError as e:
-                    raise ChainExecutionError(f"Invalid JSON in rendered headers for step {step.step_order}: {e}")
+                    raise ChainExecutionError(f"Invalid JSON in rendered Headers for step {step.step_order}: {e}")
 
-            # 2. EXECUTE REQUEST
-            # Use the actual function from your http_request_service
+            # --- Handle Authentication ---
+            if endpoint.auth_method == 'bearer' and endpoint.credentials_encrypted:
+                # NOTE: You would decrypt the credentials here before using them.
+                # For now, we'll assume they are plain text for the example.
+                token = endpoint.credentials_encrypted 
+                rendered_headers_dict['Authorization'] = f'Bearer {token}'
+            elif endpoint.auth_method == 'api_key' and endpoint.credentials_encrypted:
+                # This part would need to know the header name for the API key,
+                # which is another field we could add to the Endpoint model.
+                # For now, let's assume a common header name.
+                api_key_header = "X-API-Key" 
+                rendered_headers_dict[api_key_header] = endpoint.credentials_encrypted
+
+            # 2. Execute Request using new Endpoint attributes
             response_data = execute_api_request(
-                method=step.endpoint.method,
-                hostname_url=step.endpoint.hostname,
-                endpoint_path=step.endpoint.endpoint,
+                method=endpoint.method,
+                hostname_url=endpoint.base_url, 
+                endpoint_path=endpoint.path,    
                 raw_headers_or_dict=rendered_headers_dict,
-                http_payload_as_string=rendered_payload
+                http_payload_as_string=rendered_payload,
+                timeout=endpoint.timeout_seconds
             )
 
             # 3. EXTRACT DATA

@@ -42,6 +42,7 @@ from routes.attacks.evil_agent import evil_agent_bp
 from routes.attacks.best_of_n import best_of_n_bp
 from routes.utilities.utils import utils_bp
 from routes.chains import chains_bp, chains_api_bp
+from routes.payload_templates import payload_templates_bp
 
 # --- Import CLI commands blueprint/registration function ---
 from commands import bp as commands_bp
@@ -178,6 +179,7 @@ def create_app(config_object=Config): # Pass the class itself
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(payload_templates_bp, url_prefix='/payload-templates')
     app.register_blueprint(endpoints_bp)
     app.register_blueprint(test_cases_bp)
     app.register_blueprint(test_suites_bp)

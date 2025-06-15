@@ -1,379 +1,97 @@
 {% extends "base.html" %}
+{% from "partials/_formhelpers.html" import render_field %}
+
+{% block title %}Create New Endpoint{% endblock %}
+
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
-<script>
-  // Make CSRF token available as a global JavaScript variable
-  const csrfToken = "{{ csrf_token() }}";
-</script>
-<style>
-  #suggestion-list {
-    max-height: none;
-  }
-</style>
+  {{ super() }}
+  {# Link to the stylesheets for our themed forms and layouts #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/chains/details.css') }}">
 {% endblock %}
 
 {% block content %}
+<div class="container">
 
-<!-- Error/Success Message Container -->
-<div id="messageContainer" style="display: none;" class="message-container">
-  <div id="messageContent" class="message-content"></div>
-</div>
+  <header class="page-header">
+    <div>
+        <h1 class="page-title">Create New Endpoint</h1>
+        <p class="page-subtitle">Define a new API target for use in Chains or Test Runs.</p>
+    </div>
+  </header>
 
-<div class="two-column-container">
-  <!-- Left Card (Create or Test form) -->
-  <div class="left-card">
-    <h2>Create Endpoint</h2>
+  <div class="content-card">
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('endpoints_bp.create_endpoint') }}" class="form-grid" novalidate>
+        {{ form.hidden_tag() }}
 
-    <!-- Form #1: create-endpoint-form -->
-    <form id="create-endpoint-form" style="margin-bottom: 1rem;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="form-group">
-        <label for="name">Endpoint Name</label>
-        <input type="text" id="name" name="name" required placeholder="Enter a friendly name for the endpoint"
-          value="{{ request.form.name|default('') }}">
-      </div>
+        <fieldset class="form-section full-width">
+            <legend>Basic Information</legend>
+            {{ render_field(form.name) }}
+            {{ render_field(form.description, rows=3) }}
+        </fieldset>
+        
+        <fieldset class="form-section full-width">
+            <legend>Connection Details</legend>
+            <div class="two-column-grid">
+                {{ render_field(form.base_url) }}
+                {{ render_field(form.path) }}
+                {{ render_field(form.method) }}
+                {{ render_field(form.payload_template) }}
+            </div>
+        </fieldset>
 
-      <!-- <div class="form-group">
-        <label for="hostname">Hostname</label>
-        <input type="text" id="hostname" name="hostname" required placeholder="e.g., https://api.example.com"
-          value="{{ request.form.hostname|default('') }}">
-      </div> -->
+        <fieldset class="form-section full-width">
+            <legend>Configuration</legend>
+            <div class="two-column-grid">
+                {{ render_field(form.auth_method) }}
+                {# This field will be shown/hidden by JavaScript #}
+                <div id="credentials-wrapper" class="hidden">
+                    {{ render_field(form.credentials_encrypted) }}
+                </div>
+                {{ render_field(form.timeout_seconds) }}
+                {{ render_field(form.retry_attempts) }}
+            </div>
+        </fieldset>
 
-      <div class="row mb-3">
-        <div class="col-md-3">
-          <label for="method" class="form-label">HTTP Method</label>
-          <select class="form-select" id="method" name="method">
-            <option value="POST">POST</option>
-            <option value="GET">GET</option>
-            <option value="PUT">PUT</option>
-            <option value="DELETE">DELETE</option>
-            <option value="PATCH">PATCH</option>
-          </select>
+        <fieldset class="form-section full-width">
+            <legend>Purpose</legend>
+             {{ render_field(form.purpose) }}
+        </fieldset>
+
+        <div class="form-actions-full">
+            <a href="{{ url_for('endpoints_bp.list_endpoints') }}" class="btn btn-secondary">
+                <i class="fas fa-times fa-fw"></i>
+                <span class="button-text">Cancel</span>
+            </a>
+            {{ form.submit(class="btn btn-primary") }}
         </div>
-
-        <div class="col-md-9">
-          <label for="hostname" class="form-label">Hostname</label>
-          <input type="text" class="form-control" id="hostname" name="hostname" placeholder="https://api.example.com"
-            value="{{ hostname or '' }}">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="endpoint">Path</label>
-        <input type="text" id="endpoint" name="endpoint" required placeholder="e.g., /v1/submit"
-          value="{{ request.form.endpoint|default('') }}">
-      </div>
-
-      <div class="form-group">
-        <label for="http_payload">HTTP Payload</label>
-        <textarea id="http_payload" name="http_payload" rows="16"
-          placeholder='Paste or edit JSON here...'>{{ request.form.http_payload|default('') }}</textarea>
-        <button type="button" onclick="formatHttpPayload()">Format JSON</button>
-
-        <button type="button" id="insertTokenBtn">
-          Insert Token: {% raw %}{{INJECT_PROMPT}}{% endraw %}
-        </button>
-        <button type="button" class="dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"
-          aria-expanded="false">
-          <span class="visually-hidden">Toggle Dropdown</span>
-        </button>
-        <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#" id="insertJsonTokenBtn">
-              For JSON String: {% raw %}{{INJECT_PROMPT | tojson}}{% endraw %}
-            </a></li>
-        </ul>
-
-      </div>
-
-      <div class="form-group">
-        <label for="raw_headers">Headers (Key: Value per line)</label>
-        <textarea id="raw_headers" name="raw_headers" rows="9"
-          placeholder="Content-Type: application/json&#10;Authorization: Bearer <token>">{{ request.form.raw_headers|default('') }}</textarea>
-      </div>
-
-      <div style="display: flex; gap: 1rem;">
-        <!-- Button to CREATE in the DB -->
-        <button type="submit">Create Endpoint</button>
-    </form>
-
-    <!-- Form #2: test-endpoint-form (does not store the endpoint) -->
-    <form id="test-endpoint-form">
-      <!-- We'll pass the same fields so the route can do a test POST -->
-      <input type="hidden" name="hostname" value="{{ request.form.hostname|default('') }}">
-      <input type="hidden" name="endpoint" value="{{ request.form.endpoint|default('') }}">
-      <input type="hidden" name="http_payload" value="{{ request.form.http_payload|default('') }}">
-      <input type="hidden" name="raw_headers" value="{{ request.form.raw_headers|default('') }}">
-
-      <button type="submit">Test Endpoint</button>
-    </form>
+      </form>
+    </div>
   </div>
 </div>
-
-<!-- Right Card (suggestions) -->
-<div class="right-card">
-  <h2>Suggestions</h2>
-  <div id="suggestionText">
-    <p>Select or focus a field on the left to see relevant suggestions. Click a suggestion to copy it.</p>
-  </div>
-  <ul id="suggestion-list"></ul>
-</div>
-</div>
-
-<!-- Third Card: Show test results if present -->
-<div id="testResults" class="results-container" style="display: none;">
-  <h2>Test Results</h2>
-
-  <summary class="collapsible-header">HTTP Status Code</summary>
-  <div>
-    <strong id="testStatusCode"></strong>
-  </div>
-
-  <details class="collapsible-section">
-    <summary class="collapsible-header">What was sent</summary>
-    <div class="results-box">
-      <pre id="testPayload"></pre>
-    </div>
-  </details>
-
-  <details class="collapsible-section">
-    <summary class="collapsible-header">Headers Sent</summary>
-    <div class="results-box">
-      <pre id="testHeadersSent"></pre>
-    </div>
-  </details>
-
-  <details class="collapsible-section" id="received-section" open>
-    <summary class="collapsible-header">What was received</summary>
-    <div class="results-box">
-      <pre id="testResponse"></pre>
-    </div>
-  </details>
-</div>
-
-<!-- Test in progress modal -->
-<div id="testInProgressModalOverlay" class="dialog-overlay" style="display: none;">
-  <div id="testInProgressModalContent" class="confirmation-dialog" style="max-width: 700px;"> {# Use existing
-    .confirmation-dialog for base styling #}
-    <div class="modal-header-custom"
-      style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--neon-blue);">
-      <h3 style="color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); margin:0;">TRANSMISSION IN PROGRESS...
-      </h3>
-      {# Optional: Add a subtle animated icon or element here #}
-    </div>
-
-    <div class="test-in-progress-modal-body"
-      style="padding: 1rem; max-height: 70vh; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.9em; background: var(--darker-bg, #050507);">
-
-      <div class="terminal-output">
-        <p>&gt; INITIALIZING TEST SEQUENCE...</p>
-        <p>&gt; TARGET: <strong id="transmitTargetMethod" style="color: var(--neon-pink);">[METHOD]</strong> <span
-            id="transmitTargetURL" style="color: var(--neon-blue);">[URL]</span></p>
-
-        <div>
-          <p>&gt; HEADERS SENT (SUMMARY):</p>
-          <pre id="transmitHeadersSummary"
-            style="color: #ccc; background: var(--dark-bg); padding: 0.5rem; border-radius: 4px; border-left: 3px solid var(--neon-purple); margin-left: 1rem; max-height: 100px; overflow-y: auto;"></pre>
-        </div>
-
-        <div>
-          <p>&gt; PAYLOAD SENT:</p>
-          <pre id="transmitPayloadContent"
-            style="color: #ccc; background: var(--dark-bg); padding: 0.5rem; border-radius: 4px; border-left: 3px solid var(--neon-purple); margin-left: 1rem; max-height: 200px; overflow-y: auto;"></pre>
-        </div>
-
-        <p id="transmitStatusLine">&gt; ESTABLISHING CONNECTION... <span class="blinking-cursor">_</span></p>
-      </div>
-
-    </div>
-    {# No footer/close button needed as it's an in-progress indicator that will auto-hide #}
-  </div>
-</div>
-
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/endpoints/form-field-syncer.js') }}"></script>
-<script src="{{ url_for('static', filename='js/endpoints/field-suggestion-helper.js') }}"></script>
-<script src="{{ url_for('static', filename='js/endpoints/json_pretty_print.js') }}"></script>
-<script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>
-<script src="{{ url_for('static', filename='js/endpoints/payload-token-enforcer.js') }}"></script>
-
+{{ super() }}
 <script>
-  // Page-specific JavaScript for create_endpoint.html
-  document.addEventListener('DOMContentLoaded', function () {
-    const createForm = document.getElementById('create-endpoint-form');
-    const testForm = document.getElementById('test-endpoint-form');
+document.addEventListener('DOMContentLoaded', function() {
+    const authMethodSelect = document.getElementById('auth_method');
+    const credentialsWrapper = document.getElementById('credentials-wrapper');
 
-    // Simple text loading indicator (for "Create Endpoint" button)
-    const simpleLoadingIndicator = document.getElementById('loadingIndicator');
-    const messageContainer = document.getElementById('messageContainer');
-    const messageContent = document.getElementById('messageContent');
-    const testResultsContainer = document.getElementById('testResults');
-
-    // --- "Test In Progress" Modal Elements & Functions ---
-    const testInProgressModalOverlay = document.getElementById('testInProgressModalOverlay');
-    const transmitTargetMethodEl = document.getElementById('transmitTargetMethod');
-    const transmitTargetURLEl = document.getElementById('transmitTargetURL');
-    const transmitHeadersSummaryEl = document.getElementById('transmitHeadersSummary');
-    const transmitPayloadContentEl = document.getElementById('transmitPayloadContent');
-    const transmitStatusLineEl = document.getElementById('transmitStatusLine');
-
-    // Function to show the cyberpunk "Test In Progress" modal
-    function showTestInProgressModal(method, url, headersValue, payloadObject) {
-      if (!testInProgressModalOverlay) { console.error("Test In Progress Modal overlay not found!"); return; }
-      if (transmitTargetMethodEl) transmitTargetMethodEl.textContent = method;
-      if (transmitTargetURLEl) transmitTargetURLEl.textContent = url;
-      if (transmitHeadersSummaryEl) {
-        transmitHeadersSummaryEl.textContent = headersValue
-          ? String(headersValue).substring(0, 200) + (String(headersValue).length > 200 ? '...' : '')
-          : "Content-Type: multipart/form-data (auto-set by browser)";
-      }
-      if (transmitPayloadContentEl) {
-        let payloadText = "No payload / GET request.";
-        if (payloadObject instanceof FormData) {
-          let entries = [];
-          for (let [key, value] of payloadObject.entries()) {
-            if (key !== 'csrf_token') {
-              entries.push(`${key}: ${String(value instanceof File ? `[File: ${value.name}]` : value).substring(0, 100)}${String(value).length > 100 ? '...' : ''}`);
-            }
-          }
-          payloadText = entries.join('\n') || "FormData is empty (besides CSRF token).";
+    function toggleCredentialsField() {
+        if (authMethodSelect.value === 'none') {
+            credentialsWrapper.classList.add('hidden');
         } else {
-          payloadText = String(payloadObject);
+            credentialsWrapper.classList.remove('hidden');
         }
-        transmitPayloadContentEl.textContent = payloadText.length > 1000 ? payloadText.substring(0, 1000) + "\n... (payload truncated) ..." : payloadText;
-      }
-      if (transmitStatusLineEl) transmitStatusLineEl.innerHTML = "> SENDING REQUEST... <span class=\"blinking-cursor\">_</span>";
-      testInProgressModalOverlay.style.display = 'block';
-    }
-    // Function to hide the cyberpunk "Test In Progress" modal
-    function hideTestInProgressModal() {
-      if (testInProgressModalOverlay) testInProgressModalOverlay.style.display = 'none';
-    }
-    // --- End of "Test In Progress" Modal Functions ---
-
-    // Function to display user messages (errors or success)
-    function showMessage(message, type = 'error') {
-      if (!messageContainer || !messageContent) return;
-      messageContent.textContent = message;
-      messageContainer.className = `message-container ${type}`;
-      messageContainer.style.display = 'block';
-      setTimeout(() => { messageContainer.style.display = 'none'; }, 5000);
     }
 
-    // Controls for the simple text loading indicator (used by "Create Endpoint" button)
-    function showSimpleLoading() { if (simpleLoadingIndicator) simpleLoadingIndicator.style.display = 'block'; }
-    function hideSimpleLoading() { if (simpleLoadingIndicator) simpleLoadingIndicator.style.display = 'none'; }
+    // Run on page load
+    toggleCredentialsField();
 
-    // Event listener for the "Create Endpoint" button
-    if (createForm) {
-      createForm.addEventListener('submit', async function (e) {
-        e.preventDefault();
-        showSimpleLoading(); // Uses the simple text indicator
-
-        try {
-          const formData = new FormData(createForm);
-          const response = await fetch("{{ url_for('endpoints_bp.handle_create_endpoint') }}", {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-          });
-          const data = await response.json();
-          if (response.ok) {
-            showMessage('Endpoint created successfully!', 'success');
-            if (data.redirect_url) {
-              setTimeout(() => { window.location.href = data.redirect_url; }, 1000);
-            }
-          } else {
-            showMessage(data.error || 'Failed to create endpoint');
-          }
-        } catch (error) {
-          showMessage('An error occurred while creating the endpoint. See console.');
-          console.error('Error in createForm submission:', error);
-        } finally {
-          hideSimpleLoading();
-        }
-      });
-    }
-
-    // Event listener for the "Test Endpoint" button
-    if (testForm) {
-      testForm.addEventListener('submit', async function (e) {
-        e.preventDefault();
-
-        // DO NOT CALL showSimpleLoading() or showLoading() here for the testForm.
-        // We will use the new testInProgressModal exclusively.
-
-        const formData = new FormData(createForm);
-        const testUrl = "{{ url_for('endpoints_bp.test_endpoint') }}";
-
-        showTestInProgressModal( // Show the cyberpunk modal
-          'POST',
-          testUrl,
-          formData.get('raw_headers'),
-          formData
-        );
-
-        try {
-          const response = await fetch(testUrl, {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Server error response (create_endpoint test):", errorText);
-            let errorMessage = `Server responded with ${response.status}`;
-            try {
-              const errorJson = JSON.parse(errorText);
-              errorMessage = errorJson.error || errorJson.message || errorMessage + `: ${errorText.substring(0, 100)}...`;
-            } catch (jsonParseError) {
-              errorMessage += `: ${errorText.substring(0, 100)}...`;
-            }
-            throw new Error(errorMessage);
-          }
-
-          const data = await response.json();
-          console.log('Test response from create_endpoint:', data);
-
-          // Display results in the on-page #testResults section for create_endpoint.html
-          if (testResultsContainer) testResultsContainer.style.display = 'block';
-          const statusCodeEl = document.getElementById('testStatusCode');
-          if (statusCodeEl) {
-            statusCodeEl.textContent = data.status_code || 'N/A';
-            statusCodeEl.className = 'status-code ';
-            if (data.status_code && (data.status_code < 200 || data.status_code >= 300)) {
-              statusCodeEl.classList.add('error');
-            } else {
-              statusCodeEl.classList.add('success');
-            }
-          }
-
-          const formatDisplayData = (d) => {
-            if (typeof d === 'object' && d !== null) return JSON.stringify(d, null, 2);
-            if (typeof d === 'string') {
-              try { return JSON.stringify(JSON.parse(d), null, 2); }
-              catch (e) { return d; }
-            }
-            return d !== null && d !== undefined ? String(d) : '';
-          };
-
-          if (document.getElementById('testPayload')) document.getElementById('testPayload').textContent = formatDisplayData(data.payload_sent || 'N/A');
-          if (document.getElementById('testHeadersSent')) document.getElementById('testHeadersSent').textContent = formatDisplayData(data.headers_sent || {});
-          if (document.getElementById('testResponse')) document.getElementById('testResponse').textContent = formatDisplayData(data.response_data || 'N/A');
-
-          if (testResultsContainer) testResultsContainer.scrollIntoView({ behavior: 'smooth' });
-
-        } catch (error) {
-          showMessage(error.message || 'An error occurred while testing the endpoint. Check console.');
-          console.error('Error in testForm submission (create_endpoint):', error);
-        } finally {
-          hideTestInProgressModal(); // Hide the cyberpunk modal
-        }
-      });
-    }
-  });
+    // Run whenever the selection changes
+    authMethodSelect.addEventListener('change', toggleCredentialsField);
+});
 </script>
 {% endblock %}

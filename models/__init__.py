@@ -18,18 +18,18 @@ from .model_Invitation import Invitation
 from .model_Dialogue import Dialogue 
 from .model_ManualTestRecord import ManualTestRecord 
 from .model_APIChain import APIChain, APIChainStep
+from .model_PayloadTemplate import PayloadTemplate
 
 
 # Import association tables if they are defined in models/associations.py
 # and if you need to access them directly via the models package.
 # Usually, they are just used by the relationships in the main models.
 # from .associations import test_run_suites, test_run_filters, etc.
-
 __all__ = [
     'db',
     'User', 'EndpointHeader', 'Endpoint', 'TestCase', 'TestSuite',
     'TestExecution', 'TestRunAttempt', 'TestRun', 'PromptFilter',
     'Invitation', 'Reference', 'Dialogue', 'ManualTestRecord',
     'APIChain', 'APIChainStep',
-    'test_suite_cases', 'test_run_suites', 'test_run_filters'
+    'test_suite_cases', 'test_run_suites', 'test_run_filters', 'PayloadTemplate'
 ]

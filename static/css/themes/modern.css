@@ -1,0 +1,176 @@
+/* ===================================================================
+   MODERN THEME
+   - Clean, professional look with subtle accents
+   - Better readability and modern UI patterns
+   =================================================================== */
+
+:root {
+    /* === MODERN COLOR OVERRIDES === */
+    --background-color: #0f0f0f;
+    --surface-color: #1a1a1a;
+    --card-bg-color: rgba(26, 26, 26, 0.8);
+    
+    /* Text Colors */
+    --text-color: #e0e0e0;
+    --text-muted-color: #888888;
+    --heading-color: #00FF41;        /* Keep green for headings */
+    
+    /* Accent Colors */
+    --accent-color: #00FF41;         /* Green primary */
+    --secondary-color: #3a86ff;      /* Blue secondary */
+    --tertiary-color: #00FFFF;       /* Cyan tertiary */
+    
+    /* Border Colors */
+    --border-color: rgba(0, 255, 65, 0.3);
+    --border-color-strong: rgba(0, 255, 65, 0.6);
+    --border-color-subtle: rgba(0, 255, 65, 0.1);
+    
+    /* Typography */
+    --main-font: 'Consolas', 'Monaco', 'Courier New', monospace;
+    --heading-font: 'Orbitron', var(--main-font), sans-serif;
+    
+    /* Softer shadows */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5);
+    
+    /* Subtle glow effects */
+    --glow-sm: 0 0 3px rgba(0, 255, 65, 0.3);
+    --glow-md: 0 0 6px rgba(0, 255, 65, 0.4);
+    --glow-lg: 0 0 12px rgba(0, 255, 65, 0.5);
+}
+
+/* === MODERN-SPECIFIC STYLES === */
+
+/* Smooth transitions for all interactive elements */
+* {
+    transition: var(--transition-normal);
+}
+
+/* Backdrop blur effects */
+.backdrop-blur {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* Subtle grid pattern */
+.modern-grid {
+    background-image: 
+        linear-gradient(rgba(0, 255, 65, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 65, 0.02) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Smooth hover transitions */
+.smooth-hover {
+    transition: all var(--transition-slow) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.smooth-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Modern card styling */
+.modern-card {
+    background: linear-gradient(
+        135deg, 
+        var(--surface-color) 0%, 
+        rgba(26, 26, 26, 0.8) 100%
+    );
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+}
+
+.modern-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg, 
+        transparent, 
+        var(--accent-color), 
+        transparent
+    );
+}
+
+/* Subtle glow on focus */
+.focus-glow:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 255, 65, 0.2);
+}
+
+/* Modern button styles */
+.modern-button {
+    background: linear-gradient(
+        135deg, 
+        transparent 0%, 
+        rgba(0, 255, 65, 0.1) 100%
+    );
+    border: 1px solid var(--accent-color);
+    position: relative;
+    overflow: hidden;
+}
+
+.modern-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg, 
+        transparent, 
+        rgba(0, 255, 65, 0.2), 
+        transparent
+    );
+    transition: left var(--transition-slow);
+}
+
+.modern-button:hover::before {
+    left: 100%;
+}
+
+/* Clean typography */
+.modern-text {
+    line-height: var(--line-height-relaxed);
+    letter-spacing: 0.025em;
+}
+
+/* Responsive text scaling */
+@media (max-width: 768px) {
+    :root {
+        --font-size-base: 0.9rem;
+        --font-size-lg: 1rem;
+        --font-size-xl: 1.1rem;
+        --font-size-2xl: 1.3rem;
+        --font-size-3xl: 1.6rem;
+        --font-size-4xl: 2rem;
+    }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        --border-color: rgba(0, 255, 65, 0.8);
+        --text-color: #ffffff;
+        --background-color: #000000;
+    }
+}

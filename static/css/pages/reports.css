@@ -1,0 +1,524 @@
+/* ===================================================================
+   REPORTS PAGES
+   - Extracted from reports/report.css and related report styles
+   - Uses CSS custom properties for theming
+   =================================================================== */
+
+/* === REPORT LAYOUT SECTIONS === */
+.report-summary-section,
+.report-runs-section,
+.dialogues.report-section {
+    background-color: var(--card-bg-color, #111);
+    background-image: 
+        linear-gradient(rgba(255, 0, 170, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 0, 170, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+    border: var(--border-width-thick, 2px) solid var(--accent-color);
+    box-shadow: 0 0 15px rgba(255, 0, 170, 0.3);
+    position: relative;
+    overflow: hidden;
+    padding: var(--spacing-xl, 2rem);
+    margin-bottom: var(--spacing-xl, 2rem);
+    border-radius: var(--border-radius-md, 8px);
+}
+
+/* Add circuit decoration to section corners */
+.report-summary-section::before,
+.report-runs-section::before,
+.dialogues.report-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 30px;
+    height: 30px;
+    border-top: var(--border-width-thick, 2px) solid var(--secondary-color);
+    border-left: var(--border-width-thick, 2px) solid var(--secondary-color);
+}
+
+.report-summary-section::after,
+.report-runs-section::after,
+.dialogues.report-section::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 30px;
+    height: 30px;
+    border-bottom: var(--border-width-thick, 2px) solid var(--secondary-color);
+    border-right: var(--border-width-thick, 2px) solid var(--secondary-color);
+}
+
+/* === CHART CONTAINERS === */
+.chart-container {
+    flex: 1;
+    min-width: 300px;
+    border: var(--border-width, 1px) solid var(--secondary-color);
+    padding: var(--spacing-lg, 1rem);
+    border-radius: var(--border-radius-sm, 4px);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: var(--text-color);
+    box-shadow: inset 0 0 8px var(--secondary-color);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: var(--spacing-lg, 1.5rem);
+}
+
+.chart-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--secondary-color), transparent);
+}
+
+.chart-container h3 {
+    text-shadow: var(--glow-sm, 0 0 5px var(--accent-color));
+    letter-spacing: 1px;
+    font-size: var(--font-size-lg, 1em);
+    margin-top: 0;
+    margin-bottom: var(--spacing-md, 1rem);
+    padding-bottom: var(--spacing-sm, 0.5rem);
+    border-bottom: var(--border-width, 1px) dashed var(--accent-color);
+}
+
+/* === TEST RUNS LIST === */
+.test-runs-list {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg, 1rem);
+}
+
+.test-run-item {
+    border: var(--border-width, 1px) solid var(--secondary-color);
+    border-left: 4px solid var(--secondary-color);
+    padding: var(--spacing-lg, 1rem);
+    border-radius: var(--border-radius-sm, 4px);
+    background-color: rgba(0, 0, 0, 0.7);
+    position: relative;
+    transition: var(--transition-normal, all 0.3s ease);
+}
+
+.test-run-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--glow-md, 0 0 10px var(--secondary-color));
+}
+
+.test-run-item h4 {
+    margin-top: 0;
+    color: var(--accent-color);
+    display: flex;
+    align-items: center;
+    font-size: var(--font-size-lg, 1.1rem);
+}
+
+.test-run-item h4::before {
+    content: '>';
+    margin-right: var(--spacing-sm, 0.5rem);
+    color: var(--text-color);
+    font-weight: bold;
+}
+
+/* === PER-RUN METRICS === */
+.per-run-metrics {
+    font-size: var(--font-size-sm, 0.85em);
+    color: var(--text-color);
+    margin-top: var(--spacing-sm, 0.5rem);
+    line-height: var(--line-height-relaxed, 1.5);
+    font-family: var(--mono-font, monospace);
+    letter-spacing: 0.5px;
+}
+
+.per-run-metrics p {
+    margin: var(--spacing-xs, 0.25rem) 0;
+}
+
+/* === STATUS BADGES === */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.75rem);
+    border-radius: var(--border-radius-sm, 4px);
+    border: var(--border-width, 1px) solid currentColor;
+    font-size: var(--font-size-xs, 0.75rem);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-right: var(--spacing-sm, 0.5rem);
+    font-weight: bold;
+    font-family: var(--main-font, monospace);
+}
+
+.status-success {
+    color: var(--success-color, #00FF41);
+    border-color: var(--success-color, #00FF41);
+    background-color: rgba(0, 255, 65, 0.1);
+    text-shadow: var(--glow-sm, 0 0 3px var(--success-color));
+}
+
+.status-failure {
+    color: var(--error-color, #FF3A3A);
+    border-color: var(--error-color, #FF3A3A);
+    background-color: rgba(255, 58, 58, 0.1);
+    text-shadow: var(--glow-sm, 0 0 3px var(--error-color));
+}
+
+.status-error {
+    color: var(--secondary-color, #FF00AA);
+    border-color: var(--secondary-color, #FF00AA);
+    background-color: rgba(255, 0, 170, 0.1);
+    text-shadow: var(--glow-sm, 0 0 3px var(--secondary-color));
+}
+
+.status-warning {
+    color: var(--warning-color, #FFFF00);
+    border-color: var(--warning-color, #FFFF00);
+    background-color: rgba(255, 255, 0, 0.1);
+    text-shadow: var(--glow-sm, 0 0 3px var(--warning-color));
+}
+
+.status-info {
+    color: var(--info-color, #00FFFF);
+    border-color: var(--info-color, #00FFFF);
+    background-color: rgba(0, 255, 255, 0.1);
+    text-shadow: var(--glow-sm, 0 0 3px var(--info-color));
+}
+
+/* === ENDPOINT SELECT === */
+#endpoint-select {
+    background-color: rgba(0, 0, 0, 0.8);
+    color: var(--text-color);
+    border: var(--border-width-thick, 2px) solid var(--accent-color);
+    border-radius: var(--border-radius-sm, 4px);
+    padding: var(--spacing-sm, 0.5rem) var(--spacing-lg, 1rem);
+    font-family: var(--main-font);
+    font-size: var(--font-size-base, 1rem);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='%23FF00AA' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right var(--spacing-sm, 0.5rem) center;
+    background-size: 1rem;
+    box-shadow: var(--glow-sm, 0 0 5px var(--accent-color));
+    transition: var(--transition-normal, all 0.3s ease);
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: var(--spacing-lg, 1.5rem);
+}
+
+#endpoint-select:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: var(--glow-md, 0 0 10px var(--secondary-color));
+}
+
+#endpoint-select option {
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    padding: var(--spacing-sm, 0.5rem);
+}
+
+/* === REPORT HEADER === */
+.report-header {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl, 3rem);
+    padding-bottom: var(--spacing-lg, 1.5rem);
+    border-bottom: var(--border-width-thick, 2px) solid var(--accent-color);
+}
+
+.report-header h1 {
+    position: relative;
+    margin-bottom: var(--spacing-lg, 1.5rem);
+    font-size: var(--font-size-4xl, 1.8rem);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding-bottom: var(--spacing-sm, 0.5rem);
+    text-shadow: var(--glow-md, 0 0 10px var(--accent-color));
+}
+
+.report-header h1::before {
+    content: '>';
+    color: var(--text-color);
+    margin-right: var(--spacing-sm, 0.5rem);
+}
+
+/* === FORM GROUPS IN REPORTS === */
+.report-form-group {
+    margin-bottom: var(--spacing-lg, 1.5rem);
+    border-left: 3px solid var(--accent-color);
+    padding-left: var(--spacing-md, 1rem);
+}
+
+.report-form-group label {
+    display: block;
+    margin-bottom: var(--spacing-sm, 0.5rem);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: var(--font-size-sm, 0.9rem);
+    color: var(--accent-color);
+    font-weight: bold;
+}
+
+/* === LOADING ANIMATIONS === */
+.report-loading {
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: 3px solid var(--accent-color);
+    width: fit-content;
+    animation: typing 1.5s steps(30, end), blink 0.7s step-end infinite;
+    font-family: var(--mono-font, monospace);
+    color: var(--accent-color);
+    text-shadow: var(--glow-sm, 0 0 5px var(--accent-color));
+}
+
+@keyframes typing {
+    from { width: 0 }
+    to { width: 100% }
+}
+
+@keyframes blink {
+    0%, 50% { border-color: var(--accent-color); }
+    51%, 100% { border-color: transparent; }
+}
+
+/* Scanline effect for results container */
+.results-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.results-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    background: linear-gradient(90deg, var(--background-color), var(--secondary-color), var(--background-color));
+    animation: scanline 2s linear infinite;
+    opacity: 0.3;
+    z-index: 1;
+}
+
+@keyframes scanline {
+    0% {
+        transform: translateY(-100%);
+    }
+    100% {
+        transform: translateY(2000%);
+    }
+}
+
+/* === CHARTS STYLING === */
+canvas {
+    filter: drop-shadow(var(--glow-sm, 0 0 5px var(--secondary-color)));
+    border-radius: var(--border-radius-sm, 4px);
+}
+
+.chart-legend {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-md, 1rem);
+    margin-top: var(--spacing-md, 1rem);
+    padding-top: var(--spacing-md, 1rem);
+    border-top: var(--border-width, 1px) dashed var(--border-color);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm, 0.5rem);
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--text-color);
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--border-radius-sm, 2px);
+    border: var(--border-width, 1px) solid var(--border-color);
+}
+
+/* === METRICS DISPLAY === */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg, 1.5rem);
+    margin: var(--spacing-xl, 2rem) 0;
+}
+
+.metric-card {
+    background: var(--surface-color);
+    border: var(--border-width, 1px) solid var(--border-color);
+    border-radius: var(--border-radius-md, 8px);
+    padding: var(--spacing-lg, 1.5rem);
+    text-align: center;
+    position: relative;
+    transition: var(--transition-normal);
+}
+
+.metric-card:hover {
+    border-color: var(--accent-color);
+    box-shadow: var(--glow-sm, 0 0 5px var(--accent-color));
+    transform: translateY(-2px);
+}
+
+.metric-value {
+    font-size: var(--font-size-3xl, 2rem);
+    font-weight: bold;
+    color: var(--accent-color);
+    font-family: var(--mono-font, monospace);
+    text-shadow: var(--glow-sm, 0 0 5px var(--accent-color));
+    margin-bottom: var(--spacing-sm, 0.5rem);
+}
+
+.metric-label {
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--text-muted-color);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* === REPORT FILTERS === */
+.report-filters {
+    background: var(--surface-color);
+    border: var(--border-width, 1px) solid var(--border-color);
+    border-radius: var(--border-radius-md, 8px);
+    padding: var(--spacing-lg, 1.5rem);
+    margin-bottom: var(--spacing-xl, 2rem);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-lg, 1.5rem);
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm, 0.5rem);
+}
+
+.filter-group label {
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--accent-color);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: var(--spacing-sm, 0.5rem);
+}
+
+/* === RESPONSIVE DESIGN === */
+@media (max-width: 768px) {
+    .test-runs-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .report-summary-section,
+    .report-runs-section,
+    .dialogues.report-section {
+        flex-direction: column;
+        padding: var(--spacing-lg, 1.5rem);
+    }
+    
+    .chart-container {
+        min-width: 100%;
+        margin-bottom: var(--spacing-md, 1rem);
+    }
+    
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-md, 1rem);
+    }
+    
+    .report-filters {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md, 1rem);
+    }
+    
+    #endpoint-select {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .report-header h1 {
+        font-size: var(--font-size-2xl, 1.5rem);
+    }
+    
+    .metric-value {
+        font-size: var(--font-size-2xl, 1.5rem);
+    }
+    
+    .test-run-item {
+        padding: var(--spacing-md, 1rem);
+    }
+    
+    .chart-container {
+        padding: var(--spacing-md, 1rem);
+    }
+}
+
+/* === PRINT STYLES === */
+@media print {
+    .report-summary-section::before,
+    .report-summary-section::after,
+    .report-runs-section::before,
+    .report-runs-section::after,
+    .dialogues.report-section::before,
+    .dialogues.report-section::after {
+        display: none;
+    }
+    
+    .chart-container::after {
+        display: none;
+    }
+    
+    .results-container::before {
+        display: none;
+    }
+    
+    .test-runs-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .metrics-grid {
+        grid-template-columns: repeat(4, 1fr);
+        break-inside: avoid;
+    }
+}
+
+/* === ACCESSIBILITY === */
+@media (prefers-reduced-motion: reduce) {
+    .results-container::before,
+    .report-loading {
+        animation: none !important;
+    }
+    
+    .test-run-item:hover,
+    .metric-card:hover {
+        transform: none;
+    }
+    
+    @keyframes scanline,
+    @keyframes typing,
+    @keyframes blink {
+        from, to {
+            transform: none;
+            width: auto;
+            border-color: var(--accent-color);
+        }
+    }
+}

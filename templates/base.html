@@ -5,46 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Fuzzy Prompts{% endblock %}</title>
 
-    <!-- Base Theme -->
-    <link id="theme-original" rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
-    <link id="theme-inspired" rel="stylesheet" href="{{ url_for('static', filename='css/theme_inspired.css') }}" disabled>
+    <!-- Core CSS - Always loaded -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/core/variables.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/core/base.css') }}">
+    
+    <!-- Theme CSS - Only one loaded at a time -->
+    <link id="theme-cyberpunk" rel="stylesheet" href="{{ url_for('static', filename='css/themes/cyberpunk.css') }}">
+    <link id="theme-modern" rel="stylesheet" href="{{ url_for('static', filename='css/themes/modern.css') }}" disabled>
 
-    <!-- Common Components -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/common/cards.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/common/grids.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/common/search.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+    <!-- Component CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/animations.css') }}">
+
+    <!-- Page-specific CSS -->
+    {% block head %}{% endblock %}
 
     <style>
-        /* Style for the button in the footer acting as theme toggle */
+        /* Theme toggle button styling */
         .footer-theme-toggle {
-            background: none;       /* No background */
-            border: none;         /* No border */
-            padding: 0;           /* No padding */
-            margin: 0;            /* No margin */
-            color: inherit;       /* Inherit text color from footer */
-            font: inherit;        /* Inherit font styles from footer */
-            cursor: pointer;      /* Pointer cursor to indicate clickability */
-            text-align: inherit;  /* Inherit text alignment */
-            display: inline;      /* Display inline like text */
-            text-decoration: none; /* No underline by default */
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            color: inherit;
+            font: inherit;
+            cursor: pointer;
+            text-align: inherit;
+            display: inline;
+            text-decoration: none;
+            transition: var(--transition-fast);
         }
+        
         .footer-theme-toggle:hover,
         .footer-theme-toggle:focus {
-            /* Add a subtle hover/focus effect, e.g., underline or color change */
             text-decoration: underline;
-            color: var(--accent-color, #00FF41); /* Example: change color on hover */
-            outline: none; /* Remove default focus outline if needed */
+            color: var(--accent-color);
+            outline: none;
         }
     </style>
-
-    {% block head %}{% endblock %}
 </head>
 <body>
-
     {% block banner %}
-
     <header>
         <nav class="navbar navbar-fixed">
             <div class="nav-brand glitch">
@@ -70,7 +71,7 @@
                 <li class="dropdown {% if request.endpoint and request.endpoint.startswith('endpoints_bp') %}active{% endif %}">
                     <a href="#">Endpoints</a>
                     <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('endpoints_bp.create_endpoint_form') }}">Register Endpoint</a></li>
+                        <li><a href="{{ url_for('endpoints_bp.create_endpoint') }}">Register Endpoint</a></li>
                         <li><a href="{{ url_for('endpoints_bp.list_endpoints') }}">View Endpoints</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a href="{{ url_for('chains_bp.list_chains') }}">View Chains</a></li>
@@ -105,7 +106,6 @@
                         <li><a href="{{ url_for('utils_bp.risk_calculator') }}">Risk Calculator</a></li>
                     </ul>
                 </li>
-
 
                 {% if current_user.is_authenticated %}
                 <li class="dropdown user-menu">
@@ -156,10 +156,61 @@
         </button>
     </footer>
 
-    <script src="{{ url_for('static', filename='js/base.js') }}"></script>
+    <!-- Updated theme switching JavaScript -->
+    <script>
+        // Theme switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const cyberpunkTheme = document.getElementById('theme-cyberpunk');
+            const modernTheme = document.getElementById('theme-modern');
+            
+            // Load saved theme preference
+            const savedTheme = localStorage.getItem('theme') || 'cyberpunk';
+            setTheme(savedTheme);
+            
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = localStorage.getItem('theme') || 'cyberpunk';
+                const newTheme = currentTheme === 'cyberpunk' ? 'modern' : 'cyberpunk';
+                setTheme(newTheme);
+            });
+            
+            function setTheme(theme) {
+                if (theme === 'modern') {
+                    cyberpunkTheme.disabled = true;
+                    modernTheme.disabled = false;
+                } else {
+                    cyberpunkTheme.disabled = false;
+                    modernTheme.disabled = true;
+                }
+                localStorage.setItem('theme', theme);
+            }
+        });
 
-    {% block scripts %}
-    {% endblock %}
+        // Flash message close functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const closeButtons = document.querySelectorAll('.flash-close');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    this.closest('.flash-message').remove();
+                });
+            });
+        });
 
+        // Mobile navigation toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const navToggle = document.querySelector('.nav-toggle');
+            const navLinks = document.querySelector('.nav-links');
+            const hamburger = document.querySelector('.hamburger');
+            
+            if (navToggle && navLinks) {
+                navToggle.addEventListener('click', function() {
+                    navLinks.classList.toggle('show-nav');
+                    hamburger.classList.toggle('active');
+                });
+            }
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
 </body>
 </html>

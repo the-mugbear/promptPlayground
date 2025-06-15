@@ -1,101 +1,93 @@
 {% extends "base.html" %}
+
 {% block title %}All Endpoints{% endblock %}
 
 {% block head %}
-  <!-- New list test suite styles -->
+  {{ super() }}
+  {# Link to the stylesheets for our themed tables and layouts #}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
-  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/attacks/best_of_n.css') }}"> -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/chains/details.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 {% endblock %}
 
 {% block content %}
-<h1>All Endpoints</h1>
+<div class="container">
 
-<!-- A search bar to filter endpoints by hostname or path -->
-<input 
-  type="text" 
-  id="searchEndpoint" 
-  placeholder="Filter by hostname or endpoint..."
-  class="search-bar"
->
+  <header class="page-header">
+    <div>
+        <h1 class="page-title">Endpoints</h1>
+        <p class="page-subtitle">Manage your configured API endpoints.</p>
+    </div>
+    <div class="header-actions">
+        {# --- ADDED: The "Create New Endpoint" button --- #}
+        <a href="{{ url_for('endpoints_bp.create_endpoint') }}" class="btn btn-primary">
+            <i class="fas fa-plus fa-fw"></i>
+            <span class="button-text">Create New Endpoint</span>
+        </a>
+    </div>
+  </header>
 
-<!-- A table listing endpoints -->
-<table id="endpointsTable">
-  <thead>
-    <tr>
-      <th>Label</th>
-      <th>Hostname</th>
-      <th>Path</th>
-      <th>Timestamp</th>
-      <th>Payload</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for ep in endpoints %}
-      <tr>
-        <td>
-          <a href="{{ url_for('endpoints_bp.view_endpoint_details', endpoint_id=ep.id) }}">
-            {{ ep.name }}
-          </a>
-        </td>
-        <td>{{ ep.hostname }}</td>
-        <td>{{ ep.endpoint }}</td>
-        <td>
-          {% if ep.timestamp %}
-            {{ ep.timestamp }}
-          {% else %}
-            --
-          {% endif %}
-        </td>
-        <td title="{{ ep.http_payload | prettyjson }}">
-          {% if ep.http_payload %}
-            {{ ep.http_payload | truncate(50) }}
-          {% else %}
-            --
-          {% endif %}
-        </td>
-        <td>
-            <!-- Expand/collapse headers -->
-            <button 
-              type="button" 
-              class="view-headers-btn"
-              data-endpoint-id="{{ ep.id }}"
-            >
-              View Headers
-            </button>
-
-            <!-- Form to delete an endpoint -->
-            <form action="{{ url_for('endpoints_bp.delete_endpoint', endpoint_id=ep.id) }}" method="POST" style="display:inline;">
-              <button 
-                type="submit" 
-                class="delete-endpoint-btn"
-                onclick="return confirm('Are you sure you want to delete this endpoint?');"
-              >
-                Delete
-              </button>
-            </form>
-        </td>
-      </tr>
-
-      <!-- Hidden row for headers, expand on button click -->
-      <tr class="headers-row">
-        <td colspan="6">
-          <div class="headers-container">
-            {% if ep.headers %}
-              <ul>
-                {% for hdr in ep.headers %}
-                  <li>{{ hdr.key }}: {{ hdr.value }}</li>
-                {% endfor %}
-              </ul>
-            {% else %}
-              <p>No headers available.</p>
-            {% endif %}
-          </div>
-        </td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
+  <div class="content-card">
+    <div class="card-body">
+      {% if endpoints %}
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Method</th>
+              <th>URL</th>
+              <th>Purpose</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ep in endpoints %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('endpoints_bp.edit_endpoint', endpoint_id=ep.id) }}" class="font-bold">
+                    {{ ep.name }}
+                  </a>
+                </td>
+                <td>
+                  <span class="http-method http-{{ ep.method.lower() }}">{{ ep.method }}</span>
+                </td>
+                <td>
+                  <code class="endpoint-url">{{ ep.base_url }}{{ ep.path }}</code>
+                </td>
+                <td>
+                  {# --- Display the new 'purpose' field --- #}
+                  <span class="badge">{{ ep.purpose.replace('_', ' ')|title }}</span>
+                </td>
+                <td class="text-right">
+                  <div class="action-buttons">
+                    <a href="{{ url_for('endpoints_bp.edit_endpoint', endpoint_id=ep.id) }}" class="btn btn-sm btn-ghost" title="Edit Endpoint">
+                        <i class="fas fa-pen"></i>
+                    </a>
+                    <form action="{{ url_for('endpoints_bp.delete_endpoint', endpoint_id=ep.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this endpoint? This cannot be undone.');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-sm btn-ghost btn-danger" title="Delete Endpoint">
+                          <i class="fas fa-trash"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty-state">
+            <h3>No Endpoints Found</h3>
+            <p>Get started by creating your first endpoint.</p>
+            <a href="{{ url_for('endpoints_bp.create_endpoint') }}" class="btn btn-primary mt-4">
+                <i class="fas fa-plus fa-fw"></i>
+                <span class="button-text">Create an Endpoint</span>
+            </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}

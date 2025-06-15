@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% from "partials/_formhelpers.html" import render_field %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  {# Link to stylesheets for our themed forms and layouts #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/chains/details.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/endpoints/test_endpoint_modal.css') }}">
+  <style>
+      .hidden { display: none !important; }
+      .two-column-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+      .form-section.full-width { grid-column: 1 / -1; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <header class="page-header">
+    <div>
+        <h1 class="page-title">{{ title }}</h1>
+        <p class="page-subtitle">Viewing and configuring endpoint: <strong>{{ endpoint.name }}</strong></p>
+    </div>
+    <div class="header-actions">
+        {# The form for the test button #}
+        <form id="testForm" action="{{ url_for('endpoints_bp.test_endpoint', endpoint_id=endpoint.id) }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-secondary"><i class="fas fa-flask fa-fw"></i> Test Endpoint</button>
+        </form>
+    </div>
+  </header>
+
+  <div class="content-card">
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('endpoints_bp.edit_endpoint', endpoint_id=endpoint.id) }}" class="form-grid" novalidate>
+        {{ form.hidden_tag() }}
+
+        <fieldset class="form-section full-width">
+            <legend>Basic Information</legend>
+            {{ render_field(form.name) }}
+            {{ render_field(form.description, rows=3) }}
+        </fieldset>
+        
+        <fieldset class="form-section full-width">
+            <legend>Connection Details</legend>
+            <div class="two-column-grid">
+                {{ render_field(form.base_url) }}
+                {{ render_field(form.path) }}
+                {{ render_field(form.method) }}
+                {{ render_field(form.payload_template) }}
+            </div>
+        </fieldset>
+
+        <fieldset class="form-section full-width">
+            <legend>Configuration</legend>
+            <div class="two-column-grid">
+                {{ render_field(form.auth_method) }}
+                <div id="credentials-wrapper" class="hidden">
+                    {{ render_field(form.credentials_encrypted) }}
+                </div>
+                {{ render_field(form.timeout_seconds) }}
+                {{ render_field(form.retry_attempts) }}
+            </div>
+        </fieldset>
+
+        <fieldset class="form-section full-width">
+            <legend>Purpose</legend>
+             {{ render_field(form.purpose) }}
+        </fieldset>
+
+        <div class="form-actions-full">
+            <a href="{{ url_for('endpoints_bp.list_endpoints') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left fa-fw"></i>
+                <span class="button-text">Back to List</span>
+            </a>
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# --- Test Result Modal (from your original file) --- #}
+  <div id="testResultModalOverlay" class="dialog-overlay" style="display: none;">
+    {# ... The full modal HTML from your file goes here ... #}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const authMethodSelect = document.getElementById('auth_method');
+    const credentialsWrapper = document.getElementById('credentials-wrapper');
+
+    function toggleCredentialsField() {
+        if (!authMethodSelect || !credentialsWrapper) return;
+        if (authMethodSelect.value === 'none') {
+            credentialsWrapper.classList.add('hidden');
+        } else {
+            credentialsWrapper.classList.remove('hidden');
+        }
+    }
+    toggleCredentialsField();
+    if(authMethodSelect) authMethodSelect.addEventListener('change', toggleCredentialsField);
+
+    // --- Test Endpoint Form AJAX Handling ---
+    const testForm = document.getElementById('testForm');
+    if(testForm) {
+        testForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const mainForm = document.querySelector('form[method="POST"]');
+            const formData = new FormData(mainForm);
+            
+            // The test endpoint still needs the raw headers string
+            // For now, we are not editing headers on this page, so we leave it blank
+            formData.append('raw_headers', '');
+
+            // Use your existing Test In Progress Modal logic here if you have it
+            // For simplicity, this example just makes the fetch call
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                // Populate and show the test result modal
+                console.log("Test Result:", data);
+                // (Add your existing logic here to populate the modal fields)
+                document.getElementById('testResultModalOverlay').style.display = 'block';
+            })
+            .catch(err => {
+                console.error("Test failed:", err);
+                alert("An error occurred while testing the endpoint.");
+            });
+        });
+    }
+    // Add logic for closing the modal
+});
+</script>
+{% endblock %}
