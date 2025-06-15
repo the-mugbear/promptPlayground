@@ -57,8 +57,8 @@ def test_step_in_isolation():
         # 2. Make the HTTP request using the service function
         response_data = execute_api_request(
             method=endpoint.method,
-            hostname_url=endpoint.hostname,
-            endpoint_path=endpoint.endpoint,
+            hostname_url=endpoint.base_url,
+            endpoint_path=endpoint.path,
             raw_headers_or_dict=rendered_headers_dict,
             http_payload_as_string=rendered_payload
         )

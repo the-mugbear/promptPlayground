@@ -1,0 +1,70 @@
+/* =====================================
+   CHARTS & DATA VISUALIZATION
+   ===================================== */
+
+/* Donut Chart Overview Container */
+.donut-overview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+/* Donut Chart Columns */
+.overall-donut,
+.attempt-donuts {
+    flex: 1;
+    min-width: 300px;
+}
+
+/* Responsive stacking for mobile */
+@media (max-width: 640px) {
+    .donut-overview-container {
+        flex-direction: column;
+    }
+}
+
+/* Chart Container Styling */
+.chart-container {
+    background-color: var(--card-bg);
+    border: 1px solid var(--accent-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+}
+
+.chart-title {
+    color: var(--accent-color);
+    text-align: center;
+    margin-bottom: 1rem;
+    font-family: var(--main-font);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Chart Legend Styling */
+.chart-legend {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-color);
+    font-family: var(--main-font);
+    font-size: 0.9em;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}

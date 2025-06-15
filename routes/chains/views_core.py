@@ -68,7 +68,7 @@ def chain_details_view(chain_id):
 
         # 1. Determine the correct PAYLOAD template to parse.
         #    Use the step's own payload if it exists, otherwise fall back to the endpoint's default.
-        payload_template_to_parse = step.payload if step.payload is not None else step.endpoint.http_payload
+        payload_template_to_parse = step.payload if step.payload is not None else (step.endpoint.payload_template.template if step.endpoint.payload_template else None)
 
         # 2. Determine the correct HEADERS template to parse.
         #    Use the step's own headers if they exist, otherwise build them from the endpoint's defaults.

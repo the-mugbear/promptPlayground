@@ -2,7 +2,7 @@
 
 {% block head %}
   
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/reports/report.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/reports.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -14,7 +14,7 @@
       <option value="">-- Select an Endpoint --</option>
       {% for endpoint in endpoints %}
         <option value="{{ endpoint.id }}">
-          {{ endpoint.name }} - {{ endpoint.hostname }}{{ endpoint.endpoint }}
+          {{ endpoint.name }} - {{ endpoint.base_url }}{{ endpoint.path }}
         </option>
       {% endfor %}
     </select>

@@ -24,9 +24,9 @@
   <div class="endpoint-details">
     <h2>Endpoint Details</h2>
     <p><strong>Name:</strong> {{ dialogue.endpoint.name }}</p>
-    <p><strong>Hostname:</strong> {{ dialogue.endpoint.hostname }}</p>
-    <p><strong>Endpoint Path:</strong> {{ dialogue.endpoint.endpoint }}</p>
-    <p><strong>Payload Template:</strong> {{ dialogue.endpoint.http_payload }}</p>
+    <p><strong>Base URL:</strong> {{ dialogue.endpoint.base_url }}</p>
+    <p><strong>Path:</strong> {{ dialogue.endpoint.path }}</p>
+    <p><strong>Payload Template:</strong> {{ dialogue.endpoint.payload_template.template if dialogue.endpoint.payload_template else 'No template assigned' }}</p>
   </div>
   {% endif %}
   

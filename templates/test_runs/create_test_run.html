@@ -2,7 +2,7 @@
 {% block title %}Create Test Run{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
 <script>
   // Add CSRF token to all AJAX requests
   const csrfToken = "{{ csrf_token() }}";

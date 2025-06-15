@@ -1,0 +1,218 @@
+/* ==================================================
+   THEME / VARIABLES
+   ================================================== */
+:root {
+  --bg-color: #000000;           /* Primary black background */
+  --text-color: #00FF41;         /* Neon green */
+  --accent-color: #FF00AA;       /* Magenta/pink */
+  --secondary-color: #00FFFF;    /* Cyan */
+  --main-font: 'Press Start 2P', monospace;
+  --base-font-size: 16px;
+}
+
+/* ==================================================
+   RESET / BASELINE
+   ================================================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ==================================================
+   GLOBAL STYLES
+   ================================================== */
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--main-font);
+  font-size: var(--base-font-size);
+  line-height: 1.4;
+  padding-top: 70px; /* Offsets a fixed navbar if you have one */
+}
+
+a {
+  color: var(--accent-color);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+  color: var(--secondary-color);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--accent-color);
+  margin: 1rem 0 0.5rem;
+}
+
+button {
+  font-family: var(--main-font);
+  color: var(--text-color);
+  background: transparent;
+  border: 2px solid var(--accent-color);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+button:hover {
+  background: var(--accent-color);
+  color: #000;
+}
+
+hr {
+  border: none;
+  border-top: 1px dashed var(--accent-color);
+  margin: 1rem 0;
+}
+
+::selection {
+  background-color: var(--accent-color);
+  color: #000;
+}
+
+/* Code & pre elements share a neon-like style */
+code, pre {
+  background-color: #111;               /* Slightly lighter black for contrast */
+  color: var(--secondary-color);
+  font-family: var(--main-font);
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+/* ==================================================
+   LAYOUT / CONTAINERS
+   ================================================== */
+.container {
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 0;
+}
+
+/* Example container for images */
+.image-container {
+  text-align: center;
+}
+.image-container img {
+  display: block;
+  margin: 0 auto;
+}
+
+/* ==================================================
+   FORMS / INPUTS
+   ================================================== */
+/* Generic input styling */
+.form-group {
+  margin-bottom: 1rem;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: bold;
+}
+
+select {
+  width: 100%;
+  padding: 0.5rem;
+  background-color: #111;
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  color: var(--text-color);
+  font-family: var(--main-font);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2300FF41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1em;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 5px var(--secondary-color);
+}
+
+select option {
+  background-color: #111;
+  color: var(--text-color);
+  padding: 0.5rem;
+}
+
+/* ==================================================
+   RESULTS / CODE BLOCKS
+   ================================================== */
+/* Results container (large container for test data) */
+.results-container {
+  max-width: 1200px;
+  margin: 0 auto 2rem;
+  background-color: #111;
+  border: 2px dashed var(--accent-color);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+/* For smaller results box within that container */
+.results-box {
+  background-color: #000;
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  padding: 0.5rem;
+  min-height: 4em;
+  overflow-y: auto;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Add spacing between children inside the results box */
+.results-box > * + * {
+  margin-top: 0.5rem;
+}
+
+/* The pre in results-box specifically */
+.results-box pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+  display: block;
+}
+
+/* code-block - specialized code container with scrolling */
+.code-block {
+  background-color: #000;
+  color: var(--secondary-color);
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  padding: 1rem;
+  margin: 0.5rem 0;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-all;
+  font-family: var(--main-font);
+  text-decoration: none; 
+}
+
+/* For collapsible sections */
+.collapsible-section {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 0;
+}
+.collapsible-header {
+  cursor: pointer;
+  padding: 0.5rem;
+  background-color: #111;
+  border-radius: 0.375rem;
+}
+
+/* Add to your theme.css, base.css, or within the <style> block of view_test_run.html */
+.hidden {
+  display: none !important;
+}

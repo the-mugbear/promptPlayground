@@ -1,0 +1,397 @@
+/* =====================================
+   BOOTSTRAP COMPONENT OVERRIDES
+   Cyberpunk theming for Bootstrap elements
+   ===================================== */
+
+/* Base Body Styling */
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--main-font);
+    padding-top: 0;
+}
+
+/* =====================================
+   CARDS
+   ===================================== */
+.card {
+    background-color: var(--card-bg);
+    border: 2px dashed var(--accent-color);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+}
+
+.card-header {
+    cursor: pointer;
+    background-color: var(--card-bg);
+    border-bottom: 1px dashed var(--accent-color);
+    color: var(--accent-color);
+    padding: 0.75rem 1.25rem;
+    font-family: var(--main-font);
+    text-shadow: 0 0 5px var(--accent-color);
+}
+
+.card-body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    padding: 1.25rem;
+}
+
+/* =====================================
+   BUTTONS
+   ===================================== */
+.btn {
+    font-family: var(--main-font);
+    color: var(--text-color);
+    background: transparent;
+    border: 2px solid var(--accent-color);
+    transition: all 0.3s ease;
+    padding: 0.5rem 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+}
+
+.btn:hover {
+    background: var(--accent-color);
+    color: var(--bg-color);
+    text-decoration: none;
+    box-shadow: 0 0 15px var(--accent-color);
+    transform: translateY(-2px);
+}
+
+.btn-primary {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+}
+
+.btn-primary:hover {
+    background: var(--secondary-color);
+    color: var(--bg-color);
+    box-shadow: 0 0 15px var(--secondary-color);
+}
+
+.btn-success {
+    border-color: var(--tertiary-color);
+    color: var(--tertiary-color);
+}
+
+.btn-success:hover {
+    background: var(--tertiary-color);
+    color: var(--bg-color);
+    box-shadow: 0 0 15px var(--tertiary-color);
+}
+
+.btn-warning {
+    border-color: #FFFF00;
+    color: #FFFF00;
+}
+
+.btn-warning:hover {
+    background: #FFFF00;
+    color: var(--bg-color);
+    box-shadow: 0 0 15px #FFFF00;
+}
+
+.btn-danger {
+    border-color: #FF0000;
+    color: #FF0000;
+}
+
+.btn-danger:hover {
+    background: #FF0000;
+    color: var(--bg-color);
+    box-shadow: 0 0 15px #FF0000;
+}
+
+/* =====================================
+   FORMS
+   ===================================== */
+.form-control {
+    background-color: var(--input-bg);
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+    font-family: var(--main-font);
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    background-color: var(--bg-color);
+    border-color: var(--secondary-color);
+    color: var(--text-color);
+    box-shadow: 0 0 10px rgba(255, 0, 170, 0.3);
+    outline: none;
+}
+
+.form-control::placeholder {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.form-label, label {
+    color: var(--secondary-color);
+    font-family: var(--main-font);
+    text-transform: uppercase;
+    font-size: 0.9em;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+}
+
+/* Editable Fields */
+.editable {
+    border-bottom: 1px dashed var(--accent-color);
+    padding: 0.25rem;
+    transition: all 0.3s ease;
+}
+
+.editable:focus {
+    outline: none;
+    border-bottom: 1px solid var(--secondary-color);
+    box-shadow: 0 2px 0 var(--secondary-color);
+}
+
+/* =====================================
+   TABLES
+   ===================================== */
+.table {
+    color: var(--text-color);
+    border-color: var(--accent-color);
+    font-family: var(--main-font);
+}
+
+.table thead th {
+    background-color: var(--card-bg);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.9em;
+    text-shadow: 0 0 5px var(--accent-color);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 0, 170, 0.05);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 255, 255, 0.1);
+    transform: translateX(2px);
+    transition: all 0.2s ease;
+}
+
+.table td, .table th {
+    border-color: var(--border-color);
+}
+
+/* =====================================
+   ALERTS
+   ===================================== */
+.alert {
+    background-color: var(--card-bg);
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+    font-family: var(--main-font);
+    border-radius: 6px;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+}
+
+.alert-success {
+    border-color: var(--tertiary-color);
+    color: var(--tertiary-color);
+    background-color: rgba(0, 255, 65, 0.1);
+}
+
+.alert-danger {
+    border-color: #FF0000;
+    color: #FF0000;
+    background-color: rgba(255, 0, 0, 0.1);
+}
+
+.alert-warning {
+    border-color: #FFFF00;
+    color: #FFFF00;
+    background-color: rgba(255, 255, 0, 0.1);
+}
+
+.alert-info {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+    background-color: rgba(255, 0, 170, 0.1);
+}
+
+/* =====================================
+   PAGINATION
+   ===================================== */
+.pagination .page-link {
+    background-color: var(--card-bg);
+    border-color: var(--accent-color);
+    color: var(--text-color);
+    font-family: var(--main-font);
+    transition: all 0.3s ease;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: var(--bg-color);
+    box-shadow: 0 0 10px var(--accent-color);
+}
+
+.pagination .page-link:hover {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    color: var(--bg-color);
+    box-shadow: 0 0 10px var(--secondary-color);
+    transform: translateY(-1px);
+}
+
+/* =====================================
+   MODALS
+   ===================================== */
+.modal-content {
+    background-color: var(--card-bg);
+    border: 2px dashed var(--accent-color);
+    box-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
+}
+
+.modal-header {
+    border-bottom: 1px dashed var(--accent-color);
+    background-color: var(--bg-color);
+}
+
+.modal-title {
+    color: var(--accent-color);
+    font-family: var(--main-font);
+    text-shadow: 0 0 5px var(--accent-color);
+}
+
+.modal-footer {
+    border-top: 1px dashed var(--accent-color);
+    background-color: var(--bg-color);
+}
+
+.modal-body {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+}
+
+.close {
+    color: var(--accent-color);
+    text-shadow: 0 0 5px var(--accent-color);
+    opacity: 1;
+}
+
+.close:hover {
+    color: var(--secondary-color);
+    text-shadow: 0 0 10px var(--secondary-color);
+}
+
+/* =====================================
+   BADGES
+   ===================================== */
+.badge {
+    background-color: transparent;
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+    font-family: var(--main-font);
+    text-transform: uppercase;
+    font-size: 0.8em;
+    letter-spacing: 1px;
+}
+
+.badge-primary {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+}
+
+.badge-success {
+    border-color: var(--tertiary-color);
+    color: var(--tertiary-color);
+}
+
+.badge-warning {
+    border-color: #FFFF00;
+    color: #FFFF00;
+}
+
+.badge-danger {
+    border-color: #FF0000;
+    color: #FF0000;
+}
+
+/* =====================================
+   LAYOUT COMPONENTS
+   ===================================== */
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 0;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--accent-color);
+    font-family: var(--main-font);
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 5px var(--accent-color);
+}
+
+/* Strong elements */
+strong {
+    color: var(--secondary-color);
+    text-shadow: 0 0 3px var(--secondary-color);
+}
+
+/* List items */
+li {
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+/* Collapse/Accordion */
+.collapse {
+    border-top: 1px dashed var(--accent-color);
+}
+
+/* =====================================
+   CUSTOM NEON EFFECTS
+   ===================================== */
+.neon-hover:hover {
+    box-shadow: 0 0 5px var(--accent-color), 0 0 15px var(--accent-color), 0 0 25px var(--accent-color);
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+}
+
+.neon-box {
+    box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color);
+}
+
+.neon-text {
+    color: var(--accent-color);
+    text-shadow: 0 0 5px var(--accent-color), 0 0 10px var(--accent-color);
+}
+
+/* Action buttons */
+.action-btn {
+    margin-right: 5px;
+    padding: 2px 6px;
+    font-size: 0.9em;
+    cursor: pointer;
+    font-family: var(--main-font);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        width: 95%;
+        padding: 0.5rem 0;
+    }
+    
+    .btn {
+        font-size: 0.9em;
+        padding: 0.4rem 0.8rem;
+    }
+}

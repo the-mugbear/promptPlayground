@@ -2,8 +2,8 @@
 {% block title %}Test Run #{{ run.id }}{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/donut.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/tables.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/charts.css') }}">
 <style>
     .prompt-comparison-section {
         margin-top: var(--spacing-sm, 0.5rem);
@@ -116,7 +116,7 @@
                 <strong>Endpoint:</strong>
                 {% if run.endpoint %}
                 <a href="{{ url_for('endpoints_bp.view_endpoint_details', endpoint_id=run.endpoint.id) }}">
-                    {{ run.endpoint.hostname }}
+                    {{ run.endpoint.base_url }}
                 </a>
                 {% else %}
                 <span>N/A</span>

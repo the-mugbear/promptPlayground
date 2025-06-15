@@ -205,9 +205,9 @@ def endpoint_details(endpoint_id):
     return jsonify({
         "id": endpoint.id,
         "name": endpoint.name,
-        "hostname": endpoint.hostname,
-        "endpoint": endpoint.endpoint,
-        "http_payload": endpoint.http_payload,
+        "base_url": endpoint.base_url,
+        "path": endpoint.path,
+        "payload_template": endpoint.payload_template.template if endpoint.payload_template else None,
         "headers": headers_list
     })
 

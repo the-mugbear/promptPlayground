@@ -32,3 +32,5 @@ env/
 *.sublime-workspace
 
 certs/
+
+CLAUDE.md

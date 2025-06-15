@@ -27,9 +27,9 @@ $(document).ready(function(){
           success: function(data) {
             // Populate editable fields
             $('#ep_name_input').val(data.name);
-            $('#ep_hostname_input').val(data.hostname);
-            $('#ep_endpoint_input').val(data.endpoint);
-            $('#ep_payload_input').val(data.http_payload);
+            $('#ep_base_url_input').val(data.base_url);
+            $('#ep_path_input').val(data.path);
+            $('#ep_payload_template_input').val(data.payload_template ? data.payload_template : '');
             formGroups.slideDown(); // Show the form groups smoothly
           },
           error: function() {
@@ -41,9 +41,9 @@ $(document).ready(function(){
         placeholder.show(); // Show placeholder
         // Optionally clear the inputs
          $('#ep_name_input').val('');
-         $('#ep_hostname_input').val('');
-         $('#ep_endpoint_input').val('');
-         $('#ep_payload_input').val('');
+         $('#ep_base_url_input').val('');
+         $('#ep_path_input').val('');
+         $('#ep_payload_template_input').val('');
       }
     }
 
@@ -87,9 +87,9 @@ $(document).ready(function(){
 
       // Copy the current values from the right-card inputs into the hidden fields.
       $('#hidden_ep_name').val($('#ep_name_input').val());
-      $('#hidden_ep_hostname').val($('#ep_hostname_input').val());
-      $('#hidden_ep_endpoint').val($('#ep_endpoint_input').val());
-      $('#hidden_ep_payload').val($('#ep_payload_input').val());
+      $('#hidden_ep_base_url').val($('#ep_base_url_input').val());
+      $('#hidden_ep_path').val($('#ep_path_input').val());
+      $('#hidden_ep_payload_template').val($('#ep_payload_template_input').val());
 
       // --- UI Feedback: Start ---
       $('#loading-status-text').text('Initiating Best of N...'); // Initial status

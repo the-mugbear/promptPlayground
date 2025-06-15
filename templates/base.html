@@ -16,6 +16,7 @@
     <!-- Component CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navbar.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/flash-messages.css') }}">
 
     <!-- Page-specific CSS -->
     {% block head %}{% endblock %}
@@ -47,7 +48,7 @@
 <body>
     {% block banner %}
     <header>
-        <nav class="navbar navbar-fixed">
+        <nav class="navbar navbar-fixed glass-effect">
             <div class="nav-brand glitch">
                 <a href="{{ url_for('core_bp.index') }}">Fuzzy Prompts</a>
             </div>

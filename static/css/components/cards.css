@@ -441,3 +441,18 @@
         background-color: var(--background-color);
     }
 }
+
+/* === ENDPOINT HEADER === */
+.endpoint-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xl, 2rem);
+}
+
+.endpoint-header h2 {
+    margin: 0;
+    color: var(--accent-color);
+    font-size: var(--font-size-2xl, 1.5rem);
+    text-shadow: var(--glow-sm, 0 0 5px var(--accent-color));
+}

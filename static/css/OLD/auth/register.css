@@ -1,0 +1,363 @@
+/* ==================================================
+   REGISTER PAGE - 80s NEON HACKER AESTHETIC
+   ================================================== */
+
+:root {
+    --accent-color: #00ff00;
+    --secondary-color: #00ccff;
+    --text-color: #ffffff;
+    --form-element-bg: rgba(0, 0, 0, 0.3);
+    --border-color: #00ff00;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 2rem;
+    --login-glow-effect: 0 0 10px rgba(0, 255, 0, 0.5);
+    --login-bg-gradient: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(20,20,20,0.9) 100%);
+    --login-card-bg: rgba(10, 10, 10, 0.8);
+    --grid-pattern: rgba(0, 255, 65, 0.1);
+}
+
+body.hacker-theme {
+    background: var(--background-color);
+    background-image: var(--login-bg-gradient),
+        repeating-linear-gradient(to right, var(--grid-pattern) 0px, var(--grid-pattern) 1px, transparent 1px, transparent 20px),
+        repeating-linear-gradient(to bottom, var(--grid-pattern) 0px, var(--grid-pattern) 1px, transparent 1px, transparent 20px);
+    background-size: 100% 100%, 20px 20px, 20px 20px;
+    color: var(--text-color);
+    font-family: 'Orbitron', sans-serif;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* Before body content - add scanlines */
+body.hacker-theme::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 1px,
+        rgba(0, 0, 0, 0.1) 1px,
+        rgba(0, 0, 0, 0.1) 2px
+    );
+    z-index: 1000;
+    opacity: 0.4;
+}
+
+.register-card {
+    background: var(--login-card-bg);
+    border: 1px solid var(--accent-color);
+    border-radius: 8px;
+    padding: var(--spacing-lg);
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+    margin-top: 2rem;
+    backdrop-filter: blur(10px);
+    animation: powerOn 1s ease-out forwards;
+}
+
+.register-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg,
+        transparent,
+        rgba(0, 255, 0, 0.1),
+        transparent
+    );
+    transform: rotate(45deg);
+    animation: shine 3s infinite;
+}
+
+@keyframes shine {
+    0% {
+        transform: translateX(-100%) rotate(45deg);
+    }
+    100% {
+        transform: translateX(100%) rotate(45deg);
+    }
+}
+
+.register-card h2 {
+    color: var(--accent-color);
+    text-shadow: var(--login-glow-effect);
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+    display: inline-block;
+    font-size: 1.8rem;
+    letter-spacing: 1px;
+    text-align: center;
+    width: 100%;
+    animation: textGlitch 5s infinite alternate;
+}
+
+.terminal-prompt {
+    display: inline-block;
+    width: 10px;
+    height: 20px;
+    background-color: var(--accent-color);
+    margin-left: 5px;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.registration-form {
+    margin-top: var(--spacing-lg);
+}
+
+.form-group {
+    margin-bottom: var(--spacing-md);
+    position: relative;
+    border-left: 3px solid var(--accent-color);
+    padding-left: 1rem;
+}
+
+.form-label {
+    color: var(--accent-color);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: var(--spacing-sm);
+    text-shadow: var(--login-glow-effect);
+    display: block;
+}
+
+.form-control {
+    background: var(--form-element-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-color);
+    padding: 0.8rem;
+    transition: all 0.3s ease;
+    width: 100%;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+    font-family: 'Orbitron', sans-serif;
+}
+
+.invalid-feedback {
+    color: #ff4444;
+    font-size: 0.8rem;
+    margin-top: var(--spacing-sm);
+    text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+}
+
+.btn-primary {
+    background: transparent;
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    padding: 1rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    width: 100%;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    margin-top: var(--spacing-md);
+}
+
+.btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.4), transparent);
+    transition: all 0.6s ease;
+}
+
+.btn-primary:hover {
+    background-color: rgba(0, 255, 65, 0.15);
+    box-shadow: 0 0 15px var(--accent-color);
+    transform: translateY(-2px);
+}
+
+.btn-primary:hover::before {
+    left: 100%;
+}
+
+hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent, 
+        var(--accent-color), 
+        var(--accent-color), 
+        var(--accent-color), 
+        transparent);
+    margin: var(--spacing-lg) 0;
+    opacity: 0.6;
+}
+
+.text-center {
+    text-align: center;
+    margin-top: var(--spacing-md);
+}
+
+.text-center a {
+    color: var(--secondary-color);
+    text-decoration: none;
+    position: relative;
+    transition: all 0.3s ease;
+    font-weight: bold;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.text-center a:hover {
+    color: var(--accent-color);
+    text-shadow: var(--login-glow-effect);
+}
+
+.text-center a::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 1px;
+    bottom: -2px;
+    left: 0;
+    background: var(--secondary-color);
+    transform: scaleX(0);
+    transform-origin: bottom right;
+    transition: transform 0.3s ease-out;
+}
+
+.text-center a:hover::after {
+    transform: scaleX(1);
+    transform-origin: bottom left;
+    background: var(--accent-color);
+    box-shadow: var(--login-glow-effect);
+}
+
+/* Flash messages styling */
+.alert {
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    border-radius: 4px;
+    text-shadow: var(--login-glow-effect);
+    font-family: 'Orbitron', sans-serif;
+}
+
+.alert-error {
+    border-color: #ff4444;
+    color: #ff4444;
+    text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+.alert-success {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* Form validation animations */
+.form-control.is-invalid {
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Password strength indicator */
+.password-strength {
+    height: 4px;
+    margin-top: var(--spacing-sm);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    background: transparent;
+}
+
+.password-strength.weak { background: #ff4444; width: 33%; }
+.password-strength.medium { background: #ffbb33; width: 66%; }
+.password-strength.strong { background: var(--accent-color); width: 100%; }
+
+/* Active input state */
+.form-control.active-input {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+    background: rgba(0, 0, 0, 0.5);
+}
+
+/* Power on effect */
+@keyframes powerOn {
+    0% {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    50% {
+        opacity: 0.5;
+    }
+    70% {
+        opacity: 0.7;
+        transform: scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Text glitch animation */
+@keyframes textGlitch {
+    0%, 100% {
+        text-shadow: 0 0 5px var(--accent-color);
+        transform: translateX(0);
+    }
+    5%, 15% {
+        text-shadow: -2px 0 var(--secondary-color), 2px 0 var(--accent-color);
+        transform: translateX(2px);
+    }
+    10%, 20% {
+        text-shadow: 2px 0 var(--secondary-color), -2px 0 var(--accent-color);
+        transform: translateX(-2px);
+    }
+    25%, 95% {
+        text-shadow: 0 0 5px var(--accent-color);
+        transform: translateX(0);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .register-card {
+        padding: var(--spacing-lg);
+    }
+    
+    .register-card h2 {
+        font-size: 1.8rem;
+    }
+} 

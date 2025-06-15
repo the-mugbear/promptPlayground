@@ -1,0 +1,23 @@
+.loading-indicator {
+    display: inline-block;
+    position: relative;
+    color: var(--text-color);
+    font-family: var(--main-font);
+    margin: 1rem 0;
+  }
+  
+  .loading-indicator::after {
+    content: "_";
+    display: inline-block;
+    animation: blink 0.8s infinite;
+  }
+  
+  .loading-indicator.processing::before {
+    content: "> Processing request";
+    margin-right: 0.5rem;
+  }
+  
+  @keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }

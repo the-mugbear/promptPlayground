@@ -471,3 +471,33 @@ button[type="submit"] {
         border-width: 2px;
     }
 }
+
+/* === METHOD BADGES === */
+.method-badge {
+    font-size: var(--font-size-sm, 0.9em);
+    padding: var(--spacing-xs, 0.4em) var(--spacing-sm, 0.7em);
+    color: var(--text-color-inverse, #fff);
+    border-radius: var(--border-radius-sm, 0.25rem);
+    font-weight: 600;
+}
+
+.method-get {
+    background-color: var(--method-get-color, #0d6efd);
+}
+
+.method-post {
+    background-color: var(--method-post-color, #198754);
+}
+
+.method-put {
+    background-color: var(--method-put-color, #ffc107);
+    color: var(--text-color-dark, #000) !important;
+}
+
+.method-delete {
+    background-color: var(--method-delete-color, #dc3545);
+}
+
+.method-patch {
+    background-color: var(--method-patch-color, #fd7e14);
+}

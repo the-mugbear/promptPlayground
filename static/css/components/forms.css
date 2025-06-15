@@ -366,3 +366,62 @@ input[type="search"]:focus::-webkit-search-cancel-button {
 #suggestion-list li:hover {
     background-color: rgba(0, 255, 65, 0.1);
 }
+
+/* === FORM CONTAINERS === */
+.test-form-container {
+    margin: 0;
+}
+
+.test-form-container h3 {
+    display: none;
+}
+
+.test-form-container form {
+    margin: 0;
+}
+
+/* === PAYLOAD CONTAINER === */
+.payload-container {
+    position: relative;
+    width: 100%;
+}
+
+.payload-textarea {
+    width: 100% !important;
+    height: 300px !important;
+    min-height: 300px !important;
+    font-family: var(--mono-font, monospace) !important;
+    resize: vertical !important;
+    box-sizing: border-box !important;
+}
+
+/* === JSON VALIDATION BADGE === */
+.json-validation-badge {
+    position: absolute;
+    top: var(--spacing-sm, 10px);
+    right: var(--spacing-sm, 10px);
+    padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
+    border-radius: var(--border-radius-sm, 4px);
+    font-size: var(--font-size-xs, 12px);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs, 4px);
+    opacity: 0;
+    transition: opacity var(--transition-normal, 0.3s ease);
+}
+
+.json-validation-badge.valid {
+    background-color: var(--success-bg, #d4edda);
+    color: var(--success-color, #155724);
+    opacity: 1;
+}
+
+.json-validation-badge.invalid {
+    background-color: var(--error-bg, #f8d7da);
+    color: var(--error-color, #721c24);
+    opacity: 1;
+}
+
+.validation-icon {
+    font-weight: bold;
+}

@@ -21,12 +21,12 @@ def get_endpoint_suggestions():
     based on existing distinct values in the database.
     Used for autocompletion or suggestions in forms.
     """
-    hostnames = [row.hostname for row in Endpoint.query.with_entities(
-        Endpoint.hostname).distinct().all() if row.hostname]
-    paths = [row.endpoint for row in Endpoint.query.with_entities(
-        Endpoint.endpoint).distinct().all() if row.endpoint]
-    payloads = [row.http_payload for row in Endpoint.query.with_entities(
-        Endpoint.http_payload).distinct().all() if row.http_payload]
+    hostnames = [row.base_url for row in Endpoint.query.with_entities(
+        Endpoint.base_url).distinct().all() if row.base_url]
+    paths = [row.path for row in Endpoint.query.with_entities(
+        Endpoint.path).distinct().all() if row.path]
+    payloads = [row.payload_template.template for row in Endpoint.query.join(Endpoint.payload_template).with_entities(
+        Endpoint.payload_template).distinct().all() if row.payload_template]
 
     return jsonify({
         "hostnames": hostnames,
@@ -52,9 +52,9 @@ def test_endpoint(endpoint_id=None):
 
     # Gather effective data from form, with fallback to DB object if it exists
     form_data = {
-        'hostname': request.form.get('hostname', endpoint.hostname if endpoint else ''),
-        'endpoint': request.form.get('endpoint', endpoint.endpoint if endpoint else ''),
-        'http_payload': request.form.get('http_payload', endpoint.http_payload if endpoint else ''),
+        'hostname': request.form.get('hostname', endpoint.base_url if endpoint else ''),
+        'endpoint': request.form.get('endpoint', endpoint.path if endpoint else ''),
+        'http_payload': request.form.get('http_payload', endpoint.payload_template.template if endpoint and endpoint.payload_template else ''),
         'method': request.form.get('method', endpoint.method if endpoint else 'POST'),
         'raw_headers': request.form.get('raw_headers')
     }
@@ -83,7 +83,7 @@ def test_endpoint(endpoint_id=None):
             return render_template(template, endpoint=endpoint, **form_data)
 
     if not all([form_data['hostname'], form_data['endpoint'], form_data['http_payload']]):
-        return handle_validation_error("Hostname, Endpoint Path, and Payload are required for testing.")
+        return handle_validation_error("Base URL, Endpoint Path, and Payload are required for testing.")
 
     # --- Payload Rendering ---
     try:

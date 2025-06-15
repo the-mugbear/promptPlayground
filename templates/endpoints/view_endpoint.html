@@ -3,116 +3,17 @@
 {% block title %}View Endpoint{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/endpoints/inline_edit.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/endpoints/test_endpoint_modal.css') }}">
-<script>
+  {{ super() }}
+  {# Link to the stylesheets for our themed components #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/modals.css') }}">
+  <script>
     // Add CSRF token for AJAX requests
     const csrfToken = "{{ csrf_token() }}";
     console.log('CSRF Token from template:', csrfToken);
-</script>
-
-<style>
-    .endpoint-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-    }
-
-    .endpoint-header h2 {
-        margin: 0;
-    }
-
-    .test-form-container {
-        margin: 0;
-    }
-
-    .test-form-container h3 {
-        display: none;
-    }
-
-    .test-form-container form {
-        margin: 0;
-    }
-
-    .payload-container {
-        position: relative;
-        width: 100%;
-    }
-
-    .payload-textarea {
-        width: 100% !important;
-        height: 300px !important;
-        min-height: 300px !important;
-        font-family: monospace !important;
-        resize: vertical !important;
-        box-sizing: border-box !important;
-    }
-
-    .json-validation-badge {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    .json-validation-badge.valid {
-        background-color: #d4edda;
-        color: #155724;
-        opacity: 1;
-    }
-
-    .json-validation-badge.invalid {
-        background-color: #f8d7da;
-        color: #721c24;
-        opacity: 1;
-    }
-
-    .validation-icon {
-        font-weight: bold;
-    }
-
-    .method-badge {
-        font-size: 0.9em;
-        padding: 0.4em 0.7em;
-        color: #fff;
-        border-radius: 0.25rem;
-    }
-
-    .method-get {
-        background-color: #0d6efd;
-    }
-
-    /* Blue */
-    .method-post {
-        background-color: #198754;
-    }
-
-    /* Green */
-    .method-put {
-        background-color: #ffc107;
-        color: #000 !important;
-    }
-
-    /* Yellow */
-    .method-delete {
-        background-color: #dc3545;
-    }
-
-    /* Red */
-    .method-patch {
-        background-color: #fd7e14;
-    }
-
-    /* Orange */
-</style>
+  </script>
 {% endblock %}
 
 {% block content %}
@@ -139,13 +40,13 @@
                 </div>
             </div>
 
-            <div class="editable-field" data-field="hostname">
-                <label>Hostname:</label>
+            <div class="editable-field" data-field="base_url">
+                <label>Base URL:</label>
                 <div class="view-mode">
-                    <span>{{ endpoint.hostname }}</span>
+                    <span>{{ endpoint.base_url }}</span>
                 </div>
                 <div class="edit-mode">
-                    <input type="text" class="form-control" value="{{ endpoint.hostname }}">
+                    <input type="text" class="form-control" value="{{ endpoint.base_url }}">
                 </div>
             </div>
 
@@ -168,10 +69,10 @@
             <div class="editable-field" data-field="path">
                 <label>Path:</label>
                 <div class="view-mode">
-                    <span>{{ endpoint.endpoint }}</span>
+                    <span>{{ endpoint.path }}</span>
                 </div>
                 <div class="edit-mode">
-                    <input type="text" class="form-control" value="{{ endpoint.endpoint }}">
+                    <input type="text" class="form-control" value="{{ endpoint.path }}">
                 </div>
             </div>
 
@@ -181,14 +82,19 @@
             </div>
         </div>
 
-        <div class="editable-field" data-field="http_payload">
-            <label>HTTP Payload:</label>
+        <div class="editable-field" data-field="payload_template">
+            <label>Payload Template:</label>
             <div class="view-mode">
-                <span>{{ endpoint.http_payload }}</span>
+                <span>{{ endpoint.payload_template.template if endpoint.payload_template else 'No template assigned' }}</span>
+                {% if endpoint.payload_template %}
+                <div class="template-info">
+                    <small>Template: {{ endpoint.payload_template.name }}</small>
+                </div>
+                {% endif %}
             </div>
             <div class="edit-mode">
                 <div class="payload-container">
-                    <textarea class="form-control payload-textarea">{{ endpoint.http_payload }}</textarea>
+                    <textarea class="form-control payload-textarea">{{ endpoint.payload_template.template if endpoint.payload_template else '' }}</textarea>
                     <div class="json-validation-badge" id="jsonValidationBadge">
                         <span class="validation-icon">✓</span>
                         <span class="validation-text">Valid JSON</span>
@@ -239,11 +145,9 @@
 
 <div id="testResultModalOverlay" class="dialog-overlay" style="display: none;">
     <div id="testResultModalContent" class="confirmation-dialog test-result-modal-content">
-        <div
-            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--neon-blue);">
+        <div class="test-result-modal-header">
             <h3>Test Endpoint Results</h3>
-            <span class="close-modal-button"
-                style="font-size: 1.8rem; cursor: pointer; color: var(--neon-pink); line-height: 1;">&times;</span>
+            <button class="close-modal-button">&times;</button>
         </div>
 
         <div class="test-result-modal-body">
@@ -269,11 +173,6 @@
                 <h5>Headers Sent to Target</h5>
                 <pre id="modalHeadersSent" class="headers-sent"></pre>
             </div>
-        </div>
-
-        <div class="buttons"
-            style="justify-content: flex-end; padding: 0.5rem 1rem; border-top: 1px solid var(--neon-blue); margin-top:1rem;">
-            <button type="button" class="cancel-btn close-modal-button-footer">Close</button>
         </div>
     </div>
 </div>
@@ -383,19 +282,19 @@
                     return viewElement ? viewElement.textContent.trim() : null;
                 };
 
-                const currentHttpPayload = document.querySelector('.editable-field[data-field="http_payload"] textarea')?.value;
-                if (currentHttpPayload !== null && currentHttpPayload !== undefined) {
-                    formData.append('http_payload', currentHttpPayload);
+                const currentPayloadTemplate = document.querySelector('.editable-field[data-field="payload_template"] textarea')?.value;
+                if (currentPayloadTemplate !== null && currentPayloadTemplate !== undefined) {
+                    formData.append('payload_template', currentPayloadTemplate);
                 }
 
-                const currentHostname = getFieldValue('hostname');
-                if (currentHostname !== null && currentHostname !== undefined) {
-                    formData.append('hostname', currentHostname);
+                const currentBaseUrl = getFieldValue('base_url');
+                if (currentBaseUrl !== null && currentBaseUrl !== undefined) {
+                    formData.append('base_url', currentBaseUrl);
                 }
 
-                const currentPath = getFieldValue('path'); // Client-side key is 'path'
+                const currentPath = getFieldValue('path');
                 if (currentPath !== null && currentPath !== undefined) {
-                    formData.append('endpoint', currentPath); // Send as 'endpoint' to match form field name used by backend
+                    formData.append('path', currentPath);
                 }
 
                 // For headers, if they are also inline editable and need to be tested live,

@@ -100,9 +100,9 @@
           method: 'GET',
           success: function(data) {
             $(targetDiv).html(
-              '<p><strong>Hostname:</strong> ' + data.hostname + '</p>' +
-              '<p><strong>Path:</strong> ' + data.endpoint + '</p>' +
-              '<p><strong>Payload:</strong> ' + data.http_payload + '</p>'
+              '<p><strong>Base URL:</strong> ' + data.base_url + '</p>' +
+              '<p><strong>Path:</strong> ' + data.path + '</p>' +
+              '<p><strong>Payload:</strong> ' + (data.payload_template ? data.payload_template : 'No template assigned') + '</p>'
             );
           },
           error: function() {

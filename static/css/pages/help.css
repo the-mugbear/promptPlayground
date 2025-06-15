@@ -1,0 +1,257 @@
+/* ==================================================
+   Cleaned-up Help CSS
+   ================================================== */
+
+/* -----------------------
+   THEME / VARIABLES
+   ----------------------- */
+   :root {
+    --bg-color: #000000;
+    --text-color: #00FF41;
+    --accent-color: #FF00AA;
+    --secondary-color: #00FFFF;
+    --main-font: 'Press Start 2P', monospace;
+    --base-font-size: 16px;
+  }
+  
+  /* -----------------------
+     RESET / BASELINE
+     ----------------------- */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  /* -----------------------
+     GLOBAL STYLES
+     ----------------------- */
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--main-font);
+    font-size: var(--base-font-size);
+    line-height: 1.4;
+  }
+  
+  a {
+    color: var(--accent-color);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+    color: var(--secondary-color);
+  }
+  
+  /* Headings (retro vibe) */
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--accent-color);
+    margin: 1rem 0 0.5rem;
+  }
+  
+  /* Buttons (neon borders, etc.) */
+  button {
+    font-family: var(--main-font);
+    color: var(--text-color);
+    background: transparent;
+    border: 2px solid var(--accent-color);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  button:hover {
+    background: var(--accent-color);
+    color: #000;
+  }
+  
+  /* -----------------------
+     HELP PAGE STRUCTURE
+     ----------------------- */
+  /* Use a single container class for help pages */
+  .help-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 1rem;
+  }
+  /* Header for help pages */
+  .help-header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  
+  /* Base card styling for steps and topics */
+  .card {
+    background-color: #111;
+    border: 2px dashed var(--accent-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .card:hover {
+    background-color: var(--accent-color);
+    color: #000;
+  }
+  
+  /* Specific for Step Cards */
+  .step-number {
+    display: inline-block;
+    background-color: var(--accent-color);
+    color: #000;
+    width: 2rem;
+    height: 2rem;
+    line-height: 2rem;
+    text-align: center;
+    border-radius: 50%;
+    font-weight: bold;
+    margin-right: 1rem;
+  }
+  .step-title {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: var(--accent-color);
+  }
+  .step-description {
+    font-size: 1rem;
+    color: var(--text-color);
+  }
+  
+  /* Help Topics (Table of Contents) */
+  .help-topics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+  .help-topic {
+    /* Inherit base card styles */
+    transition: background-color 0.2s, color 0.2s;
+  }
+  .help-topic h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.25rem;
+    color: var(--accent-color);
+  }
+  .help-topic p {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+  .help-topic a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .help-topic a:hover {
+    text-decoration: underline;
+  }
+  
+  /* -----------------------
+     FORM & UTILITY STYLES
+     ----------------------- */
+  .container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 0;
+  }
+  hr {
+    border: none;
+    border-top: 1px dashed var(--accent-color);
+    margin: 1rem 0;
+  }
+  
+  /* Consolidated form controls for inputs and textareas */
+  .form-group input,
+  .form-group textarea,
+  textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    background-color: #000;
+    color: var(--text-color);
+  }
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  .form-group label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: bold;
+  }
+  
+  /* Suggestion list */
+  #suggestion-list {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin-top: 1rem;
+  }
+  #suggestion-list li {
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+  }
+  
+  /* -----------------------
+     RESULTS BOX & PRE ELEMENTS
+     ----------------------- */
+  .results-box {
+    background-color: #000;
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    padding: 0.5rem;
+    min-height: 4em;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-all;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .results-box pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-all;
+    max-width: 100%;
+    display: block;
+  }
+  
+  /* -----------------------
+     ANIMATIONS / EFFECTS
+     ----------------------- */
+  .blink {
+    animation: blink 1s infinite alternate;
+  }
+  @keyframes blink {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+  .glitch {
+    position: relative;
+    color: var(--accent-color);
+    animation: glitch 2s infinite;
+  }
+  @keyframes glitch {
+    0%   { clip: rect(24px, 550px, 90px, 0); transform: skew(0.3deg); }
+    5%   { clip: rect(85px, 550px, 140px, 0); transform: skew(0.8deg); }
+  }
+  .neon-hover:hover {
+    box-shadow: 0 0 5px var(--accent-color), 0 0 15px var(--accent-color);
+  }
+  .neon-box {
+    box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color);
+  }
+  
+  /* Additional card spacing for test results */
+  .test-results-card {
+    margin-top: 2rem;
+  }
+  
+
+  ul {
+      list-style: none;
+  }
+  code {
+      padding: 0rem;
+  }
+  .download-button {
+      display: block;
+      width: fit-content;
+      margin: 0 auto;
+  }

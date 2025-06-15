@@ -2,7 +2,7 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/test_suites/list_test_suites.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/modals.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -33,7 +33,7 @@
   <h1>All Test Suites</h1>
 
 <div class="action-buttons">
-  <!-- 1) “Create New Suite” -->
+  <!-- 1) "Create New Suite" -->
   <button
     type="button"
     class="btn btn-primary"
@@ -41,7 +41,7 @@
     Create New Suite
   </button>
 
-  <!-- 2) “Import Suite(s)”: triggers the hidden file-input -->
+  <!-- 2) "Import Suite(s)": triggers the hidden file-input -->
   <button
     type="button"
     class="btn btn-secondary"
@@ -54,7 +54,7 @@
     accept=".json"
     style="display: none">
 
-  <!-- 3) “Import Format Help” -->
+  <!-- 3) "Import Format Help" -->
   <button
     type="button"
     class="btn btn-info"
@@ -62,7 +62,7 @@
     Import Format Help
   </button>
 
-  <!-- 4) “Export All Suites” -->
+  <!-- 4) "Export All Suites" -->
   <button
     type="button"
     class="btn btn-secondary"

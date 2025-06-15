@@ -22,6 +22,17 @@
     width: 100%;
     z-index: 1000;         /* Ensure it stays on top */
   }
+
+  .navbar.glass-effect {
+    background: rgba(26, 26, 26, 0.8);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 0 20px rgba(0, 255, 65, 0.1);
+}
   
   /* -----------------------
      BRANDING
@@ -69,23 +80,28 @@
     position: relative;
   }
   
-  /* Dropdown menu base style */
-  .nav-links li.dropdown .dropdown-menu {
-    display: none;         /* Hidden by default */
-    position: absolute;
-    top: 100%;             /* Below the parent link */
-    left: 0;               /* Align left (or use right: 0 for right alignment) */
-    background-color: var(--bg-color);
-    list-style: none;
-    padding: 0.5rem 0;
-    margin: 0;
-    border: 2px dashed var(--accent-color);
-    border-radius: 4px;
-    z-index: 999;          /* Ensure it appears above other elements */
-
-    min-width: 180px;
-    max-width: calc(100vw - 2rem);  
-  }
+/* Enhanced dropdown menu with better visibility */
+.nav-links li.dropdown .dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: var(--surface-color);
+  list-style: none;
+  padding: 0.5rem 0;
+  margin: 0;
+  border: 2px solid var(--accent-color); /* Solid border instead of dashed for prominence */
+  border-radius: 4px;
+  z-index: 999;
+  min-width: 180px;
+  max-width: calc(100vw - 2rem);
+  
+  /* Enhanced visibility */
+  box-shadow: 
+      var(--shadow-lg),                    /* Standard shadow */
+      0 0 15px rgba(0, 255, 65, 0.3),     /* Subtle glow */
+      inset 0 1px 0 rgba(255, 255, 255, 0.1); /* Inner highlight */
+}
   
   /* Dropdown menu items */
   .nav-links li.dropdown .dropdown-menu li {
@@ -99,11 +115,13 @@
     border: 2px solid transparent;
     text-decoration: none;
   }
-  .nav-links li.dropdown .dropdown-menu li a:hover {
-    background-color: #111;
-    color: var(--accent-color);
-    border-color: var(--accent-color);
-  }
+/* Enhanced hover states for dropdown items */
+.nav-links li.dropdown .dropdown-menu li a:hover {
+  background-color: var(--background-color);
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+  box-shadow: var(--glow-sm);
+}
   
   /* Show dropdown on hover */
   .nav-links li.dropdown:hover .dropdown-menu {

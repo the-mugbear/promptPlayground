@@ -5,26 +5,25 @@
 
 {% block head %}
 {{ super() }}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/animations.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 {% endblock %}
 
 {% block content %}
 <div class="container">
-
-    <div style="margin-bottom: var(--spacing-lg);">
-        <h2 style="margin-bottom: var(--spacing-sm);">{{ title }}</h2>
-        <p class="text-muted" style="margin:0;">
-            <i class="fas fa-link"></i> Part of Chain: <a
-                href="{{ url_for('chains_bp.chain_details', chain_id=chain.id) }}">{{ chain.name }}</a>
+    <div class="page-header">
+        <h2>{{ title }}</h2>
+        <p class="text-muted">
+            <i class="fas fa-link"></i> Part of Chain: <a href="{{ url_for('chains_bp.chain_details', chain_id=chain.id) }}">{{ chain.name }}</a>
         </p>
     </div>
 
-
     <div class="two-column-container">
         <div class="left-card">
-            <form action="{{ url_for('chains_bp.edit_step', chain_id=chain.id, step_id=step.id) }}" method="POST"
-                novalidate>
+            <form action="{{ url_for('chains_bp.edit_step', chain_id=chain.id, step_id=step.id) }}" method="POST" novalidate>
                 {{ form.hidden_tag() }}
 
                 <div class="form-group">
@@ -36,61 +35,47 @@
                 </div>
 
                 <div class="form-group">
-                    {{ render_field(form.headers, class="form-control", rows="6", placeholder='{ "Content-Type":
-                    "application/json" }') }}
-                    <div class="quick-templates"
-                        style="margin-top: var(--spacing-sm); display: flex; gap: var(--spacing-sm);">
+                    {{ render_field(form.headers, class="form-control", rows="6", placeholder='{ "Content-Type": "application/json" }') }}
+                    <div class="quick-templates">
                         <!-- Headers quick templates -->
-                        <button type="button" class="btn insert-template" data-target="headers"
-                            data-template='{"Content-Type":"application/json"}'>
+                        <button type="button" class="btn insert-template" data-target="headers" data-template='{"Content-Type":"application/json"}'>
                             JSON
                         </button>
 
-                        <button type="button" class="btn insert-template" data-target="headers"
-                            data-template='{"Authorization":"Bearer {{ "{{token}}" }}"}'>
+                        <button type="button" class="btn insert-template" data-target="headers" data-template='{"Authorization":"Bearer {{ "{{token}}" }}"}'>
                             Auth
                         </button>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    {{ render_field(form.payload, class="form-control", rows="8", placeholder='{ "key":
-                    "{{variable_from_previous_step}}" }') }}
-                    <div class="quick-templates"
-                        style="margin-top: var(--spacing-sm); display: flex; gap: var(--spacing-sm);">
-
-                        <button type="button" class="btn insert-template" data-target="payload"
-                            data-template='{"key":"{{ "{{variable}}" }}"}'>
+                    {{ render_field(form.payload, class="form-control", rows="8", placeholder='{ "key": "{{variable_from_previous_step}}" }') }}
+                    <div class="quick-templates">
+                        <button type="button" class="btn insert-template" data-target="payload" data-template='{"key":"{{ "{{variable}}" }}"}'>
                             JSON Object
                         </button>
 
-                        <button type="button" class="btn insert-template" data-target="payload"
-                            data-template='[{"item":"{{ "{{value}}" }}"}]'>
+                        <button type="button" class="btn insert-template" data-target="payload" data-template='[{"item":"{{ "{{value}}" }}"}]'>
                             JSON Array
                         </button>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    {{ render_field(form.data_extraction_rules, class="form-control", rows="8", placeholder='result =
-                    response.json()[\"data\"]') }}
+                    {{ render_field(form.data_extraction_rules, class="form-control", rows="8", placeholder='result = response.json()[\"data\"]') }}
                     <small class="form-text">Use 'response' to access the full response object.</small>
-                    <div class="quick-templates"
-                        style="margin-top: var(--spacing-sm); display: flex; gap: var(--spacing-sm);">
-
-                        <button type="button" class="btn insert-template" data-target="data_extraction_rules"
-                            data-template='[{"variable_name": "my_variable", "source_type": "json_body", "source_identifier": "path.to.data"}]'>
+                    <div class="quick-templates">
+                        <button type="button" class="btn insert-template" data-target="data_extraction_rules" data-template='[{"variable_name": "my_variable", "source_type": "json_body", "source_identifier": "path.to.data"}]'>
                             JSON Path Rule
                         </button>
 
-                        <button type="button" class="btn insert-template" data-target="data_extraction_rules"
-                            data-template='[{"variable_name": "full_body", "source_type": "raw_body", "source_identifier": ""}]'>
+                        <button type="button" class="btn insert-template" data-target="data_extraction_rules" data-template='[{"variable_name": "full_body", "source_type": "raw_body", "source_identifier": ""}]'>
                             Full Body
                         </button>
                     </div>
                 </div>
 
-                <div class="form-actions" style="display: flex; gap: 1rem; margin-top: var(--spacing-lg);">
+                <div class="form-actions">
                     <a href="{{ url_for('chains_bp.chain_details', chain_id=chain.id) }}" class="btn">
                         <i class="fas fa-arrow-left"></i> Cancel
                     </a>
@@ -107,8 +92,7 @@
 
             <div class="form-group">
                 <label for="mock_context">Mock Context (JSON)</label>
-                <textarea id="mock_context" class="form-control" rows="8"
-                    placeholder='{"variable_name": "sample_value", "token": "abc123"}'></textarea>
+                <textarea id="mock_context" class="form-control" rows="8" placeholder='{"variable_name": "sample_value", "token": "abc123"}'></textarea>
                 <div id="mock-context-error" class="invalid-feedback"></div>
             </div>
 
@@ -116,8 +100,7 @@
                 <i class="fas fa-play"></i> Test Step
             </button>
 
-            <div id="test-results-container" class="results-container"
-                style="display: none; margin-top: var(--spacing-lg);">
+            <div id="test-results-container" class="results-container">
                 <details class="collapsible-section" open>
                     <summary class="collapsible-header">Rendered Payload</summary>
                     <div class="results-box">

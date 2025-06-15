@@ -27,20 +27,22 @@ def evil_agent_jailbreak_generator(adversarial_endpoint, recipient_endpoint, bas
     for i in range(max_samples):
         trial_prompt = apply_random_transformations(base_prompt)
         
-        adv_payload = adversarial_endpoint.http_payload.replace("{{INJECT_PROMPT}}", trial_prompt)
+        adv_payload = (adversarial_endpoint.payload_template.template if adversarial_endpoint.payload_template else "{}").replace("{{INJECT_PROMPT}}", trial_prompt)
         adv_response = execute_api_request(
-            adversarial_endpoint.hostname,
-            adversarial_endpoint.endpoint,
-            adv_payload,
-            raw_headers=prepare_raw_headers(adversarial_endpoint)
+            method=adversarial_endpoint.method,
+            hostname_url=adversarial_endpoint.base_url,
+            endpoint_path=adversarial_endpoint.path,
+            http_payload_as_string=adv_payload,
+            raw_headers_or_dict=prepare_raw_headers(adversarial_endpoint)
         )
         
-        rec_payload = recipient_endpoint.http_payload.replace("{{INJECT_PROMPT}}", trial_prompt)
+        rec_payload = (recipient_endpoint.payload_template.template if recipient_endpoint.payload_template else "{}").replace("{{INJECT_PROMPT}}", trial_prompt)
         rec_response = execute_api_request(
-            recipient_endpoint.hostname,
-            recipient_endpoint.endpoint,
-            rec_payload,
-            raw_headers=prepare_raw_headers(recipient_endpoint)
+            method=recipient_endpoint.method,
+            hostname_url=recipient_endpoint.base_url,
+            endpoint_path=recipient_endpoint.path,
+            http_payload_as_string=rec_payload,
+            raw_headers_or_dict=prepare_raw_headers(recipient_endpoint)
         )
         
         attempt_data = {

@@ -128,7 +128,7 @@ def report_ajax(endpoint_id):
     return jsonify({
         "endpoint": {
             "id": endpoint.id, "name": endpoint.name,
-            "hostname": endpoint.hostname, "endpoint": endpoint.endpoint
+            "base_url": endpoint.base_url, "path": endpoint.path
         },
         "overall_metrics": overall_metrics, # Renamed for clarity
         "test_runs": runs_data, # Now includes per-run metrics

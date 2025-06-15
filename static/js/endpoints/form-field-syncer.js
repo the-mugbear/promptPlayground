@@ -9,20 +9,20 @@
 
 document.addEventListener('DOMContentLoaded', function () {
   // Visible fields rendered in the main form (via Jinja):
-  const hostnameField = document.getElementById('hostname');
-  const endpointField = document.getElementById('endpoint');
-  const payloadField  = document.getElementById('http_payload');
+  const baseUrlField = document.getElementById('base_url');
+  const pathField = document.getElementById('path');
+  const payloadTemplateField  = document.getElementById('payload_template');
   const headersField  = document.getElementById('raw_headers');
 
   // Corresponding hidden inputs inside the test-endpoint form:
-  const testHostname = document.querySelector(
-    'form#test-endpoint-form input[name="hostname"]'
+  const testBaseUrl = document.querySelector(
+    'form#test-endpoint-form input[name="base_url"]'
   );
-  const testEndpoint = document.querySelector(
-    'form#test-endpoint-form input[name="endpoint"]'
+  const testPath = document.querySelector(
+    'form#test-endpoint-form input[name="path"]'
   );
-  const testPayload = document.querySelector(
-    'form#test-endpoint-form input[name="http_payload"]'
+  const testPayloadTemplate = document.querySelector(
+    'form#test-endpoint-form input[name="payload_template"]'
   );
   const testHeaders = document.querySelector(
     'form#test-endpoint-form input[name="raw_headers"]'
@@ -33,16 +33,16 @@ document.addEventListener('DOMContentLoaded', function () {
    * This ensures that when the form is submitted, it carries the latest values.
    */
   function syncFields() {
-    testHostname.value = hostnameField.value;
-    testEndpoint.value = endpointField.value;
-    testPayload.value  = payloadField.value;
+    testBaseUrl.value = baseUrlField.value;
+    testPath.value = pathField.value;
+    testPayloadTemplate.value  = payloadTemplateField.value;
     testHeaders.value  = headersField.value;
   }
 
   // 1) Keep hidden inputs up-to-date as the user types in the visible fields
-  hostnameField.addEventListener('input', syncFields);
-  endpointField.addEventListener('input', syncFields);
-  payloadField.addEventListener('input', syncFields);
+  baseUrlField.addEventListener('input', syncFields);
+  pathField.addEventListener('input', syncFields);
+  payloadTemplateField.addEventListener('input', syncFields);
   headersField.addEventListener('input', syncFields);
 
   // 2) Initialize hidden inputs on page load, before any typing occurs

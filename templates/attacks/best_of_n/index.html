@@ -3,9 +3,8 @@
 {% block title %}Best of N Engine{% endblock %}
 
 {% block head %}
-    <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/communication_log.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/attacks/best_of_n.css') }}">
+    <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/attacks.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         /* --- Styles for Checkbox Alignment --- */
@@ -63,15 +62,15 @@
                   data-details-url-base="{{ url_for('best_of_n_bp.endpoint_details', endpoint_id=999999) }}"> 
                                                                                 <option value="">--Select Endpoint--</option>
               {% for ep in endpoints %}
-                <option value="{{ ep.id }}">{{ ep.name }} ({{ ep.hostname }}{{ ep.endpoint }})</option>
+                <option value="{{ ep.id }}">{{ ep.name }} ({{ ep.base_url }}{{ ep.path }})</option>
               {% endfor %}
           </select>
         </div>
 
         <input type="hidden" name="ep_name" id="hidden_ep_name">
-        <input type="hidden" name="ep_hostname" id="hidden_ep_hostname">
-        <input type="hidden" name="ep_endpoint" id="hidden_ep_endpoint">
-        <input type="hidden" name="ep_payload" id="hidden_ep_payload">
+        <input type="hidden" name="ep_base_url" id="hidden_ep_base_url">
+        <input type="hidden" name="ep_path" id="hidden_ep_path">
+        <input type="hidden" name="ep_payload_template" id="hidden_ep_payload_template">
         <div class="form-group">
           <label for="num_samples">Number of Permutations (N)</label>
           <input type="number" name="num_samples" id="num_samples" value="10" min="1">
@@ -117,14 +116,14 @@
          <div class="form-group" style="display: none;"> <label for="ep_name_input">Name:</label>
            <input type="text" id="ep_name_input" class="endpoint-input">
          </div>
-         <div class="form-group" style="display: none;"> <label for="ep_hostname_input">Hostname:</label>
-           <input type="text" id="ep_hostname_input" class="endpoint-input">
+         <div class="form-group" style="display: none;"> <label for="ep_base_url_input">Base URL:</label>
+           <input type="text" id="ep_base_url_input" class="endpoint-input">
          </div>
-         <div class="form-group" style="display: none;"> <label for="ep_endpoint_input">Endpoint Path:</label>
-           <input type="text" id="ep_endpoint_input" class="endpoint-input">
+         <div class="form-group" style="display: none;"> <label for="ep_path_input">Path:</label>
+           <input type="text" id="ep_path_input" class="endpoint-input">
          </div>
-         <div class="form-group" style="display: none;"> <label for="ep_payload_input">Payload Template:</label>
-           <textarea id="ep_payload_input" class="endpoint-input" rows="10"></textarea> </div>
+         <div class="form-group" style="display: none;"> <label for="ep_payload_template_input">Payload Template:</label>
+           <textarea id="ep_payload_template_input" class="endpoint-input" rows="10"></textarea> </div>
       </div>
     </div>
   </div>

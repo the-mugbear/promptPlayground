@@ -25,7 +25,7 @@ def update_endpoint_field(endpoint_id):
     Update a single field of an endpoint.
     """
     # Add 'method' to this list of allowed fields.
-    allowed_fields = ['name', 'hostname', 'endpoint', 'http_payload', 'method']
+    allowed_fields = ['name', 'base_url', 'path', 'method']
     
     endpoint = Endpoint.query.get_or_404(endpoint_id)
     data = request.get_json()
@@ -149,6 +149,6 @@ def get_endpoint_details(endpoint_id):
     return jsonify({
         # Format the headers as a nicely indented JSON string for the textarea
         'headers': json.dumps(headers_dict, indent=2) if headers_dict else '{}',
-        # Provide the default payload, or an empty JSON object string
-        'payload': endpoint.http_payload or '{}'
+        # Provide the default payload template, or an empty JSON object string
+        'payload': endpoint.payload_template.template if endpoint.payload_template else '{}'
     })
