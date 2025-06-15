@@ -6,6 +6,7 @@ from models.model_APIChain import APIChain, APIChainStep
 from models import Endpoint
 from services.common.templating_service import get_template_variables
 from extensions import db
+from sqlalchemy import func
 
 from . import chains_bp
 
@@ -13,10 +14,20 @@ from . import chains_bp
 @login_required
 def list_chains():
     """
-    Renders the page that lists all API Chains.
+    Renders the page that lists all API Chains with their step counts
+    in an optimized query.
     """
-    chains = APIChain.query.order_by(APIChain.name).all()
-    return render_template('chains/list_chains.html', chains=chains, title="API Chains")
+    # This query efficiently joins the chains with their steps and counts them
+    # in a single database request, avoiding the N+1 query problem.
+    chains_with_step_counts = db.session.query(
+        APIChain,
+        func.count(APIChainStep.id).label('step_count')
+    ).outerjoin(APIChainStep, APIChain.id == APIChainStep.chain_id)\
+    .group_by(APIChain.id)\
+    .order_by(APIChain.name)\
+    .all()
+
+    return render_template('chains/list_chains.html', chains_data=chains_with_step_counts, title="API Chains")
 
 @chains_bp.route('/create', methods=['GET', 'POST'])
 @login_required
@@ -53,13 +64,26 @@ def chain_details_view(chain_id):
     sorted_steps = sorted(chain.steps, key=lambda s: s.step_order)
 
     for step in sorted_steps:
-        payload_vars = get_template_variables(step.endpoint.http_payload or '')
+        # --- CORRECTED LOGIC ---
+
+        # 1. Determine the correct PAYLOAD template to parse.
+        #    Use the step's own payload if it exists, otherwise fall back to the endpoint's default.
+        payload_template_to_parse = step.payload if step.payload is not None else step.endpoint.http_payload
+
+        # 2. Determine the correct HEADERS template to parse.
+        #    Use the step's own headers if they exist, otherwise build them from the endpoint's defaults.
+        if step.headers is not None:
+            headers_template_to_parse = step.headers
+        else:
+            # The endpoint's headers are a list of objects; build a JSON string from them.
+            headers_dict = {h.key: h.value for h in step.endpoint.headers}
+            headers_template_to_parse = json.dumps(headers_dict)
+
+        # 3. Parse the chosen templates to find the input variables.
+        payload_vars = get_template_variables(payload_template_to_parse or '')
+        header_vars = get_template_variables(headers_template_to_parse or '')
         
-        # Headers on the endpoint are a list of objects, so we build a template string
-        header_template_str = json.dumps({h.key: h.value for h in step.endpoint.headers})
-        header_vars = get_template_variables(header_template_str)
-        
-        # Produced variables are still on the step itself
+        # 4. Get the output variables from the step's rules (this was already correct).
         produced_vars = {rule.get('variable_name') for rule in (step.data_extraction_rules or []) if rule.get('variable_name')}
         
         processed_steps.append({
@@ -91,7 +115,7 @@ def add_step(chain_id):
     if form.validate_on_submit():
         new_step = APIChainStep(
             chain_id=chain.id,
-            step_order=len(chain.steps) + 1,
+            step_order=chain.steps.count() + 1,
             name=form.name.data,
             endpoint_id=form.endpoint.data,
             headers=form.headers.data,
@@ -130,6 +154,7 @@ def edit_step(chain_id, step_id):
         step.endpoint_id = form.endpoint.data
         step.headers = form.headers.data
         step.payload = form.payload.data
+
         try:
             step.data_extraction_rules = json.loads(form.data_extraction_rules.data or '[]')
             db.session.commit()
@@ -140,7 +165,10 @@ def edit_step(chain_id, step_id):
     
     # For GET request, pre-populate the text area with formatted JSON
     if request.method == 'GET':
-        form.endpoint.data = step.endpoint_id
+        form.name.data = step.name
+        form.endpoint.data = step.endpoint_id # Set the dropdown to the correct endpoint
+        form.payload.data = step.payload
+        form.headers.data = step.headers
         if step.data_extraction_rules:
             form.data_extraction_rules.data = json.dumps(step.data_extraction_rules, indent=2)
 

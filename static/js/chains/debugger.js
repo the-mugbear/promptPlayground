@@ -89,9 +89,10 @@ document.addEventListener('DOMContentLoaded', function() {
             currentStepElement.classList.add('success');
             context = { ...context, ...result.new_context_variables };
             
-            prettyPrintJson(lastRequestEl, result.request.payload);
-            responseStatusEl.textContent = result.response.status_code;
-            prettyPrintJson(lastResponseEl, result.response.body);
+            prettyPrintJson(document.getElementById('last-request-template'), result.request.payload_template);
+            prettyPrintJson(document.getElementById('last-request'), result.request.payload);
+            document.getElementById('response-status-result').textContent = result.response.status_code;
+            prettyPrintJson(document.getElementById('last-response'), result.response.body);
             
             // Move to the next step
             currentStepIndex++;

@@ -3,34 +3,49 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block head %}
+  {{ super() }}
+  {# Link to the stylesheets needed for our custom theme and forms #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/chains/details.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header">
-                    <h3>{{ title }}</h3>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('chains_bp.create_chain') }}" novalidate>
-                        {{ form.hidden_tag() }}
+<div class="container">
 
-                        <div class="mb-3">
-                            {{ render_field(form.name, class="form-control") }}
-                        </div>
-
-                        <div class="mb-3">
-                            {{ render_field(form.description, class="form-control") }}
-                        </div>
-
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{{ url_for('chains_bp.list_chains') }}" class="btn btn-secondary me-md-2">Cancel</a>
-                            {{ form.submit(class="btn btn-primary") }}
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+  <header class="page-header">
+    <div>
+        <h1 class="page-title">{{ title }}</h1>
+        <p class="page-subtitle">Define a new multi-step workflow for your API requests.</p>
     </div>
+  </header>
+
+  <div class="content-card">
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('chains_bp.create_chain') }}" class="form-grid" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div class="form-group full-width">
+            {{ render_field(form.name, placeholder="e.g., User Onboarding & Welcome Email") }}
+        </div>
+        
+        <div class="form-group full-width">
+            {{ render_field(form.description, rows=4, placeholder="A brief summary of what this chain accomplishes.") }}
+        </div>
+
+        <div class="form-actions-full">
+            <a href="{{ url_for('chains_bp.list_chains') }}" class="btn btn-secondary">
+                <i class="fas fa-times fa-fw"></i>
+                <span class="button-text">Cancel</span>
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-plus fa-fw"></i>
+                <span class="button-text">Create Chain</span>
+            </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}

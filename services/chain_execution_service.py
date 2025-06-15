@@ -201,11 +201,11 @@ class APIChainExecutor:
                     'url': f"{step.endpoint.hostname.rstrip('/')}/{step.endpoint.endpoint.lstrip('/')}",
                     'headers': rendered_headers_dict,
                     'payload': rendered_payload,
+                    # --- ADD THESE LINES ---
+                    'headers_template': headers_template,
+                    'payload_template': payload_template
                 },
-                'response': {
-                    'status_code': response_data.get('status_code'),
-                    'headers': response_data.get('response_headers'),
-                    'body': response_data.get('response_body'),
+                'response': { #...
                 },
                 'new_context_variables': new_context_variables
             }
