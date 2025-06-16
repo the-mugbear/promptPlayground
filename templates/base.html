@@ -91,6 +91,16 @@
                     </ul>
                 </li>
 
+                <li class="dropdown {% if request.endpoint and request.endpoint.startswith('prompt_filter_bp') %}active{% endif %}">
+                    <a href="#">Utilities</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('prompt_filter_bp.create_prompt_filter') }}">Create Prompt Filter</a></li>
+                        <li><a href="{{ url_for('prompt_filter_bp.list_prompt_filters') }}">View Prompt Filters</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a href="{{ url_for('utils_bp.risk_calculator') }}">Risk Calculator</a></li>
+                    </ul>
+                </li>
+
                 <li
                     class="dropdown {% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
                     <a href="#">Reports</a>

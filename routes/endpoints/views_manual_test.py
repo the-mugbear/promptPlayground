@@ -45,14 +45,20 @@ def manual_test():
 
 
     final_payload = tpl.replace("{{INJECT_PROMPT}}", transformed_repl_value)
-    result = execute_api_request(host, path, final_payload, assembled_hdrs)
+    result = execute_api_request(
+        method="POST",  # Default to POST for manual testing
+        hostname_url=host,
+        endpoint_path=path,
+        raw_headers_or_dict=assembled_hdrs,
+        http_payload_as_string=final_payload
+    )
 
     rec = ManualTestRecord(
         hostname=host,
         endpoint=path,
         raw_headers=assembled_hdrs,
         payload_sent=final_payload,
-        response_data=result.get("response_text"),
+        response_data=result.get("response_body"),
         # status_code=result.get("status_code") # Consider adding if model supports
     )
     db.session.add(rec)

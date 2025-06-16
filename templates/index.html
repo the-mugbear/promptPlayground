@@ -2,170 +2,636 @@
 
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* Ensure header key/value pairs are side by side */
-    .headers-container .header-row {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
-    }
-    .headers-container .header-row input[type="text"] {
-      flex: 1;
+    /* Dashboard Layout */
+    .dashboard-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
     }
 
-    /* Dashboard styles */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
+    .welcome-banner {
+      background: linear-gradient(135deg, var(--accent-color-bg), var(--surface-color));
+      border: 1px solid var(--accent-color);
+      border-radius: var(--border-radius);
+      padding: 2rem;
       margin-bottom: 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
     }
 
-    .dashboard-card {
-      background: var(--card-bg, rgba(26, 26, 26, 0.95));
-      border: 1px solid var(--border-color, rgba(0, 255, 65, 0.4));
-      border-radius: 8px;
-      padding: 1.5rem;
-      box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
+    .welcome-banner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, transparent 30%, rgba(0, 255, 65, 0.1) 50%, transparent 70%);
+      animation: shimmer 3s infinite;
     }
 
-    .dashboard-card h2 {
-      color: var(--accent-color, #00FF41);
-      margin-bottom: 1rem;
-      font-size: 1.5rem;
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
     }
 
-    .dashboard-list {
-      list-style: none;
-      padding: 0;
+    .welcome-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .welcome-title {
+      font-size: 2.5rem;
+      margin: 0 0 0.5rem 0;
+      color: var(--accent-color);
+      text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+    }
+
+    .welcome-subtitle {
+      font-size: 1.2rem;
+      color: var(--text-muted-color);
       margin: 0;
     }
 
-    .dashboard-list li {
-      padding: 0.75rem 0;
-      border-bottom: 1px solid var(--border-color, rgba(0, 255, 65, 0.2));
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
     }
 
-    .dashboard-list li:last-child {
-      border-bottom: none;
+    .stat-card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      text-align: center;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
     }
 
-    .dashboard-list a {
-      color: var(--text-color, #eee);
-      text-decoration: none;
+    .stat-card:hover {
+      border-color: var(--accent-color);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0, 255, 65, 0.2);
+    }
+
+    .stat-icon {
+      font-size: 2.5rem;
+      color: var(--accent-color);
+      margin-bottom: 1rem;
       display: block;
-      transition: color 0.3s ease;
     }
 
-    .dashboard-list a:hover {
-      color: var(--accent-color, #00FF41);
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--text-color);
+      display: block;
+      margin-bottom: 0.5rem;
     }
 
-    .dashboard-list .meta {
+    .stat-label {
       font-size: 0.9rem;
-      color: var(--text-muted, #888);
-      margin-top: 0.25rem;
+      color: var(--text-muted-color);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    .status-badge {
-      display: inline-block;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      margin-left: 0.5rem;
+    /* Quick Actions */
+    .quick-actions {
+      margin-bottom: 2rem;
     }
 
-    .status-pending { background: #ffd700; color: #000; }
-    .status-running { background: #00bfff; color: #fff; }
-    .status-completed { background: #32cd32; color: #fff; }
-    .status-failed { background: #ff4500; color: #fff; }
-
-    /* Reference list styles */
-    .reference-item {
-      margin-bottom: 1.5rem;
-      padding: 1rem;
-      background: var(--card-bg, rgba(26, 26, 26, 0.95));
-      border: 1px solid var(--border-color, rgba(0, 255, 65, 0.2));
-      border-radius: 4px;
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
     }
 
-    .reference-item h3 {
+    .action-card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      text-decoration: none;
+      color: var(--text-color);
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .action-card:hover {
+      border-color: var(--accent-color);
+      background: var(--accent-color-bg);
+      transform: translateY(-2px);
+      text-decoration: none;
+      color: var(--text-color);
+    }
+
+    .action-icon {
+      font-size: 2rem;
+      color: var(--accent-color);
+      min-width: 3rem;
+    }
+
+    .action-content h3 {
       margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+      color: var(--accent-color);
+    }
+
+    .action-content p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-muted-color);
+    }
+
+    /* Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .dashboard-card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .dashboard-card h2 {
+      color: var(--accent-color);
+      margin: 0 0 1.5rem 0;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .dashboard-card h2 i {
       font-size: 1.2rem;
     }
 
-    .reference-item .excerpt {
-      color: var(--text-muted, #888);
-      font-size: 0.9rem;
-      margin: 0.5rem 0;
-      line-height: 1.4;
+    /* Activity Feed */
+    .activity-item {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border-color-light);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
     }
 
-    .reference-item .meta {
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-icon {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .activity-icon.success { background: rgba(50, 205, 50, 0.2); color: #32cd32; }
+    .activity-icon.warning { background: rgba(255, 165, 0, 0.2); color: #ffa500; }
+    .activity-icon.error { background: rgba(255, 69, 0, 0.2); color: #ff4500; }
+    .activity-icon.info { background: rgba(0, 191, 255, 0.2); color: #00bfff; }
+
+    .activity-content {
+      flex: 1;
+    }
+
+    .activity-title {
+      color: var(--text-color);
+      margin: 0 0 0.25rem 0;
+      font-size: 0.95rem;
+    }
+
+    .activity-meta {
+      color: var(--text-muted-color);
       font-size: 0.8rem;
-      color: var(--text-muted, #888);
     }
 
-    .reference-item .meta span {
-      margin-right: 1rem;
+    /* Test Run Cards */
+    .test-run-item {
+      padding: 1rem;
+      border: 1px solid var(--border-color-light);
+      border-radius: var(--border-radius-sm);
+      margin-bottom: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .test-run-item:hover {
+      border-color: var(--accent-color);
+      background: var(--accent-color-bg);
+    }
+
+    .test-run-header {
+      display: flex;
+      justify-content: between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .test-run-name {
+      color: var(--text-color);
+      text-decoration: none;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .test-run-name:hover {
+      color: var(--accent-color);
+      text-decoration: none;
+    }
+
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-not_started { background: rgba(128, 128, 128, 0.2); color: #888; }
+    .status-pending { background: rgba(255, 215, 0, 0.2); color: #ffd700; }
+    .status-running { 
+      background: rgba(0, 191, 255, 0.2); 
+      color: #00bfff;
+      animation: pulse 2s infinite;
+    }
+    .status-completed { background: rgba(50, 205, 50, 0.2); color: #32cd32; }
+    .status-failed { background: rgba(255, 69, 0, 0.2); color: #ff4500; }
+    .status-cancelled { background: rgba(128, 128, 128, 0.2); color: #888; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .test-run-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted-color);
+      display: flex;
+      gap: 1rem;
+    }
+
+    .progress-mini {
+      width: 100%;
+      height: 4px;
+      background: var(--border-color);
+      border-radius: 2px;
+      margin-top: 0.5rem;
+      overflow: hidden;
+    }
+
+    .progress-mini-fill {
+      height: 100%;
+      background: var(--accent-color);
+      transition: width 0.3s ease;
+    }
+
+    /* Empty States */
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted-color);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .empty-state p {
+      margin: 0.5rem 0;
+    }
+
+    .empty-state a {
+      color: var(--accent-color);
+      text-decoration: none;
+    }
+
+    .empty-state a:hover {
+      text-decoration: underline;
+    }
+
+    /* Section Headers */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      color: var(--accent-color);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .view-all-link {
+      color: var(--text-muted-color);
+      text-decoration: none;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      transition: color 0.3s ease;
+    }
+
+    .view-all-link:hover {
+      color: var(--accent-color);
+      text-decoration: none;
     }
   </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="dashboard-container">
   {% if current_user.is_authenticated %}
+    
+    <!-- Welcome Banner -->
+    <div class="welcome-banner">
+      <div class="welcome-content">
+        <h1 class="welcome-title">Welcome back, {{ current_user.username }}!</h1>
+        <p class="welcome-subtitle">Your AI Security Testing Platform</p>
+      </div>
+    </div>
+
+    <!-- Statistics Overview -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <i class="fas fa-vial stat-icon"></i>
+        <span class="stat-number">{{ stats.total_test_runs|default(0) }}</span>
+        <span class="stat-label">Test Runs</span>
+      </div>
+      <div class="stat-card">
+        <i class="fas fa-layer-group stat-icon"></i>
+        <span class="stat-number">{{ stats.total_test_suites|default(0) }}</span>
+        <span class="stat-label">Test Suites</span>
+      </div>
+      <div class="stat-card">
+        <i class="fas fa-plug stat-icon"></i>
+        <span class="stat-number">{{ stats.total_endpoints|default(0) }}</span>
+        <span class="stat-label">Endpoints</span>
+      </div>
+      <div class="stat-card">
+        <i class="fas fa-shield-alt stat-icon"></i>
+        <span class="stat-number">{{ stats.tests_passed|default(0) }}</span>
+        <span class="stat-label">Tests Passed</span>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <section class="quick-actions">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-bolt"></i>
+          Quick Actions
+        </h2>
+      </div>
+      <div class="actions-grid">
+        <a href="{{ url_for('test_runs_bp.create_test_run_form') }}" class="action-card">
+          <i class="fas fa-plus-circle action-icon"></i>
+          <div class="action-content">
+            <h3>Create Test Run</h3>
+            <p>Start a new security test against your endpoints</p>
+          </div>
+        </a>
+        <a href="{{ url_for('endpoints_bp.create_endpoint') }}" class="action-card">
+          <i class="fas fa-plug action-icon"></i>
+          <div class="action-content">
+            <h3>Add Endpoint</h3>
+            <p>Register a new API endpoint for testing</p>
+          </div>
+        </a>
+        <a href="{{ url_for('test_suites_bp.create_test_suite_form') }}" class="action-card">
+          <i class="fas fa-layer-group action-icon"></i>
+          <div class="action-content">
+            <h3>Create Suite</h3>
+            <p>Build a new collection of test cases</p>
+          </div>
+        </a>
+        <a href="{{ url_for('best_of_n_bp.best_of_n_index') }}" class="action-card">
+          <i class="fas fa-magic action-icon"></i>
+          <div class="action-content">
+            <h3>Best of N Attack</h3>
+            <p>Generate and test prompt variations</p>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- Main Dashboard Grid -->
     <div class="dashboard-grid">
-      <!-- User's Test Runs -->
+      
+      <!-- Active Test Runs -->
       <div class="dashboard-card">
-        <h2>Your Recent Test Runs</h2>
-        {% if user_test_runs %}
-          <ul class="dashboard-list">
-            {% for run in user_test_runs %}
-              <li>
-                <a href="{{ url_for('test_runs_bp.view_test_run', run_id=run.id) }}">
-                  {{ run.name }}
-                  <span class="status-badge status-{{ run.status }}">{{ run.status }}</span>
+        <h2><i class="fas fa-running"></i> Active Test Runs</h2>
+        {% if active_test_runs %}
+          {% for run in active_test_runs %}
+            <div class="test-run-item">
+              <div class="test-run-header">
+                <a href="{{ url_for('test_runs_bp.view_test_run', run_id=run.id) }}" class="test-run-name">
+                  {{ run.name or 'Test Run #' + run.id|string }}
                 </a>
-                <div class="meta">
-                  Created: {{ run.created_at.strftime('%Y-%m-%d %H:%M') }}
+                <span class="status-badge status-{{ run.status }}">
+                  {% if run.status == 'running' %}<i class="fas fa-spinner fa-spin"></i>{% endif %}
+                  {{ run.status.replace('_', ' ').title() }}
+                </span>
+              </div>
+              <div class="test-run-meta">
+                <span><i class="fas fa-target"></i> {{ run.get_target_name() }}</span>
+                <span><i class="fas fa-clock"></i> {{ run.created_at.strftime('%m/%d %H:%M') }}</span>
+              </div>
+              {% if run.progress_total > 0 %}
+                <div class="progress-mini">
+                  <div class="progress-mini-fill" style="width: {{ run.progress_percent }}%"></div>
                 </div>
-              </li>
-            {% endfor %}
-          </ul>
+              {% endif %}
+            </div>
+          {% endfor %}
         {% else %}
-          <p>No test runs found. <a href="{{ url_for('test_runs_bp.create_test_run_form') }}">Create your first test run</a></p>
+          <div class="empty-state">
+            <i class="fas fa-play-circle"></i>
+            <p>No active test runs</p>
+            <p><a href="{{ url_for('test_runs_bp.create_test_run_form') }}">Start your first test</a></p>
+          </div>
         {% endif %}
       </div>
 
-      <!-- Recent Test Suites -->
+      <!-- Recent Activity -->
       <div class="dashboard-card">
-        <h2>Recent Test Suites</h2>
-        {% if recent_test_suites %}
-          <ul class="dashboard-list">
-            {% for suite in recent_test_suites %}
-              <li>
-                <a href="{{ url_for('test_suites_bp.test_suite_details', suite_id=suite.id) }}">
-                  {{ suite.description }}
-                </a>
-                <div class="meta">
-                  Created: {{ suite.created_at.strftime('%Y-%m-%d %H:%M') }}
-                  {% if suite.user %}
-                    by {{ suite.user.username }}
-                  {% endif %}
-                </div>
-              </li>
-            {% endfor %}
-          </ul>
+        <h2><i class="fas fa-history"></i> Recent Activity</h2>
+        {% if recent_activity %}
+          {% for activity in recent_activity %}
+            <div class="activity-item">
+              <div class="activity-icon {{ activity.type }}">
+                <i class="{{ activity.icon }}"></i>
+              </div>
+              <div class="activity-content">
+                <div class="activity-title">{{ activity.title }}</div>
+                <div class="activity-meta">{{ activity.time_ago }}</div>
+              </div>
+            </div>
+          {% endfor %}
         {% else %}
-          <p>No test suites found.</p>
+          <div class="empty-state">
+            <i class="fas fa-bell"></i>
+            <p>No recent activity</p>
+          </div>
         {% endif %}
+      </div>
+
+    </div>
+
+    <!-- Additional Dashboard Grid -->
+    <div class="dashboard-grid">
+      
+      <!-- Recent Test Runs -->
+      <div class="dashboard-card">
+        <div class="section-header">
+          <h2><i class="fas fa-vial"></i> Recent Test Runs</h2>
+          <a href="{{ url_for('test_runs_bp.list_test_runs') }}" class="view-all-link">
+            View All <i class="fas fa-arrow-right"></i>
+          </a>
+        </div>
+        {% if user_test_runs %}
+          {% for run in user_test_runs %}
+            <div class="test-run-item">
+              <div class="test-run-header">
+                <a href="{{ url_for('test_runs_bp.view_test_run', run_id=run.id) }}" class="test-run-name">
+                  {{ run.name or 'Test Run #' + run.id|string }}
+                </a>
+                <span class="status-badge status-{{ run.status }}">
+                  {{ run.status.replace('_', ' ').title() }}
+                </span>
+              </div>
+              <div class="test-run-meta">
+                <span><i class="fas fa-target"></i> {{ run.get_target_description() }}</span>
+                <span><i class="fas fa-calendar"></i> {{ run.created_at.strftime('%m/%d %H:%M') }}</span>
+                {% if run.iterations > 1 %}
+                  <span><i class="fas fa-redo"></i> {{ run.iterations }}x</span>
+                {% endif %}
+              </div>
+              {% if run.progress_total > 0 %}
+                <div class="progress-mini">
+                  <div class="progress-mini-fill" style="width: {{ run.progress_percent }}%"></div>
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <i class="fas fa-vial"></i>
+            <p>No test runs yet</p>
+            <p><a href="{{ url_for('test_runs_bp.create_test_run_form') }}">Create your first test run</a></p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Test Suites & Resources -->
+      <div class="dashboard-card">
+        <div class="section-header">
+          <h2><i class="fas fa-layer-group"></i> Your Resources</h2>
+          <a href="{{ url_for('test_suites_bp.list_test_suites') }}" class="view-all-link">
+            View All <i class="fas fa-arrow-right"></i>
+          </a>
+        </div>
+        
+        <div class="activity-item">
+          <div class="activity-icon info">
+            <i class="fas fa-layer-group"></i>
+          </div>
+          <div class="activity-content">
+            <div class="activity-title">Test Suites</div>
+            <div class="activity-meta">{{ stats.total_test_suites|default(0) }} suites available</div>
+          </div>
+        </div>
+
+        <div class="activity-item">
+          <div class="activity-icon info">
+            <i class="fas fa-plug"></i>
+          </div>
+          <div class="activity-content">
+            <div class="activity-title">API Endpoints</div>
+            <div class="activity-meta">{{ stats.total_endpoints|default(0) }} endpoints configured</div>
+          </div>
+        </div>
+
+        <div class="activity-item">
+          <div class="activity-icon info">
+            <i class="fas fa-link"></i>
+          </div>
+          <div class="activity-content">
+            <div class="activity-title">API Chains</div>
+            <div class="activity-meta">{{ stats.total_chains|default(0) }} chains available</div>
+          </div>
+        </div>
+
+        {% if recent_test_suites %}
+          <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-color-light);">
+          <div style="margin-bottom: 0.5rem; font-weight: 500; color: var(--text-color);">Recently Created:</div>
+          {% for suite in recent_test_suites[:3] %}
+            <div class="activity-item">
+              <div class="activity-icon success">
+                <i class="fas fa-plus"></i>
+              </div>
+              <div class="activity-content">
+                <div class="activity-title">
+                  <a href="{{ url_for('test_suites_bp.test_suite_details', suite_id=suite.id) }}" style="color: var(--text-color); text-decoration: none;">
+                    {{ suite.description|truncate(50) }}
+                  </a>
+                </div>
+                <div class="activity-meta">{{ suite.created_at.strftime('%m/%d at %H:%M') }}</div>
+              </div>
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+    </div>
+
+  {% else %}
+    <!-- Not authenticated - Show landing page -->
+    <div class="welcome-banner">
+      <div class="welcome-content">
+        <h1 class="welcome-title">FuzzyPrompts</h1>
+        <p class="welcome-subtitle">AI Security Testing Platform</p>
+        <a href="{{ url_for('auth_bp.login') }}" class="btn btn-primary" style="margin-top: 1rem;">
+          <i class="fas fa-sign-in-alt"></i> Sign In to Get Started
+        </a>
       </div>
     </div>
   {% endif %}
-
-  <hr>
-
 </div>
 {% endblock %}
 

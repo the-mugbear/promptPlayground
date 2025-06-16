@@ -50,3 +50,49 @@
         {% endif %}
     </div>
 {% endmacro %}
+
+{% macro render_radio_field(field, label_visible=true, class="") %}
+<div class="form-group form-group-radio mb-3">
+    {% if label_visible and field.label %}
+        <label class="form-label d-block">{{ field.label }}</label> {# Label for the whole group #}
+    {% endif %}
+    <div> {# Wrapper for radio buttons for flex layout #}
+    {% for subfield in field %}
+        <div class="form-check form-check-inline">
+            {# Be mindful if kwargs passed to render_radio_field are intended for subfields #}
+            {{ subfield(class="form-check-input " + class, **kwargs) }}
+            {{ subfield.label(class="form-check-label") }}
+        </div>
+    {% endfor %}
+    </div>
+    {% if field.errors %}
+        {% for error in field.errors %}
+            <div class="invalid-feedback d-block">
+                {{ error }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    {% if field.description %}
+        <small class="form-text text-muted">{{ field.description }}</small>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro render_select_field(field, label_visible=true, class="") %}
+<div class="form-group mb-3">
+    {% if label_visible and field.label %}
+        {{ field.label(class="form-label") }}
+    {% endif %}
+    {{ field(class="form-select " + class, **kwargs) }}
+    {% if field.errors %}
+        {% for error in field.errors %}
+            <div class="invalid-feedback d-block">
+                {{ error }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    {% if field.description %}
+        <small class="form-text text-muted">{{ field.description }}</small>
+    {% endif %}
+</div>
+{% endmacro %}

@@ -68,18 +68,18 @@ def best_of_n_index():
             endpoint.name = ep_name # Note: This doesn't save the change to DB, only uses for this request
         ep_hostname = request.args.get('ep_hostname')
         if ep_hostname:
-            endpoint.hostname = ep_hostname
+            endpoint.base_url = ep_hostname
         ep_endpoint = request.args.get('ep_endpoint')
         if ep_endpoint:
-            endpoint.endpoint = ep_endpoint
+            endpoint.path = ep_endpoint
         ep_payload = request.args.get('ep_payload')
         if ep_payload:
             endpoint.http_payload = ep_payload
 
         # Use potentially overridden values
-        hostname = endpoint.hostname
-        endpoint_path = endpoint.endpoint
-        payload_template = endpoint.http_payload
+        hostname = endpoint.base_url
+        endpoint_path = endpoint.path
+        payload_template = endpoint.payload_template.template if endpoint.payload_template else "{}"
 
         # Generate all permutations upfront (could be changed to generate on-the-fly if needed)
         permutations = generate_permutations(initial_prompt, options, num_samples)
@@ -128,8 +128,15 @@ def best_of_n_index():
                 # --- Make the HTTP request ---
                 try:
                     # Add timeout to prevent hanging indefinitely
-                    response_data = execute_api_request(hostname, endpoint_path, payload, raw_headers=raw_headers, timeout=30) 
-                    response_text = response_data.get("response_text", "No response text received.")
+                    response_data = execute_api_request(
+                        method=endpoint.method,  # Use the endpoint's configured method
+                        hostname_url=hostname,
+                        endpoint_path=endpoint_path,
+                        raw_headers_or_dict=raw_headers,
+                        http_payload_as_string=payload,
+                        timeout=30
+                    ) 
+                    response_text = response_data.get("response_body", "No response text received.")
                     is_error = False
 
                 except Exception as e:
