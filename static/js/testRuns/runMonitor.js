@@ -175,9 +175,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('execution_result_update', data => {
-        const log = document.getElementById('run-log');
-        log.insertAdjacentHTML('beforeend',
-        `<p>[… Case ${data.test_case_id} …]</p>`);
+        // Remove the old activity indicator - no more "[... Case X ...]" messages
+        
         const row = document.getElementById(`exec-${data.execution_id}`);
         if (row) {
           // Update status cell
@@ -204,6 +203,13 @@ document.addEventListener('DOMContentLoaded', () => {
             window.cumulativeChart.update();
         }
         });
+
+    // New handler for HTTP status code statistics
+    socket.on('status_code_update', data => {
+        if (data.run_id == testRunId) {
+            updateStatusCodeStats(data);
+        }
+    });
             
 
 
@@ -331,6 +337,56 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (status === 'completed' || status === 'failed' || status === 'cancelled' || status === 'not_started') {
             // No ongoing actions possible, Start button is primary
             if (startButton) startButton.disabled = false;
+        }
+    }
+
+    function updateStatusCodeStats(data) {
+        const statusCodeSection = document.getElementById('status-code-section');
+        const status2xx = document.getElementById('status-2xx');
+        const status4xx = document.getElementById('status-4xx');
+        const status5xx = document.getElementById('status-5xx');
+        const statusOther = document.getElementById('status-other');
+        const statusOtherGroup = document.getElementById('status-other-group');
+        const detailedStatusCodes = document.getElementById('detailed-status-codes');
+
+        if (!statusCodeSection || !status2xx || !status4xx || !status5xx || !statusOther || !detailedStatusCodes) {
+            console.warn('Status code UI elements not found');
+            return;
+        }
+
+        // Show the section if there are any requests
+        if (data.total_requests > 0) {
+            statusCodeSection.style.display = 'block';
+        }
+
+        // Update group counts
+        status2xx.textContent = data.status_groups['2xx'] || 0;
+        status4xx.textContent = data.status_groups['4xx'] || 0;
+        status5xx.textContent = data.status_groups['5xx'] || 0;
+        statusOther.textContent = data.status_groups['other'] || 0;
+
+        // Show/hide "Other" group if it has values
+        if ((data.status_groups['other'] || 0) > 0) {
+            statusOtherGroup.style.display = 'block';
+        } else {
+            statusOtherGroup.style.display = 'none';
+        }
+
+        // Update detailed breakdown
+        const detailedText = Object.entries(data.detailed_counts)
+            .sort(([a], [b]) => parseInt(a) - parseInt(b))
+            .map(([code, count]) => `${code}: ${count}`)
+            .join(' | ');
+        detailedStatusCodes.textContent = detailedText || 'No HTTP requests yet';
+
+        // Add visual warning for high error rates
+        const errorRate = ((data.status_groups['4xx'] || 0) + (data.status_groups['5xx'] || 0)) / data.total_requests;
+        if (errorRate > 0.5 && data.total_requests > 10) {
+            statusCodeSection.style.borderColor = '#ff6b6b';
+            statusCodeSection.style.backgroundColor = 'rgba(255, 107, 107, 0.1)';
+        } else {
+            statusCodeSection.style.borderColor = '';
+            statusCodeSection.style.backgroundColor = '';
         }
     }
 

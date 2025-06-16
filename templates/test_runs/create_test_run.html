@@ -1,170 +1,453 @@
 {% extends "base.html" %}
+{% from "partials/_formhelpers.html" import render_field %}
+
 {% block title %}Create Test Run{% endblock %}
 
 {% block head %}
+{{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
-<script>
-  // Add CSRF token to all AJAX requests
-  const csrfToken = "{{ csrf_token() }}";
-</script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-  /* Ensure header key/value pairs are side by side */
-  .headers-container .header-row {
+.target-selection {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.target-option {
+    background: var(--surface-color);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.target-option:hover {
+    border-color: var(--accent-color);
+    background: var(--surface-color-light);
+}
+
+.target-option.selected {
+    border-color: var(--accent-color);
+    background: var(--accent-color-bg);
+}
+
+.target-option input[type="radio"] {
+    display: none;
+}
+
+.target-option .icon {
+    font-size: 2rem;
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+}
+
+.target-option h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-color);
+}
+
+.target-option p {
+    margin: 0;
+    color: var(--text-muted-color);
+    font-size: 0.9rem;
+}
+
+.target-details {
+    display: none;
+    margin-top: 2rem;
+}
+
+.target-details.active {
+    display: block;
+}
+
+.preview-section {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-top: 2rem;
+}
+
+.preview-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color-light);
+}
+
+.preview-item:last-child {
+    border-bottom: none;
+}
+
+.preview-label {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.preview-value {
+    color: var(--text-muted-color);
+}
+
+.suite-selection {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+}
+
+.suite-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    background: var(--surface-color-light);
+    border-radius: var(--border-radius-sm);
+}
+
+.suite-item input[type="checkbox"] {
+    margin-right: 0.75rem;
+}
+
+/* Legacy support for existing styles */
+.headers-container .header-row {
     display: flex;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
-  }
+}
 
-  .headers-container .header-row input[type="text"] {
+.headers-container .header-row input[type="text"] {
     flex: 1;
-  }
+}
 
-  /* Styling for the transformations section (optional, can be in a separate CSS file) */
-  .transformations-group-title {
+.transformations-group-title {
     margin-top: 1rem;
     margin-bottom: 0.5rem;
     font-weight: bold;
-  }
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin: 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert-warning {
+    background: var(--warning-bg);
+    color: var(--warning-color);
+    border: 1px solid var(--warning-color);
+}
+
+.alert-danger {
+    background: var(--danger-bg);
+    color: var(--danger-color);
+    border: 1px solid var(--danger-color);
+}
 </style>
+<script>
+  const csrfToken = "{{ csrf_token() }}";
+</script>
 {% endblock %}
 
 {% block content %}
-<div class="two-column-container">
+<div class="container">
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">Create Test Run</h1>
+            <p class="page-subtitle">Configure a new security test run</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('test_runs_bp.list_test_runs') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left fa-fw"></i>
+                <span class="button-text">Back to Test Runs</span>
+            </a>
+        </div>
+    </header>
 
-  <!-- Left: Main POST form for run details + hidden suite IDs -->
-  <div class="left-card">
-    <h2>Test Run Details</h2>
     <form id="createRunForm" action="{{ url_for('test_runs_bp.create_test_run') }}" method="POST">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-
-      <!-- Run Name -->
-      <div class="form-group">
-        <label for="run_name">Run Name (optional)</label>
-        <input type="text" name="run_name" id="run_name" placeholder="e.g., All bias suites">
-      </div>
-
-      <!-- Endpoint Selection -->
-      <div class="form-group">
-        <label for="endpoint_id">Select Endpoint:</label>
-        <select name="endpoint_id" id="endpoint_id" required>
-          <option value="" selected>— select an endpoint —</option>
-          {% for endpoint in endpoints %}
-          <option value="{{ endpoint.id }}">{{ endpoint.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <!-- Prompt Filters -->
-      <div class="form-group">
-        <label for="filterSelect">Available Prompt Filters</label>
-        <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
-          <select id="filterSelect" class="form-control" style="flex:1">
-            <option value="" disabled selected>— choose a filter —</option>
-            {% for pf in prompt_filters %}
-            <option value="{{ pf.id }}">{{ pf.name }}</option>
-            {% endfor %}
-          </select>
-          <button type="button" id="addFilterBtn">Add Filter</button>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        
+        <!-- Basic Information -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-info-circle fa-fw"></i> Basic Information</h3>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="run_name">Run Name (optional)</label>
+                    <input type="text" name="run_name" id="run_name" class="form-control" placeholder="e.g., Security Test - API Endpoints">
+                </div>
+                <div class="form-group">
+                    <label for="run_description">Description (optional)</label>
+                    <textarea name="run_description" id="run_description" class="form-control" rows="3" placeholder="Describe the purpose of this test run..."></textarea>
+                </div>
+            </div>
         </div>
-      </div>
 
-      <!-- Selected Prompt Filters -->
-      <div class="form-group">
-        <label>Selected Prompt Filters</label>
-        <ul id="selectedFiltersList" class="selected-suites-list">
-          <!-- filled by JS -->
-        </ul>
-        <!-- Hidden inputs go here -->
-        <div id="hiddenFiltersContainer"></div>
-      </div>
+        <!-- Target Selection -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-target fa-fw"></i> Test Target</h3>
+            </div>
+            <div class="card-body">
+                <div class="target-selection">
+                    <label class="target-option" for="target_endpoint">
+                        <input type="radio" name="target_type" id="target_endpoint" value="endpoint" checked>
+                        <div class="icon">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                        <h3>API Endpoint</h3>
+                        <p>Test a single API endpoint with various prompts and transformations</p>
+                    </label>
+                    
+                    <label class="target-option" for="target_chain">
+                        <input type="radio" name="target_type" id="target_chain" value="chain">
+                        <div class="icon">
+                            <i class="fas fa-link"></i>
+                        </div>
+                        <h3>API Chain</h3>
+                        <p>Test a sequence of connected API calls with data flow between steps</p>
+                    </label>
+                </div>
 
+                <!-- Endpoint Selection -->
+                <div id="endpoint-details" class="target-details active">
+                    <div class="form-group">
+                        <label for="endpoint_id">Select Endpoint:</label>
+                        <select name="endpoint_id" id="endpoint_id" class="form-select">
+                            <option value="">— select an endpoint —</option>
+                            {% for endpoint in endpoints %}
+                            <option value="{{ endpoint.id }}">{{ endpoint.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="endpoint-preview" class="preview-section" style="display: none;">
+                        <h4>Endpoint Details</h4>
+                        <div class="preview-content">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
 
-      <!-- Selected Test Suites Display -->
-      <div class="form-group">
-        <label>Selected Test Suites:</label>
-        <ul id="selectedSuitesList" class="selected-suites-list">
-          {# Populated via JS #}
-        </ul>
-      </div>
-
-      <div class="form-group">
-        <h3 class="transformations-group-title">Apply Transformations to this Test Run</h3>
-        {% include 'partials/_transformations.html' %}
-      </div>
-      <div class="form-group">
-        <label>Selected Transformations (in order):</label>
-        <ol id="selectedTransformsOrder"></ol>
-      </div>
-
-      <!-- HTTP Payload Override -->
-      <div class="form-group">
-        <label for="endpointPayload">HTTP Payload Override (optional)</label>
-        <textarea id="endpointPayload" name="endpointPayload" rows="16"
-          placeholder="Useful for modifying attributes like chat ID/channel but do not remove the INJECT_PROMPT token as this will cause test execution failure!"></textarea>
-      </div>
-
-      <!-- Headers -->
-      <div class="form-group">
-        <label>Headers</label>
-        <div class="headers-container" id="headersContainer">
-          {# Dynamically filled with key/value inputs #}
+                <!-- Chain Selection -->
+                <div id="chain-details" class="target-details">
+                    <div class="form-group">
+                        <label for="chain_id">Select Chain:</label>
+                        <select name="chain_id" id="chain_id" class="form-select">
+                            <option value="">— select a chain —</option>
+                            {% for chain in chains %}
+                            <option value="{{ chain.id }}">{{ chain.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="chain-preview" class="preview-section" style="display: none;">
+                        <h4>Chain Details</h4>
+                        <div class="preview-content">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
 
-      <!-- Hidden Inputs for Suite IDs -->
-      <div id="hiddenSuitesContainer"></div>
+        <!-- Test Configuration -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-cogs fa-fw"></i> Test Configuration</h3>
+            </div>
+            <div class="card-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="iterations">Iterations:</label>
+                        <input type="number" name="iterations" id="iterations" class="form-control" min="1" max="10" value="1">
+                        <small class="form-text">Number of times to run each test case</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="delay_between_requests">Delay Between Requests (seconds):</label>
+                        <input type="number" name="delay_between_requests" id="delay_between_requests" class="form-control" step="0.1" min="0" value="0">
+                        <small class="form-text">Delay between each request to avoid rate limiting</small>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="run_serially" id="run_serially"> Run tests sequentially
+                        </label>
+                        <small class="form-text">When enabled, tests run one at a time instead of in parallel</small>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-      <button type="submit">Create Test Run</button>
+        <!-- Test Suites and Filters -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-list fa-fw"></i> Test Suites & Filters</h3>
+            </div>
+            <div class="card-body">
+                <!-- Prompt Filters -->
+                <div class="form-group">
+                    <label for="filterSelect">Available Prompt Filters</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                        <select id="filterSelect" class="form-control" style="flex:1">
+                            <option value="" disabled selected>— choose a filter —</option>
+                            {% for pf in prompt_filters %}
+                            <option value="{{ pf.id }}">{{ pf.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" id="addFilterBtn" class="btn btn-secondary">Add Filter</button>
+                    </div>
+                </div>
+
+                <!-- Selected Prompt Filters -->
+                <div class="form-group">
+                    <label>Selected Prompt Filters</label>
+                    <ul id="selectedFiltersList" class="selected-suites-list">
+                        <!-- filled by JS -->
+                    </ul>
+                    <!-- Hidden inputs go here -->
+                    <div id="hiddenFiltersContainer"></div>
+                </div>
+
+                <!-- Selected Test Suites Display -->
+                <div class="form-group">
+                    <label>Selected Test Suites:</label>
+                    <ul id="selectedSuitesList" class="selected-suites-list">
+                        {# Populated via JS #}
+                    </ul>
+                    <!-- Hidden Inputs for Suite IDs -->
+                    <div id="hiddenSuitesContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Configuration -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-magic fa-fw"></i> Advanced Configuration</h3>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <h4 class="transformations-group-title">Apply Transformations to this Test Run</h4>
+                    {% include 'partials/_transformations.html' %}
+                </div>
+                <div class="form-group">
+                    <label>Selected Transformations (in order):</label>
+                    <ol id="selectedTransformsOrder"></ol>
+                </div>
+
+
+                <!-- Headers -->
+                <div class="form-group">
+                    <label>Headers</label>
+                    <div class="headers-container" id="headersContainer">
+                        {# Dynamically filled with key/value inputs #}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <a href="{{ url_for('test_runs_bp.list_test_runs') }}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Create Test Run
+            </button>
+        </div>
     </form>
-  </div>
 
-  <!-- Right: GET form for searching test suites + checkboxes + "Add selected" -->
-  <div class="right-card">
-    <h2>Find Test Suites</h2>
-
-    <!-- Search Form -->
-    <form class="search-form" method="GET" action="{{ url_for('test_runs_bp.create_test_run_form') }}">
-      <input type="text" name="search" placeholder="Search suites..." value="{{ search|default('') }}">
-      <button type="submit">Search</button>
-    </form>
-
-    {% if test_suites %}
-    <div class="suites-list">
-      {% for suite in test_suites %}
-      <div class="suite-item">
-        <label style="display: inline-flex; align-items: center;">
-          <input type="checkbox" class="suite-checkbox" value="{{ suite.id }}"
-            data-description="{{ suite.description }}">
-          {{ suite.description }}
-        </label>
-      </div>
-      {% endfor %}
+    <!-- Test Case Preview -->
+    <div class="content-card" id="test-case-preview" style="display: none;">
+        <div class="card-header">
+            <h3><i class="fas fa-eye fa-fw"></i> Test Case Preview</h3>
+        </div>
+        <div class="card-body">
+            <div class="preview-section">
+                <h4>Random Test Case from Selected Suites</h4>
+                <div id="sample-test-case">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                
+                <h4 style="margin-top: 2rem;">Transformation Impact</h4>
+                <div id="transformation-impact">
+                    <div class="preview-item">
+                        <span class="preview-label">Original:</span>
+                        <div class="preview-value" id="original-prompt" style="font-family: monospace; background: var(--surface-color); padding: 1rem; border-radius: 4px; margin-top: 0.5rem;">
+                            <!-- Original prompt will appear here -->
+                        </div>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">After Transformations:</span>
+                        <div class="preview-value" id="transformed-prompt" style="font-family: monospace; background: var(--accent-color-bg); padding: 1rem; border-radius: 4px; margin-top: 0.5rem;">
+                            <!-- Transformed prompt will appear here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <button type="button" id="addSelectedBtn">Add Selected Suites</button>
 
-    <!-- Pagination -->
-    {% if pagination.pages > 1 %}
-    <div class="pagination-links" style="margin-top: 1rem;">
-      {% if pagination.has_prev %}
-      <a href="{{ url_for('test_runs_bp.create_test_run_form', page=pagination.prev_num, search=search) }}">Previous</a>
-      {% endif %}
-      {% for p in range(1, pagination.pages+1) %}
-      {% if p == pagination.page %}
-      <strong>{{ p }}</strong>
-      {% else %}
-      <a href="{{ url_for('test_runs_bp.create_test_run_form', page=p, search=search) }}">{{ p }}</a>
-      {% endif %}
-      {% endfor %}
-      {% if pagination.has_next %}
-      <a href="{{ url_for('test_runs_bp.create_test_run_form', page=pagination.next_num, search=search) }}">Next</a>
-      {% endif %}
+    <!-- Test Suite Selection Panel -->
+    <div class="content-card">
+        <div class="card-header">
+            <h3><i class="fas fa-search fa-fw"></i> Find Test Suites</h3>
+        </div>
+        <div class="card-body">
+            <!-- Search Form -->
+            <form class="search-form" method="GET" action="{{ url_for('test_runs_bp.create_test_run_form') }}">
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <input type="text" name="search" class="form-control" placeholder="Search suites..." value="{{ search|default('') }}">
+                    <button type="submit" class="btn btn-secondary">Search</button>
+                </div>
+            </form>
+
+            {% if test_suites %}
+            <div class="suites-list">
+                {% for suite in test_suites %}
+                <div class="suite-item">
+                    <label style="display: inline-flex; align-items: center;">
+                        <input type="checkbox" class="suite-checkbox" value="{{ suite.id }}"
+                            data-description="{{ suite.description }}">
+                        {{ suite.description }}
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" id="addSelectedBtn" class="btn btn-primary">Add Selected Suites</button>
+
+            <!-- Pagination -->
+            {% if pagination.pages > 1 %}
+            <div class="pagination-links" style="margin-top: 1rem;">
+                {% if pagination.has_prev %}
+                <a href="{{ url_for('test_runs_bp.create_test_run_form', page=pagination.prev_num, search=search) }}" class="btn btn-ghost">Previous</a>
+                {% endif %}
+                {% for p in range(1, pagination.pages+1) %}
+                {% if p == pagination.page %}
+                <span class="btn btn-primary">{{ p }}</span>
+                {% else %}
+                <a href="{{ url_for('test_runs_bp.create_test_run_form', page=p, search=search) }}" class="btn btn-ghost">{{ p }}</a>
+                {% endif %}
+                {% endfor %}
+                {% if pagination.has_next %}
+                <a href="{{ url_for('test_runs_bp.create_test_run_form', page=pagination.next_num, search=search) }}" class="btn btn-ghost">Next</a>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% else %}
+            <p>No test suites found.</p>
+            {% endif %}
+        </div>
     </div>
-    {% endif %}
-    {% else %}
-    <p>No test suites found.</p>
-    {% endif %}
-  </div>
-
 </div>
 {% endblock %}
 
@@ -176,42 +459,429 @@
 <script src="{{ url_for('static', filename='js/testRuns/findReplace.js') }}"></script>
 <script src="{{ url_for('static', filename='js/common/transformerSelect.js') }}"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
+    // Target type selection
+    const targetRadios = document.querySelectorAll('input[name="target_type"]');
+    const endpointDetails = document.getElementById('endpoint-details');
+    const chainDetails = document.getElementById('chain-details');
+    const endpointSelect = document.getElementById('endpoint_id');
+    const chainSelect = document.getElementById('chain_id');
+    
+    // Handle target type selection
+    targetRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            // Update visual selection
+            document.querySelectorAll('.target-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            this.closest('.target-option').classList.add('selected');
+            
+            // Show/hide details
+            if (this.value === 'endpoint') {
+                endpointDetails.classList.add('active');
+                chainDetails.classList.remove('active');
+            } else if (this.value === 'chain') {
+                chainDetails.classList.add('active');
+                endpointDetails.classList.remove('active');
+            }
+        });
+    });
+    
+    // Handle endpoint selection for preview
+    if (endpointSelect) {
+        endpointSelect.addEventListener('change', function() {
+            if (this.value) {
+                loadEndpointPreview(this.value);
+            } else {
+                document.getElementById('endpoint-preview').style.display = 'none';
+            }
+        });
+    }
+    
+    // Handle chain selection for preview
+    if (chainSelect) {
+        chainSelect.addEventListener('change', function() {
+            if (this.value) {
+                loadChainPreview(this.value);
+            } else {
+                document.getElementById('chain-preview').style.display = 'none';
+            }
+        });
+    }
+    
+    // Load endpoint details
+    function loadEndpointPreview(endpointId) {
+        fetch(`/endpoints/${endpointId}/details`)
+            .then(response => response.json())
+            .then(data => {
+                const preview = document.getElementById('endpoint-preview');
+                const content = preview.querySelector('.preview-content');
+                
+                content.innerHTML = `
+                    <div class="preview-item">
+                        <span class="preview-label">Name:</span>
+                        <span class="preview-value">${data.name}</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">Method:</span>
+                        <span class="preview-value">${data.method}</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">URL:</span>
+                        <span class="preview-value">${data.base_url}${data.path}</span>
+                    </div>
+                `;
+                
+                preview.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Failed to load endpoint details:', error);
+            });
+    }
+    
+    // Load chain details
+    function loadChainPreview(chainId) {
+        fetch(`/api/chains/${chainId}/details`)
+            .then(response => response.json())
+            .then(data => {
+                const preview = document.getElementById('chain-preview');
+                const content = preview.querySelector('.preview-content');
+                
+                content.innerHTML = `
+                    <div class="preview-item">
+                        <span class="preview-label">Name:</span>
+                        <span class="preview-value">${data.name}</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">Description:</span>
+                        <span class="preview-value">${data.description || 'N/A'}</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">Steps:</span>
+                        <span class="preview-value">${data.steps.length} steps</span>
+                    </div>
+                `;
+                
+                preview.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Failed to load chain details:', error);
+            });
+    }
+    
+    // Initialize with default selection
+    const defaultTarget = document.querySelector('input[name="target_type"]:checked');
+    if (defaultTarget) {
+        defaultTarget.dispatchEvent(new Event('change'));
+    }
+    
+    // Prompt filter functionality
     const select = document.getElementById('filterSelect');
     const addBtn = document.getElementById('addFilterBtn');
     const list = document.getElementById('selectedFiltersList');
     const hiddenContainer = document.getElementById('hiddenFiltersContainer');
 
-    addBtn.addEventListener('click', () => {
-      const pfId = select.value;
-      const pfName = select.options[select.selectedIndex].text;
-      if (!pfId) return;
-      // Prevent duplicates
-      if (hiddenContainer.querySelector(`input[value="${pfId}"]`)) return;
+    if (addBtn) {
+        addBtn.addEventListener('click', () => {
+            const pfId = select.value;
+            const pfName = select.options[select.selectedIndex].text;
+            if (!pfId) return;
+            // Prevent duplicates
+            if (hiddenContainer.querySelector(`input[value="${pfId}"]`)) return;
 
-      // 1) Add to the visible list
-      const li = document.createElement('li');
-      li.textContent = pfName + ' ';
-      const rm = document.createElement('button');
-      rm.type = 'button';
-      rm.textContent = '×';
-      rm.style.marginLeft = '0.5em';
-      li.appendChild(rm);
-      list.appendChild(li);
+            // 1) Add to the visible list
+            const li = document.createElement('li');
+            li.textContent = pfName + ' ';
+            const rm = document.createElement('button');
+            rm.type = 'button';
+            rm.textContent = '×';
+            rm.style.marginLeft = '0.5em';
+            rm.className = 'btn btn-sm btn-danger';
+            li.appendChild(rm);
+            list.appendChild(li);
 
-      // 2) Create hidden input for form submit
-      const inp = document.createElement('input');
-      inp.type = 'hidden';
-      inp.name = 'filter_ids';
-      inp.value = pfId;
-      hiddenContainer.appendChild(inp);
+            // 2) Create hidden input for form submit
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = 'filter_ids';
+            inp.value = pfId;
+            hiddenContainer.appendChild(inp);
 
-      // 3) Wire removal
-      rm.addEventListener('click', () => {
-        li.remove();
-        inp.remove();
-      });
+            // 3) Wire removal
+            rm.addEventListener('click', () => {
+                li.remove();
+                inp.remove();
+            });
+        });
+    }
+    
+    // Suite selection functionality
+    const addSelectedBtn = document.getElementById('addSelectedBtn');
+    const selectedSuitesList = document.getElementById('selectedSuitesList');
+    const hiddenSuitesContainer = document.getElementById('hiddenSuitesContainer');
+    
+    if (addSelectedBtn) {
+        addSelectedBtn.addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('.suite-checkbox:checked');
+            
+            checkboxes.forEach(cb => {
+                const suiteId = cb.value;
+                // Check if this suite has already been added
+                if (!selectedSuitesList.querySelector(`li[data-suite-id="${suiteId}"]`)) {
+                    // Create a list item to display the test suite's description
+                    const li = document.createElement('li');
+                    li.setAttribute('data-suite-id', suiteId);
+                    li.style.display = 'flex';
+                    li.style.justifyContent = 'space-between';
+                    li.style.alignItems = 'center';
+                    li.style.padding = '0.5rem';
+                    li.style.marginBottom = '0.5rem';
+                    li.style.background = 'var(--surface-color-light)';
+                    li.style.borderRadius = 'var(--border-radius-sm)';
+                    
+                    const span = document.createElement('span');
+                    span.textContent = cb.dataset.description;
+                    li.appendChild(span);
+                    
+                    // Create a remove button
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.textContent = '✕';
+                    removeBtn.className = 'btn btn-sm btn-danger';
+                    removeBtn.style.marginLeft = '1rem';
+                    removeBtn.addEventListener('click', function() {
+                        // Remove the list item
+                        li.remove();
+                        // Remove the corresponding hidden input
+                        const hiddenInput = hiddenSuitesContainer.querySelector(`input[value="${suiteId}"]`);
+                        if (hiddenInput) {
+                            hiddenInput.remove();
+                        }
+                        updateTestCasePreview();
+                    });
+                    li.appendChild(removeBtn);
+                    
+                    selectedSuitesList.appendChild(li);
+                    
+                    // Create a hidden input element for the test suite's ID
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'suite_ids';
+                    hiddenInput.value = suiteId;
+                    hiddenSuitesContainer.appendChild(hiddenInput);
+                }
+                // Uncheck the checkbox after processing
+                cb.checked = false;
+            });
+            
+            updateTestCasePreview();
+        });
+    }
+    
+    // Test case preview functionality
+    function updateTestCasePreview() {
+        const selectedSuiteIds = Array.from(hiddenSuitesContainer.querySelectorAll('input[name="suite_ids"]'))
+            .map(input => input.value);
+        
+        const previewCard = document.getElementById('test-case-preview');
+        
+        if (selectedSuiteIds.length === 0) {
+            previewCard.style.display = 'none';
+            return;
+        }
+        
+        // Get random test case from selected suites
+        fetch('/test_runs/api/random_test_case', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                suite_ids: selectedSuiteIds
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                console.error('Error getting test case:', data.error);
+                // Show error message to user
+                const sampleTestCase = document.getElementById('sample-test-case');
+                sampleTestCase.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        ${data.error}
+                    </div>
+                `;
+                previewCard.style.display = 'block';
+                return;
+            }
+            
+            // Store the original prompt for transformation preview updates
+            window.lastTestCasePrompt = data.prompt;
+            
+            // Display the test case
+            const sampleTestCase = document.getElementById('sample-test-case');
+            sampleTestCase.innerHTML = `
+                <div class="preview-item">
+                    <span class="preview-label">Test Case ID:</span>
+                    <span class="preview-value">${data.id}</span>
+                </div>
+                <div class="preview-item">
+                    <span class="preview-label">From Suite:</span>
+                    <span class="preview-value">${data.suite_name}</span>
+                </div>
+                ${data.attack_type ? `
+                <div class="preview-item">
+                    <span class="preview-label">Attack Type:</span>
+                    <span class="preview-value">${data.attack_type}</span>
+                </div>
+                ` : ''}
+                ${data.source ? `
+                <div class="preview-item">
+                    <span class="preview-label">Source:</span>
+                    <span class="preview-value">${data.source}</span>
+                </div>
+                ` : ''}
+                ${data.nist_risk ? `
+                <div class="preview-item">
+                    <span class="preview-label">NIST Risk:</span>
+                    <span class="preview-value">${data.nist_risk}</span>
+                </div>
+                ` : ''}
+            `;
+            
+            // Update transformation preview
+            updateTransformationPreview(data.prompt);
+            previewCard.style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Failed to get test case:', error);
+            // Show error message to user
+            const sampleTestCase = document.getElementById('sample-test-case');
+            sampleTestCase.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-times-circle"></i>
+                    Failed to load test case: ${error.message}
+                </div>
+            `;
+            previewCard.style.display = 'block';
+        });
+    }
+    
+    // Function to update transformation preview
+    function updateTransformationPreview(originalPrompt) {
+        const originalElement = document.getElementById('original-prompt');
+        const transformedElement = document.getElementById('transformed-prompt');
+        
+        // Limit prompt display to 100 characters
+        const displayPrompt = originalPrompt.length > 100 ? 
+            originalPrompt.substring(0, 100) + '...' : originalPrompt;
+        originalElement.textContent = displayPrompt;
+        
+        // Get current transformations using the existing transformers service format
+        const transformationData = getSelectedTransformations();
+        console.log('Selected transformations:', transformationData);
+        
+        if (transformationData.ids.length === 0) {
+            transformedElement.textContent = displayPrompt;
+            transformedElement.style.background = 'var(--surface-color)';
+            return;
+        }
+        
+        // Apply transformations using the existing transformers service API
+        fetch('/test_runs/api/apply_transformations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                prompt: originalPrompt,
+                transformation_ids: transformationData.ids,
+                params: transformationData.params
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error applying transformations:', data.error);
+                transformedElement.textContent = displayPrompt;
+                return;
+            }
+            
+            // Limit transformed prompt display to 100 characters
+            const displayTransformed = data.transformed.length > 100 ? 
+                data.transformed.substring(0, 100) + '...' : data.transformed;
+            transformedElement.textContent = displayTransformed;
+            
+            // Highlight if different
+            if (data.original !== data.transformed) {
+                transformedElement.style.background = 'var(--accent-color-bg)';
+            } else {
+                transformedElement.style.background = 'var(--surface-color)';
+            }
+        })
+        .catch(error => {
+            console.error('Failed to apply transformations:', error);
+            transformedElement.textContent = displayPrompt;
+        });
+    }
+    
+    // Function to get selected transformations using the existing transformers service format
+    function getSelectedTransformations() {
+        // Get the ordered transformations from the hidden input (managed by transformerSelect.js)
+        const orderedTransformsInput = document.getElementById('ordered_transformations');
+        let transformationIds = [];
+        
+        if (orderedTransformsInput && orderedTransformsInput.value) {
+            try {
+                transformationIds = JSON.parse(orderedTransformsInput.value);
+            } catch (e) {
+                console.error('Error parsing transformation order:', e);
+                return { ids: [], params: {} };
+            }
+        }
+        
+        // Collect all transformation parameters from the form
+        const params = {};
+        
+        // Get text inputs for prepend/postpend transformations
+        const prependInput = document.querySelector('input[name="text_to_prepend"]');
+        if (prependInput && prependInput.value) {
+            params.prepend_text_value = prependInput.value;
+        }
+        
+        const postpendInput = document.querySelector('input[name="text_to_postpend"]');
+        if (postpendInput && postpendInput.value) {
+            params.postpend_text_value = postpendInput.value;
+        }
+        
+        return {
+            ids: transformationIds,
+            params: params
+        };
+    }
+    
+    // Watch for transformation changes to update preview
+    document.addEventListener('change', function(e) {
+        if (e.target.name === 'transformations' || 
+            e.target.name === 'text_to_prepend' || 
+            e.target.name === 'text_to_postpend') {
+            // Update preview if we have a test case loaded
+            const originalElement = document.getElementById('original-prompt');
+            if (originalElement && originalElement.textContent && originalElement.textContent !== 'N/A') {
+                // Get the original prompt without the character limit truncation
+                const lastTestCase = window.lastTestCasePrompt || originalElement.textContent;
+                updateTransformationPreview(lastTestCase);
+            }
+        }
     });
-  });
+});
 </script>
 {% endblock %}

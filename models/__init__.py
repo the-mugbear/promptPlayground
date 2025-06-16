@@ -29,7 +29,7 @@ __all__ = [
     'db',
     'User', 'EndpointHeader', 'Endpoint', 'TestCase', 'TestSuite',
     'TestExecution', 'TestRunAttempt', 'TestRun', 'PromptFilter',
-    'Invitation', 'Reference', 'Dialogue', 'ManualTestRecord',
+    'Invitation', 'Dialogue', 'ManualTestRecord',
     'APIChain', 'APIChainStep',
     'test_suite_cases', 'test_run_suites', 'test_run_filters', 'PayloadTemplate'
 ]

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, abort, request, redirect, flash, url_for
+from flask import Blueprint, render_template, abort, request, redirect, flash, url_for, send_from_directory
 from flask_login import current_user
 from extensions import db
 
@@ -45,3 +45,12 @@ def visual(effect):
         abort(404)
     # Render the corresponding template, e.g., matrix_rain.html
     return render_template(f"testing_grounds/{effect}.html")
+
+@core_bp.route('/favicon.ico')
+def favicon():
+    """Simple favicon route to prevent 404 errors"""
+    try:
+        return send_from_directory('static', 'favicon.ico')
+    except:
+        # Return empty response if favicon doesn't exist
+        return '', 204

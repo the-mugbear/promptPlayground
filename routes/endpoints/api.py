@@ -147,6 +147,11 @@ def get_endpoint_details(endpoint_id):
     
     # Return the details in a JSON response
     return jsonify({
+        'id': endpoint.id,
+        'name': endpoint.name,
+        'method': endpoint.method,
+        'base_url': endpoint.base_url,
+        'path': endpoint.path,
         # Format the headers as a nicely indented JSON string for the textarea
         'headers': json.dumps(headers_dict, indent=2) if headers_dict else '{}',
         # Provide the default payload template, or an empty JSON object string

@@ -50,6 +50,40 @@
         padding-top: var(--spacing-md, 1rem);
         /* Add some top padding if header is separate */
     }
+
+    .status-code-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding: 0.5rem;
+        background: var(--surface-color);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+    }
+
+    .status-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 80px;
+    }
+
+    .status-label {
+        font-size: 0.8rem;
+        color: var(--text-muted-color);
+        margin-bottom: 0.25rem;
+    }
+
+    .status-count {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: var(--accent-color);
+    }
+
+    #detailed-status-codes {
+        color: var(--text-muted-color);
+        font-family: monospace;
+    }
 </style>
 <script>
     // Add CSRF token to all AJAX requests
@@ -303,6 +337,30 @@
                 <div class="apply-btn-container">
                     <button type="button" id="apply-filters">Apply Filters</button>
                 </div>
+            </div>
+
+            <!-- HTTP Status Code Statistics -->
+            <div id="status-code-section" class="mb-3" style="display: none;">
+                <label class="form-label">HTTP Status Codes:</label>
+                <div class="status-code-stats">
+                    <div class="status-group">
+                        <span class="status-label">2xx (Success):</span>
+                        <span id="status-2xx" class="status-count">0</span>
+                    </div>
+                    <div class="status-group">
+                        <span class="status-label">4xx (Client Error):</span>
+                        <span id="status-4xx" class="status-count">0</span>
+                    </div>
+                    <div class="status-group">
+                        <span class="status-label">5xx (Server Error):</span>
+                        <span id="status-5xx" class="status-count">0</span>
+                    </div>
+                    <div class="status-group" id="status-other-group" style="display: none;">
+                        <span class="status-label">Other:</span>
+                        <span id="status-other" class="status-count">0</span>
+                    </div>
+                </div>
+                <div id="detailed-status-codes" class="mt-2 text-xs"></div>
             </div>
         </div>
 

@@ -17,6 +17,7 @@ class TestExecution(db.Model):
     )
     test_case_id = db.Column(db.Integer, db.ForeignKey('test_cases.id', ondelete='SET NULL'), nullable=False)
     sequence = db.Column(db.Integer, nullable=False)
+    iteration = db.Column(db.Integer, nullable=True, default=1)
 
     # What was sent
     processed_prompt = db.Column(db.Text, nullable=True)
@@ -40,6 +41,6 @@ class TestExecution(db.Model):
     def __repr__(self):
         return (
             f"<TestExecution attempt={self.test_run_attempt_id}, "
-            f"case={self.test_case_id}, seq={self.sequence}, status={self.status}>"
+            f"case={self.test_case_id}, seq={self.sequence}, iter={self.iteration}, status={self.status}>"
         )
 

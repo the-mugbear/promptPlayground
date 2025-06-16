@@ -1,6 +1,4 @@
 from extensions import db
-from flask_sqlalchemy import SQLAlchemy
-
 
 # bridges between testsuite and testcase
 test_suite_cases = db.Table(

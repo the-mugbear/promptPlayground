@@ -61,12 +61,19 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
     run.status = 'running'
     run.progress_current = 0
     
-    # 3) Gather cases (as in your existing orchestrator.py)
-    suite_list  = list(run.test_suites)
-    cases_to_process: List[Tuple[int, str]] = [ # We get (case_id, original_prompt)
+    # 3) Gather cases and multiply by iterations
+    suite_list = list(run.test_suites)
+    base_cases = [
         (tc.id, tc.prompt) 
         for suite in suite_list
         for tc in suite.test_cases
+    ]
+    
+    # Multiply cases by iterations to create multiple executions per case
+    cases_to_process: List[Tuple[int, str, int]] = [  # (case_id, original_prompt, iteration_number)
+        (case_id, prompt, iteration)
+        for case_id, prompt in base_cases
+        for iteration in range(1, run.iterations + 1)
     ]
     run.progress_total = len(cases_to_process)
     
@@ -87,15 +94,15 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
     logger.info(f"Orchestrator TR_ID:{run_id}: Starting to build {len(cases_to_process)} lightweight signatures...")
     loop_start_time = time.time()
 
-    for seq, (case_id, _) in enumerate(cases_to_process, start=1): # original_prompt from cases_to_process is ignored with _
+    for seq, (case_id, _, iteration) in enumerate(cases_to_process, start=1): # original_prompt from cases_to_process is ignored with _
         if self.is_revoked():
             logger.warning(f"Orchestrator TR_ID:{run_id}: Task revoked.")
             finalize_run.delay(run_id, 'cancelled') # As in your orchestrator.py
             return {'status': 'CANCELLED'}
 
         logger.debug(
-            f"Orchestrator TR_ID:{run_id}: Creating signature for TC_ID:{case_id}, Seq:{seq} "
-            f"with AttemptID:{attempt_id}."
+            f"Orchestrator TR_ID:{run_id}: Creating signature for TC_ID:{case_id}, Seq:{seq}, "
+            f"Iteration:{iteration} with AttemptID:{attempt_id}."
         )
 
         # fetch the endpoint_id from run.endpoint.id (or however you store it)
@@ -109,7 +116,8 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
             test_case_id=case_id,
             endpoint_id=endpoint_obj.id,   
             test_run_id=run_id,            
-            sequence_num=seq
+            sequence_num=seq,
+            iteration_num=iteration
         )
         all_sigs.append(sig)
     

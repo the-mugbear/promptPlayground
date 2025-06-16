@@ -69,6 +69,9 @@ def start_test_run(test_run_id):
 
     for test_suite in test_run.test_suites: # Assuming test_run.test_suites is eager/properly loaded
         total_test_cases += len(list(test_suite.test_cases)) # Ensure test_cases are loaded
+    
+    # Multiply by iterations to get total number of executions
+    total_test_cases *= test_run.iterations
 
     if total_test_cases == 0: # Should be caught above, but as a safeguard
         flash('No test cases found in the associated test suites after counting. Test run cannot start.', 'warning')

@@ -23,6 +23,9 @@ class APIChain(db.Model):
                             cascade='all, delete-orphan', 
                             order_by='APIChainStep.step_order',
                             lazy='dynamic')
+    
+    # Relationship to test runs that use this chain
+    test_runs = db.relationship('TestRun', back_populates='chain', lazy='dynamic')
 
     created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
     updated_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)

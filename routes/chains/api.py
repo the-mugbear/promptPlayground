@@ -17,6 +17,27 @@ from . import chains_api_bp
 
 logger = logging.getLogger(__name__)
 
+@chains_api_bp.route('/<int:chain_id>/details', methods=['GET'])
+@login_required
+def get_chain_details(chain_id):
+    """
+    Returns basic details about a chain for preview purposes.
+    """
+    chain = db.session.get(APIChain, chain_id)
+    if not chain:
+        return jsonify({'error': 'Chain not found'}), 404
+    
+    # Check if user has access to this chain
+    if chain.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    return jsonify({
+        'id': chain.id,
+        'name': chain.name,
+        'description': chain.description,
+        'steps': [step.to_dict() for step in chain.steps.all()]
+    })
+
 @chains_api_bp.route('/test_step_in_isolation', methods=['POST'])
 @login_required
 def test_step_in_isolation():

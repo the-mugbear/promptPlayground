@@ -47,11 +47,23 @@ class TestRun(db.Model):
     progress_total = db.Column(db.Integer, default=0, nullable=False)
     celery_task_id = db.Column(db.String(255), nullable=True)
 
+    # --- Target Configuration: Either endpoint OR chain ---
+    target_type = db.Column(db.String(20), nullable=False, default='endpoint')  # 'endpoint' or 'chain'
+    
     # --- Relationships ---
     endpoint = db.relationship('Endpoint', back_populates="test_runs") # Ensure Endpoint model has 'test_runs' relationship
     endpoint_id = db.Column(
         db.Integer,
         db.ForeignKey("endpoints.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    
+    # Chain relationship
+    chain = db.relationship('APIChain', back_populates="test_runs") 
+    chain_id = db.Column(
+        db.Integer,
+        db.ForeignKey("api_chains.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )
@@ -112,13 +124,31 @@ class TestRun(db.Model):
         # Using f-string for consistency
         return f"<TestRun id={self.id}, name='{self.name}', status={self.status.value if self.status else 'N/A'}>"
 
+    def get_target_name(self):
+        """Helper method to get the name of the target (endpoint or chain)"""
+        if self.target_type == 'endpoint' and self.endpoint:
+            return self.endpoint.name
+        elif self.target_type == 'chain' and self.chain:
+            return self.chain.name
+        return 'N/A'
+    
+    def get_target_description(self):
+        """Helper method to get a description of the target"""
+        if self.target_type == 'endpoint' and self.endpoint:
+            return f"{self.endpoint.method} {self.endpoint.base_url}{self.endpoint.path}"
+        elif self.target_type == 'chain' and self.chain:
+            return f"Chain with {len(self.chain.steps)} steps"
+        return 'N/A'
+
     def to_dict(self): # Added from my previous version, expanded
         return {
             'id': self.id,
             'name': self.name,
             'description': self.description,
             'user_id': self.user_id,
+            'target_type': self.target_type,
             'endpoint_id': self.endpoint_id,
+            'chain_id': self.chain_id,
             'status': self.status.value if self.status else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
@@ -134,7 +164,8 @@ class TestRun(db.Model):
             'celery_task_id': self.celery_task_id,
             'test_suite_ids': [suite.id for suite in self.test_suites],
             'filter_ids': [f.id for f in self.filters], # Assuming PromptFilter has an id
-            'endpoint_name': self.endpoint.name if self.endpoint else None, # Assuming APIEndpoint has name
+            'target_name': self.get_target_name(),
+            'target_description': self.get_target_description(),
             'user_name': self.user.username if self.user else None, # Assuming User has username
             'notes': self.notes
         }

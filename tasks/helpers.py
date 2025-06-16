@@ -80,9 +80,72 @@ def emit_execution_update(attempt, record) -> None:
         "response_data": record.response_data,
         "status": record.status,
         "status_code": record.status_code,
-        "error_message": record.error_message
+        "error_message": record.error_message,
+        "iteration": getattr(record, 'iteration', 1)
     }
     emit_run_update(attempt.test_run_id, "execution_result_update", data)
+    
+    # Also emit status code statistics update
+    emit_status_code_update(attempt.test_run_id)
+
+def emit_status_code_update(run_id: int) -> None:
+    """
+    Emit HTTP status code statistics for the current test run.
+    """
+    try:
+        from sqlalchemy import func
+        from models.model_TestRun import TestRun
+        from models.model_TestExecution import TestExecution
+        from models.model_TestRunAttempt import TestRunAttempt
+        
+        # Get status code counts for the current run
+        status_counts = db.session.query(
+            TestExecution.status_code,
+            func.count(TestExecution.id).label('count')
+        ).join(
+            TestRunAttempt, TestExecution.test_run_attempt_id == TestRunAttempt.id
+        ).filter(
+            TestRunAttempt.test_run_id == run_id,
+            TestExecution.status_code.isnot(None)
+        ).group_by(
+            TestExecution.status_code
+        ).all()
+        
+        # Format into status code groups
+        status_groups = {
+            '2xx': 0,  # Success
+            '4xx': 0,  # Client errors
+            '5xx': 0,  # Server errors
+            'other': 0  # Other status codes
+        }
+        
+        detailed_counts = {}
+        total_requests = 0
+        
+        for status_code, count in status_counts:
+            total_requests += count
+            detailed_counts[status_code] = count
+            
+            if 200 <= status_code < 300:
+                status_groups['2xx'] += count
+            elif 400 <= status_code < 500:
+                status_groups['4xx'] += count
+            elif 500 <= status_code < 600:
+                status_groups['5xx'] += count
+            else:
+                status_groups['other'] += count
+        
+        data = {
+            "run_id": run_id,
+            "status_groups": status_groups,
+            "detailed_counts": detailed_counts,
+            "total_requests": total_requests
+        }
+        
+        emit_run_update(run_id, "status_code_update", data)
+        
+    except Exception as e:
+        logger.error(f"Failed to emit status code update for run {run_id}: {e}", exc_info=True)
 
 def with_session(fn):
     @wraps(fn)

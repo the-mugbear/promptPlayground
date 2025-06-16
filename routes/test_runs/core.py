@@ -225,6 +225,9 @@ def create_test_run():
     selected_suite_ids = request.form.getlist('suite_ids')
     selected_filter_ids = request.form.getlist('filter_ids')
     payload_override = request.form.get('endpointPayload')
+    iterations = request.form.get('iterations', 1, type=int)
+    delay_between_requests = request.form.get('delay_between_requests', 0, type=float)
+    run_serially = request.form.get('run_serially') is not None
 
     # 2) Parse the ordered list of transformation names from our hidden field
     ordered_json = request.form.get('ordered_transformations', '[]')
@@ -293,7 +296,10 @@ def create_test_run():
             endpoint_id=endpoint_id,
             status='Not Started',
             user_id=current_user.id,
-            run_transformations=transform_configs
+            run_transformations=transform_configs,
+            iterations=iterations,
+            delay_between_requests=delay_between_requests,
+            run_serially=run_serially
         )
         db.session.add(new_run)
 

@@ -38,10 +38,11 @@ def execute_single_test_case(
     test_case_id: int,        # ID of the TestCase to execute
     endpoint_id: int,         # ID of the Endpoint to target (passed by orchestrator)
     test_run_id: int,         # ID of the parent TestRun (passed by orchestrator)
-    sequence_num: int         # Sequence number of this test case in the run
+    sequence_num: int,        # Sequence number of this test case in the run
+    iteration_num: int = 1    # Iteration number for this execution
 ):
     task_id = self.request.id
-    logger.info(f"Task {task_id} - TC_ID:{test_case_id}, Seq:{sequence_num}, AttID:{test_run_attempt_id}: Starting.")
+    logger.info(f"Task {task_id} - TC_ID:{test_case_id}, Seq:{sequence_num}, Iter:{iteration_num}, AttID:{test_run_attempt_id}: Starting.")
     
     payload_info_for_record = {"error": "Payload not generated due to an early task error."}
     execution_record = None
@@ -76,7 +77,7 @@ def execute_single_test_case(
             logger.error(f"Task {task_id}: {err_msg}")
             
             execution_record = create_error_record( 
-                 test_run_attempt_id, test_case_id, sequence_num, ValueError(err_msg), 
+                 test_run_attempt_id, test_case_id, sequence_num, iteration_num, ValueError(err_msg), 
                  payload_info_for_record, task_id
             )
             # This exception will be caught by the outer `except Exception as task_e` block,
@@ -172,7 +173,7 @@ def execute_single_test_case(
             # Uses your create_execution_record helper.
             # Pass payload_info_for_record (the DICT) for request_payload (JSONB).
             execution_record = create_execution_record(
-                attempt, case_obj, sequence_num, 
+                attempt, case_obj, sequence_num, iteration_num,
                 payload_info_for_record, 
                 status_code, body, error_msg_for_record, 
                 actual_execution_started_at,
@@ -183,7 +184,7 @@ def execute_single_test_case(
             logger.error(f"Task {task_id}: HTTP call or response processing failed for TC_ID:{case_obj.id if 'case_obj' in locals() else test_case_id}: {http_e}", exc_info=True)
             # payload_info_for_record will contain the actual payload if generated, or the default error dict.
             execution_record = create_error_record(
-                test_run_attempt_id, test_case_id, sequence_num, http_e, 
+                test_run_attempt_id, test_case_id, sequence_num, iteration_num, http_e, 
                 payload_info_for_record
             )
             # create_error_record helper sets its own started_at/finished_at timestamps.
@@ -192,7 +193,7 @@ def execute_single_test_case(
         logger.error(f"Task {task_id}: Broader error for TC_ID:{test_case_id}: {task_e}", exc_info=True)
         # payload_info_for_record will be the default error payload if task_e occurred very early.
         execution_record = create_error_record(
-            test_run_attempt_id, test_case_id, sequence_num, task_e,
+            test_run_attempt_id, test_case_id, sequence_num, iteration_num, task_e,
             payload_info_for_record
         )
 
@@ -235,7 +236,7 @@ def execute_single_test_case(
     return {'status': 'PROCESSED', 'execution_id': execution_record.id if execution_record else None}
 
 # --- Helper Functions ---
-def create_execution_record(attempt, case, seq, payload_dict, status_code, body, error_msg, started_at_time,processed_prompt_str):
+def create_execution_record(attempt, case, seq, iteration_num, payload_dict, status_code, body, error_msg, started_at_time,processed_prompt_str):
     disposition = (
         "pass" if status_code and 200 <= status_code < 300 else
         "fail" if status_code else # Includes non-2xx codes
@@ -245,6 +246,7 @@ def create_execution_record(attempt, case, seq, payload_dict, status_code, body,
         test_run_attempt_id=attempt.id,
         test_case_id=case.id,
         sequence=seq,
+        iteration=iteration_num or 1,  # Default to 1 if None
         request_payload=payload_dict, # Store the Python dictionary directly (SQLAlchemy handles for JSONB)
         response_data=str(body) if body is not None else None, # Ensure body is stored as string
         status_code=status_code,
@@ -255,7 +257,7 @@ def create_execution_record(attempt, case, seq, payload_dict, status_code, body,
         processed_prompt=processed_prompt_str
     )
 
-def create_error_record(attempt_id, case_id, sequence_num, error_exception, payload_dict, processed_prompt_str=None):
+def create_error_record(attempt_id, case_id, sequence_num, iteration_num, error_exception, payload_dict, processed_prompt_str=None):
     err_detail = ( # Format a detailed error message including traceback
         f"Exception {type(error_exception).__name__}: {error_exception}\n"
         f"Traceback:\n{traceback.format_exc()}"
@@ -264,6 +266,7 @@ def create_error_record(attempt_id, case_id, sequence_num, error_exception, payl
         test_run_attempt_id=attempt_id,
         test_case_id=case_id,
         sequence=sequence_num,
+        iteration=iteration_num or 1,  # Default to 1 if None
         request_payload=payload_dict, # Store the Python dictionary (original payload or default error dict)
         response_data=None, # No response data in case of such errors
         status_code=None,   # No status code

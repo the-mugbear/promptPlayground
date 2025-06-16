@@ -1,58 +1,295 @@
 {% extends "base.html" %}
-{% block title %}All Test Runs{% endblock %}
+{% block title %}Test Runs{% endblock %}
 
 {% block head %}
-<!-- New list test suite styles -->
+{{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/tables.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/animations.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+.test-run-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.run-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.run-info h3 {
+    color: var(--accent-color);
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+}
+
+.run-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.meta-label {
+    font-size: 0.85rem;
+    color: var(--text-muted-color);
+    margin-bottom: 0.25rem;
+}
+
+.meta-value {
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    gap: 0.5rem;
+}
+
+.status-not_started { background: var(--warning-bg); color: var(--warning-color); }
+.status-pending { background: var(--info-bg); color: var(--info-color); }
+.status-running { background: var(--success-bg); color: var(--success-color); animation: pulse 2s infinite; }
+.status-paused { background: var(--warning-bg); color: var(--warning-color); }
+.status-completed { background: var(--success-bg); color: var(--success-color); }
+.status-failed { background: var(--danger-bg); color: var(--danger-color); }
+.status-cancelled { background: var(--secondary-bg); color: var(--secondary-color); }
+
+.progress-container {
+    margin: 1rem 0;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 0.5rem;
+    background: var(--background-color);
+    border-radius: 0.25rem;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--accent-color);
+    transition: width 0.3s ease;
+    border-radius: 0.25rem;
+}
+
+.progress-text {
+    font-size: 0.85rem;
+    color: var(--text-muted-color);
+    margin-top: 0.25rem;
+}
+
+.run-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.action-group {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.target-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: var(--surface-color-light);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    font-size: 0.85rem;
+}
+
+.target-icon {
+    width: 1rem;
+    height: 1rem;
+    color: var(--accent-color);
+}
+</style>
 <script>
-  // Add CSRF token to all AJAX requests
   const csrfToken = "{{ csrf_token() }}";
 </script>
 {% endblock %}
 
 {% block content %}
-<h1>All Test Runs</h1>
+<div class="container">
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">Test Runs</h1>
+            <p class="page-subtitle">Manage and execute security testing runs</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('test_runs_bp.create_test_run') }}" class="btn btn-primary">
+                <i class="fas fa-plus fa-fw"></i>
+                <span class="button-text">New Test Run</span>
+            </a>
+        </div>
+    </header>
 
-<!-- Optional: a search bar to filter suites by description, etc. -->
-<input type="text" id="searchRun" placeholder="Search by name..." class="search-bar">
+    <!-- Search and Filters -->
+    <div class="content-card mb-4">
+        <div class="card-body">
+            <div class="search-filters">
+                <input type="text" id="searchRun" placeholder="Search by name..." class="form-control">
+                <select id="statusFilter" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="not_started">Not Started</option>
+                    <option value="pending">Pending</option>
+                    <option value="running">Running</option>
+                    <option value="paused">Paused</option>
+                    <option value="completed">Completed</option>
+                    <option value="failed">Failed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+                <select id="targetTypeFilter" class="form-select">
+                    <option value="">All Types</option>
+                    <option value="endpoint">Endpoints</option>
+                    <option value="chain">Chains</option>
+                </select>
+            </div>
+        </div>
+    </div>
 
-{% if test_runs %}
-<table id="testRunTable">
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Status</th>
-      <th>Endpoint</th>
-      <th>Created By</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for run in test_runs %}
-    <tr>
-      <td><a href="{{ url_for('test_runs_bp.view_test_run', run_id=run.id) }}">{{ run.name or 'N/A' }}</a></td>
-      <td>{{ run.status or 'pending' }}</td>
-      <td>
-        {% if run.endpoint %}
-        <a href="{{ url_for('endpoints_bp.get_endpoint_details', endpoint_id=run.endpoint.id) }}">
-          {{ run.endpoint.name }}
-        </a>
+    <!-- Test Runs -->
+    <div id="test-runs-container">
+        {% if test_runs %}
+            {% for run in test_runs %}
+            <div class="test-run-card" data-run-id="{{ run.id }}" data-status="{{ run.status }}" data-target-type="{{ run.target_type }}">
+                <div class="run-header">
+                    <div class="run-info">
+                        <h3>
+                            <a href="{{ url_for('test_runs_bp.view_test_run', run_id=run.id) }}">
+                                {{ run.name or 'Unnamed Test Run' }}
+                            </a>
+                        </h3>
+                        <div class="target-chip">
+                            {% if run.target_type == 'endpoint' %}
+                                <i class="fas fa-plug target-icon"></i>
+                                <span>{{ run.get_target_name() }}</span>
+                            {% else %}
+                                <i class="fas fa-link target-icon"></i>
+                                <span>{{ run.get_target_name() }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="run-actions">
+                        <div class="action-group">
+                            {% if run.status in ['not_started', 'pending'] %}
+                                <button class="btn btn-sm btn-primary run-action-btn" 
+                                        data-action="start" data-run-id="{{ run.id }}">
+                                    <i class="fas fa-play"></i> Start
+                                </button>
+                            {% elif run.status == 'running' %}
+                                <button class="btn btn-sm btn-warning run-action-btn" 
+                                        data-action="pause" data-run-id="{{ run.id }}">
+                                    <i class="fas fa-pause"></i> Pause
+                                </button>
+                                <button class="btn btn-sm btn-danger run-action-btn" 
+                                        data-action="cancel" data-run-id="{{ run.id }}">
+                                    <i class="fas fa-stop"></i> Cancel
+                                </button>
+                            {% elif run.status == 'paused' %}
+                                <button class="btn btn-sm btn-success run-action-btn" 
+                                        data-action="resume" data-run-id="{{ run.id }}">
+                                    <i class="fas fa-play"></i> Resume
+                                </button>
+                                <button class="btn btn-sm btn-danger run-action-btn" 
+                                        data-action="cancel" data-run-id="{{ run.id }}">
+                                    <i class="fas fa-stop"></i> Cancel
+                                </button>
+                            {% endif %}
+                        </div>
+                        <div class="action-group">
+                            <a href="{{ url_for('test_runs_bp.view_test_run', run_id=run.id) }}" 
+                               class="btn btn-sm btn-ghost">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <button class="btn btn-sm btn-ghost btn-danger delete-run-btn" 
+                                    data-run-id="{{ run.id }}">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="run-meta">
+                    <div class="meta-item">
+                        <span class="meta-label">Status</span>
+                        <span class="status-badge status-{{ run.status }}">
+                            {% if run.status == 'running' %}
+                                <i class="fas fa-spinner fa-spin"></i>
+                            {% elif run.status == 'completed' %}
+                                <i class="fas fa-check-circle"></i>
+                            {% elif run.status == 'failed' %}
+                                <i class="fas fa-exclamation-circle"></i>
+                            {% elif run.status == 'paused' %}
+                                <i class="fas fa-pause-circle"></i>
+                            {% elif run.status == 'cancelled' %}
+                                <i class="fas fa-times-circle"></i>
+                            {% else %}
+                                <i class="fas fa-clock"></i>
+                            {% endif %}
+                            {{ run.status.replace('_', ' ').title() }}
+                        </span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Target</span>
+                        <span class="meta-value">{{ run.get_target_description() }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Created</span>
+                        <span class="meta-value">{{ run.created_at.strftime('%Y-%m-%d %H:%M') if run.created_at else 'N/A' }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Created By</span>
+                        <span class="meta-value">{{ run.user.username if run.user else 'N/A' }}</span>
+                    </div>
+                </div>
+
+                {% if run.progress_total > 0 or run.status in ['running', 'paused', 'completed'] %}
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ run.progress_percent }}%"></div>
+                    </div>
+                    <div class="progress-text">
+                        {{ run.progress_current }} / {{ run.progress_total }} cases processed ({{ run.progress_percent }}%)
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
         {% else %}
-        N/A
+            <div class="empty-state">
+                <i class="fas fa-vial fa-3x"></i>
+                <h3>No Test Runs Found</h3>
+                <p>Create your first test run to start security testing.</p>
+                <a href="{{ url_for('test_runs_bp.create_test_run') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Test Run
+                </a>
+            </div>
         {% endif %}
-      </td>
-      <td>{{ run.user.username if run.user else 'N/A' }}</td>
-      <td>
-        <form action="{{ url_for('test_runs_bp.delete_test_run', run_id=run.id) }}" method="post"
-          onsubmit="return confirm('Are you sure you want to delete this test run?');">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <button type="submit">Delete</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+    </div>
 
 <!-- Pagination Controls -->
 {% if pagination.pages > 1 %}
@@ -75,25 +312,235 @@
 </div>
 {% endif %}
 
-{% else %}
-<p>No test runs found.</p>
-{% endif %}
+    </div>
 
+    <!-- Pagination Controls -->
+    {% if pagination.pages > 1 %}
+    <div class="pagination-wrapper">
+        {% if pagination.has_prev %}
+            <a href="{{ url_for('test_runs_bp.list_test_runs', page=pagination.prev_num) }}" class="btn btn-ghost">
+                <i class="fas fa-chevron-left"></i> Previous
+            </a>
+        {% endif %}
+        
+        {% for p in range(1, pagination.pages + 1) %}
+            {% if p == pagination.page %}
+                <span class="btn btn-primary">{{ p }}</span>
+            {% else %}
+                <a href="{{ url_for('test_runs_bp.list_test_runs', page=p) }}" class="btn btn-ghost">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+        
+        {% if pagination.has_next %}
+            <a href="{{ url_for('test_runs_bp.list_test_runs', page=pagination.next_num) }}" class="btn btn-ghost">
+                Next <i class="fas fa-chevron-right"></i>
+            </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
 {% endblock %}
 
 {% block scripts %}
-<!-- Page-Specific JavaScript for filtering or toggling details -->
-<script src="{{ url_for('static', filename='js/filterCommon.js') }}"></script>
+<!-- Socket.IO for real-time updates -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+
 <script>
-  window.filterConfigs = [
-    {
-      searchInputId: "searchRun",             // ID of the search input element
-      tableId: "testRunTable",                   // ID of the table to filter
-      toggleButtonSelector: ".view-headers-btn", // Selector for toggle buttons
-      rowGroupSize: 2,                         // Grouping of rows (e.g., main row and details row)
-      viewDetailsText: "View Details",         // Text when details are hidden
-      hideDetailsText: "Hide Details"          // Text when details are visible
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Socket.IO connection
+    const socket = io();
+    
+    // Join test runs room for updates
+    socket.emit('join_test_runs_room');
+    
+    // Handle real-time test run updates
+    socket.on('test_run_update', function(data) {
+        const runCard = document.querySelector(`[data-run-id="${data.run_id}"]`);
+        if (runCard) {
+            updateRunCard(runCard, data);
+        }
+    });
+    
+    // Handle test run action buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.run-action-btn')) {
+            e.preventDefault();
+            const btn = e.target.closest('.run-action-btn');
+            const action = btn.dataset.action;
+            const runId = btn.dataset.runId;
+            
+            handleRunAction(action, runId, btn);
+        }
+        
+        if (e.target.closest('.delete-run-btn')) {
+            e.preventDefault();
+            const btn = e.target.closest('.delete-run-btn');
+            const runId = btn.dataset.runId;
+            
+            if (confirm('Are you sure you want to delete this test run?')) {
+                deleteTestRun(runId);
+            }
+        }
+    });
+    
+    // Search and filter functionality
+    const searchInput = document.getElementById('searchRun');
+    const statusFilter = document.getElementById('statusFilter');
+    const targetTypeFilter = document.getElementById('targetTypeFilter');
+    
+    function filterRuns() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const statusValue = statusFilter.value;
+        const targetTypeValue = targetTypeFilter.value;
+        const runCards = document.querySelectorAll('.test-run-card');
+        
+        runCards.forEach(card => {
+            const name = card.querySelector('h3 a').textContent.toLowerCase();
+            const status = card.dataset.status;
+            const targetType = card.dataset.targetType;
+            
+            const matchesSearch = name.includes(searchTerm);
+            const matchesStatus = !statusValue || status === statusValue;
+            const matchesTargetType = !targetTypeValue || targetType === targetTypeValue;
+            
+            if (matchesSearch && matchesStatus && matchesTargetType) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
     }
-  ];
+    
+    searchInput.addEventListener('input', filterRuns);
+    statusFilter.addEventListener('change', filterRuns);
+    targetTypeFilter.addEventListener('change', filterRuns);
+    
+    function handleRunAction(action, runId, button) {
+        const originalHtml = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        fetch(`/test_runs/api/${runId}/${action}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update will come via WebSocket
+                console.log(`Test run ${action} successful`);
+            } else {
+                throw new Error(data.error || 'Action failed');
+            }
+        })
+        .catch(error => {
+            console.error('Action failed:', error);
+            alert(`Failed to ${action} test run: ${error.message}`);
+            button.disabled = false;
+            button.innerHTML = originalHtml;
+        });
+    }
+    
+    function deleteTestRun(runId) {
+        fetch(`/test_runs/api/${runId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const runCard = document.querySelector(`[data-run-id="${runId}"]`);
+                if (runCard) {
+                    runCard.remove();
+                }
+            } else {
+                throw new Error(data.error || 'Delete failed');
+            }
+        })
+        .catch(error => {
+            console.error('Delete failed:', error);
+            alert(`Failed to delete test run: ${error.message}`);
+        });
+    }
+    
+    function updateRunCard(runCard, data) {
+        // Update status badge
+        const statusBadge = runCard.querySelector('.status-badge');
+        if (statusBadge) {
+            statusBadge.className = `status-badge status-${data.status}`;
+            statusBadge.innerHTML = getStatusIcon(data.status) + ' ' + data.status.replace('_', ' ').toUpperCase();
+        }
+        
+        // Update progress bar
+        const progressFill = runCard.querySelector('.progress-fill');
+        const progressText = runCard.querySelector('.progress-text');
+        if (progressFill && data.progress_total > 0) {
+            progressFill.style.width = `${data.progress_percent}%`;
+            if (progressText) {
+                progressText.textContent = `${data.progress_current} / ${data.progress_total} cases processed (${data.progress_percent}%)`;
+            }
+        }
+        
+        // Update action buttons
+        updateActionButtons(runCard, data.status);
+        
+        // Update data attributes
+        runCard.dataset.status = data.status;
+    }
+    
+    function getStatusIcon(status) {
+        const icons = {
+            'running': '<i class="fas fa-spinner fa-spin"></i>',
+            'completed': '<i class="fas fa-check-circle"></i>',
+            'failed': '<i class="fas fa-exclamation-circle"></i>',
+            'paused': '<i class="fas fa-pause-circle"></i>',
+            'cancelled': '<i class="fas fa-times-circle"></i>',
+            'not_started': '<i class="fas fa-clock"></i>',
+            'pending': '<i class="fas fa-clock"></i>'
+        };
+        return icons[status] || '<i class="fas fa-question-circle"></i>';
+    }
+    
+    function updateActionButtons(runCard, status) {
+        const actionGroup = runCard.querySelector('.action-group');
+        if (!actionGroup) return;
+        
+        // Clear existing action buttons
+        actionGroup.innerHTML = '';
+        
+        // Add appropriate buttons based on status
+        const runId = runCard.dataset.runId;
+        if (status === 'not_started' || status === 'pending') {
+            actionGroup.innerHTML = `
+                <button class="btn btn-sm btn-primary run-action-btn" data-action="start" data-run-id="${runId}">
+                    <i class="fas fa-play"></i> Start
+                </button>
+            `;
+        } else if (status === 'running') {
+            actionGroup.innerHTML = `
+                <button class="btn btn-sm btn-warning run-action-btn" data-action="pause" data-run-id="${runId}">
+                    <i class="fas fa-pause"></i> Pause
+                </button>
+                <button class="btn btn-sm btn-danger run-action-btn" data-action="cancel" data-run-id="${runId}">
+                    <i class="fas fa-stop"></i> Cancel
+                </button>
+            `;
+        } else if (status === 'paused') {
+            actionGroup.innerHTML = `
+                <button class="btn btn-sm btn-success run-action-btn" data-action="resume" data-run-id="${runId}">
+                    <i class="fas fa-play"></i> Resume
+                </button>
+                <button class="btn btn-sm btn-danger run-action-btn" data-action="cancel" data-run-id="${runId}">
+                    <i class="fas fa-stop"></i> Cancel
+                </button>
+            `;
+        }
+    }
+});
 </script>
 {% endblock %}
