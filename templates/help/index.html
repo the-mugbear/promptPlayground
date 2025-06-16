@@ -2,104 +2,186 @@
 {% block title %}Help Topics{% endblock %}
 
 {% block head %}
+  {{ super() }}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/help.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
   <style>
+    .help-section {
+      margin-bottom: 3rem;
+    }
+    
+    .help-section h2 {
+      color: var(--accent-color);
+      border-bottom: 2px solid var(--accent-color);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .help-topics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .help-topic {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      transition: var(--transition-fast);
+      text-decoration: none;
+      display: block;
+    }
+    
     .help-topic:hover {
-      background-color: #1a1a1a;
-      color: #00FF41;
-      text-shadow: 1px 1px 2px #01af26;
+      background: var(--surface-color-light);
+      border-color: var(--accent-color);
+      text-decoration: none;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 255, 65, 0.2);
     }
-    .help-topic:hover a {
-      color: #00FF41;
-      text-shadow: 1px 1px 2px #01af26;
+    
+    .help-topic h3 {
+      color: var(--accent-color);
+      margin: 0 0 1rem 0;
+      font-size: 1.25rem;
     }
-    /* Divider style between sections */
-    .divider {
-      margin: 2rem 0 1rem;
-      border-top: 2px solid #333;
-      text-align: center;
-      position: relative;
+    
+    .help-topic p {
+      color: var(--text-muted);
+      margin: 0;
+      line-height: 1.6;
     }
-    .divider::after {
-      content: "Developer Topics";
-      position: absolute;
-      top: -0.8rem;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #000;
-      padding: 0 1rem;
-      color: #00FF41;
+    
+    .help-topic .difficulty {
+      display: inline-block;
+      background: var(--accent-color);
+      color: var(--background-color);
+      padding: 0.25rem 0.5rem;
+      border-radius: var(--border-radius-sm);
+      font-size: 0.8rem;
       font-weight: bold;
+      margin-top: 1rem;
+    }
+    
+    .help-topic .difficulty.beginner {
+      background: var(--success-color);
+    }
+    
+    .help-topic .difficulty.intermediate {
+      background: var(--warning-color);
+    }
+    
+    .help-topic .difficulty.advanced {
+      background: var(--danger-color);
     }
   </style>
 {% endblock %}
 
 {% block content %}
-<div class="help-container">
-  <div class="help-header">
-    <h1>Help Topics</h1>
-    <p>Select a topic below to learn how to perform that action.</p>
+<div class="container">
+  <div class="content-card">
+    <div class="card-header">
+      <h1><i class="fas fa-question-circle fa-fw"></i> Help & Documentation</h1>
+    </div>
+    <p>Comprehensive guides for using Fuzzy Prompts security testing platform</p>
   </div>
-  
-  <!-- General Help Topics -->
-  <div class="help-topics">
-    <div class="help-topic card">
-      <h2><a href="{{ url_for('help_bp.create_test_run') }}">How to Create a Test Run</a></h2>
-      <p>Learn the steps to configure and execute a test run.</p>
-    </div>
-    <div class="help-topic card">
-      <h2><a href="{{ url_for('help_bp.manage_endpoints') }}">Managing Endpoints</a></h2>
-      <p>Instructions on creating, testing, and deleting endpoints.</p>
-    </div>
-    <div class="help-topic card">
-      <h2><a href="{{ url_for('help_bp.using_transformations') }}">Using Transformations</a></h2>
-      <p>Guide to applying transformations like ROT13, Base64, and Morse code.</p>
-    </div>
-    <div class="help-topic card">
-      <h2><a href="{{ url_for('help_bp.test_suite_import') }}">Importing Test Suites</a></h2>
-      <p>Learn how to import test suites using the JSON format.</p>
-    </div>
-    <div class="help-topic card">
-      <h2><a href="{{ url_for('help_bp.adding_transformers') }}">Adding Transformations</a></h2>
-      <p>Guide to adding new transformations and registering them for use in test suite creation.</p>
-    </div>
-    <div class="help-topic card">
-      <h2><a href="{{ url_for('help_bp.results') }}">Interpreting Test Results</a></h2>
-      <p>Understand the execution status, response codes, and more.</p>
-    </div>
-    <div class="help-topic card">
-      <h2><a href="{{ url_for('help_bp.citations') }}">Resources and Citations</a></h2>
-      <p>Aggregate of research and inspiration used to create prompts.</p>
-    </div>
-    <div class="help-topic card">
-      <h2><a href="{{ url_for('help_bp.plugin') }}">POST Inspector (FireFox plugin)</a></h2>
-      <p>Download and install FireFox plugin to help identify POST request fields.</p>
+
+  <!-- Getting Started -->
+  <div class="help-section">
+    <h2><i class="fas fa-rocket fa-fw"></i> Getting Started</h2>
+    <div class="help-topics">
+      <a href="{{ url_for('help_bp.create_test_run') }}" class="help-topic">
+        <h3>Creating Your First Test Run</h3>
+        <p>Learn how to set up and execute security tests against LLM endpoints. Covers target selection, test suite configuration, and running tests.</p>
+        <span class="difficulty beginner">Beginner</span>
+      </a>
+      
+      <a href="{{ url_for('help_bp.manage_endpoints') }}" class="help-topic">
+        <h3>Managing API Endpoints</h3>
+        <p>Create, configure, and test API endpoints. Learn about authentication, headers, payload templates, and endpoint validation.</p>
+        <span class="difficulty beginner">Beginner</span>
+      </a>
+      
+      <a href="{{ url_for('help_bp.test_suite_import') }}" class="help-topic">
+        <h3>Importing Test Suites</h3>
+        <p>Import test cases and suites from JSON files. Understand the format and organize your security test scenarios.</p>
+        <span class="difficulty beginner">Beginner</span>
+      </a>
     </div>
   </div>
 
-  <!-- Divider for Developer Topics -->
-  <div class="divider"></div>
-
-  <!-- Developer Topics (Debugging Commands) -->
-  <div class="help-topics">
-    <div class="help-topic card">
-      <h2><a href="{{ url_for('help_bp.purge') }}">Debugging Commands: Purge Orphaned Test Cases</a></h2>
-      <p>Remove test cases that are no longer associated with any test suite.</p>
+  <!-- Core Features -->
+  <div class="help-section">
+    <h2><i class="fas fa-cogs fa-fw"></i> Core Features</h2>
+    <div class="help-topics">
+      <a href="{{ url_for('help_bp.using_transformations') }}" class="help-topic">
+        <h3>Using Transformations</h3>
+        <p>Apply text transformations like ROT13, Base64, Unicode encoding to test prompt injection defenses and bypass filters.</p>
+        <span class="difficulty intermediate">Intermediate</span>
+      </a>
+      
+      <a href="{{ url_for('help_bp.api_chains') }}" class="help-topic">
+        <h3>API Chains & Workflows</h3>
+        <p>Create multi-step API workflows where responses from one endpoint feed into the next. Perfect for complex attack scenarios.</p>
+        <span class="difficulty intermediate">Intermediate</span>
+      </a>
+      
+      <a href="{{ url_for('help_bp.results') }}" class="help-topic">
+        <h3>Interpreting Test Results</h3>
+        <p>Understand test execution statuses, response analysis, and how to identify successful jailbreaks and security issues.</p>
+        <span class="difficulty beginner">Beginner</span>
+      </a>
+      
+      <a href="{{ url_for('help_bp.prompt_filters') }}" class="help-topic">
+        <h3>Prompt Filters & Preprocessing</h3>
+        <p>Use prompt filters to modify test cases before execution. Apply consistent preprocessing across test runs.</p>
+        <span class="difficulty intermediate">Intermediate</span>
+      </a>
     </div>
+  </div>
 
-    <div class="help-topics"> {# Use your theme's card style #}
-      <div class="help-topic card">
-      <h2>Database Maintenance</h2>
-      <p>
-          Rebuild the database file, removing unused space and potentially shrinking the file size. 
-          This may take some time and will temporarily lock the database.
-      </p>
-      <form action="{{ url_for('help_bp.vacuum_database') }}" method="POST" onsubmit="return confirm('Are you sure you want to vacuum the database? This might take a while and block other operations.');">
-          <button type="submit">Vacuum Database</button>
-      </form>
-      </div>
+  <!-- Advanced Topics -->
+  <div class="help-section">
+    <h2><i class="fas fa-code fa-fw"></i> Advanced Topics</h2>
+    <div class="help-topics">
+      <a href="{{ url_for('help_bp.adding_transformers') }}" class="help-topic">
+        <h3>Custom Transformations</h3>
+        <p>Develop and register custom transformations. Extend the platform with your own text manipulation functions.</p>
+        <span class="difficulty advanced">Advanced</span>
+      </a>
+      
+      <a href="{{ url_for('help_bp.best_of_n') }}" class="help-topic">
+        <h3>Best-of-N Jailbreaking</h3>
+        <p>Implement advanced jailbreaking techniques using multiple prompt variations and sampling strategies.</p>
+        <span class="difficulty advanced">Advanced</span>
+      </a>
+      
+      <a href="{{ url_for('help_bp.payload_templates') }}" class="help-topic">
+        <h3>Payload Templates</h3>
+        <p>Create reusable payload templates for different API formats. Support various LLM providers and custom endpoints.</p>
+        <span class="difficulty intermediate">Intermediate</span>
+      </a>
     </div>
+  </div>
 
+  <!-- Tools & Utilities -->
+  <div class="help-section">
+    <h2><i class="fas fa-tools fa-fw"></i> Tools & Utilities</h2>
+    <div class="help-topics">
+      <a href="{{ url_for('help_bp.plugin') }}" class="help-topic">
+        <h3>POST Inspector Browser Extension</h3>
+        <p>Firefox extension to capture and analyze HTTP requests. Useful for reverse-engineering API endpoints.</p>
+        <span class="difficulty beginner">Beginner</span>
+      </a>
+      
+      <a href="{{ url_for('help_bp.citations') }}" class="help-topic">
+        <h3>Research & Citations</h3>
+        <p>Academic research, papers, and resources that inform the security testing methodologies in this platform.</p>
+        <span class="difficulty beginner">Beginner</span>
+      </a>
+    </div>
   </div>
 </div>
 {% endblock %}

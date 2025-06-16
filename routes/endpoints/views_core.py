@@ -38,8 +38,7 @@ def create_endpoint():
             # NOTE: In a production app, you would encrypt this value before saving.
             credentials_encrypted=form.credentials_encrypted.data,
             timeout_seconds=form.timeout_seconds.data,
-            retry_attempts=form.retry_attempts.data,
-            purpose=form.purpose.data
+            retry_attempts=form.retry_attempts.data
         )
         db.session.add(new_endpoint)
         db.session.commit()
@@ -81,7 +80,6 @@ def edit_endpoint(endpoint_id):
              endpoint.credentials_encrypted = form.credentials_encrypted.data
         endpoint.timeout_seconds = form.timeout_seconds.data
         endpoint.retry_attempts = form.retry_attempts.data
-        endpoint.purpose = form.purpose.data
 
         # First, remove all existing headers to start fresh
         EndpointHeader.query.filter_by(endpoint_id=endpoint.id).delete()
@@ -107,18 +105,81 @@ def edit_endpoint(endpoint_id):
         endpoint_headers = {h.key: h.value for h in endpoint.headers}
         form.raw_headers.data = "\n".join(f"{k}: {v}" for k, v in endpoint_headers.items())
 
-    return render_template('endpoints/edit_endpoint.html', form=form, endpoint=endpoint, title="Edit Endpoint")
+    # Check for dependencies when showing the edit form
+    from models.model_TestRun import TestRun
+    from models.model_APIChain import APIChainStep
+    
+    dependent_test_runs = TestRun.query.filter_by(endpoint_id=endpoint_id).all()
+    dependent_chain_steps = APIChainStep.query.filter_by(endpoint_id=endpoint_id).all()
+    
+    return render_template(
+        'endpoints/edit_endpoint.html', 
+        form=form, 
+        endpoint=endpoint, 
+        dependent_test_runs=dependent_test_runs,
+        dependent_chain_steps=dependent_chain_steps,
+        title="Edit Endpoint"
+    )
 
 
 @endpoints_bp.route('/<int:endpoint_id>/delete', methods=['POST'])
 @login_required
 def delete_endpoint(endpoint_id):
-    """Deletes an endpoint."""
+    """Deletes an endpoint after checking for dependencies."""
     endpoint = db.session.get(Endpoint, endpoint_id)
-    if endpoint and endpoint.user_id == current_user.id:
+    if not endpoint or endpoint.user_id != current_user.id:
+        flash('Endpoint not found or you do not have permission to delete it.', 'danger')
+        return redirect(url_for('endpoints_bp.list_endpoints'))
+    
+    # Check for dependent test runs
+    from models.model_TestRun import TestRun
+    dependent_test_runs = TestRun.query.filter_by(endpoint_id=endpoint_id).count()
+    
+    # Check for dependent chain steps
+    from models.model_APIChain import APIChainStep
+    dependent_chain_steps = APIChainStep.query.filter_by(endpoint_id=endpoint_id).count()
+    
+    force_delete = request.form.get('force_delete') == 'true'
+    
+    if (dependent_test_runs > 0 or dependent_chain_steps > 0) and not force_delete:
+        # Show warning instead of deleting
+        dependencies = []
+        if dependent_test_runs > 0:
+            dependencies.append(f"{dependent_test_runs} test run(s)")
+        if dependent_chain_steps > 0:
+            dependencies.append(f"{dependent_chain_steps} chain step(s)")
+        
+        dependency_text = " and ".join(dependencies)
+        flash(
+            f'Cannot delete endpoint "{endpoint.name}" because it is used by {dependency_text}. '
+            f'Please delete or update these dependencies first, or use force delete to remove the endpoint anyway '
+            f'(this will leave orphaned records).', 
+            'warning'
+        )
+        return redirect(url_for('endpoints_bp.edit_endpoint', endpoint_id=endpoint_id))
+    
+    try:
+        if force_delete:
+            # Set dependent test runs to NULL (orphan them but don't delete)
+            TestRun.query.filter_by(endpoint_id=endpoint_id).update({'endpoint_id': None})
+            
+            # Set dependent chain steps to NULL (orphan them but don't delete)
+            APIChainStep.query.filter_by(endpoint_id=endpoint_id).update({'endpoint_id': None})
+        
         db.session.delete(endpoint)
         db.session.commit()
-        flash(f'Endpoint "{endpoint.name}" has been deleted.', 'success')
-    else:
-        flash('Endpoint not found or you do not have permission to delete it.', 'danger')
+        
+        if force_delete and (dependent_test_runs > 0 or dependent_chain_steps > 0):
+            flash(
+                f'Endpoint "{endpoint.name}" has been deleted. Note: {dependent_test_runs} test run(s) and '
+                f'{dependent_chain_steps} chain step(s) are now orphaned and may need attention.', 
+                'warning'
+            )
+        else:
+            flash(f'Endpoint "{endpoint.name}" has been deleted.', 'success')
+            
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting endpoint: {str(e)}', 'danger')
+    
     return redirect(url_for('endpoints_bp.list_endpoints'))

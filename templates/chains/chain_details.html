@@ -62,26 +62,57 @@
 
         <div class="io-grid">
           <div class="io-box">
-            <h4 class="io-title">Expected Inputs</h4>
+            <h4 class="io-title">
+              <i class="fas fa-arrow-down"></i> Expected Inputs
+            </h4>
             <div class="io-tags">
               {% for var in item.inputs %}
-              <span class="io-tag input-tag">{{ var }}</span>
+              <span class="io-tag input-tag" title="This step expects: {{ var }}">
+                <i class="fas fa-code"></i> {{ var }}
+              </span>
               {% else %}
-              <span class="io-tag-empty">None</span>
+              <span class="io-tag-empty">
+                <i class="fas fa-info-circle"></i> No inputs required
+              </span>
               {% endfor %}
             </div>
           </div>
           <div class="io-box">
-            <h4 class="io-title">Produced Variables</h4>
+            <h4 class="io-title">
+              <i class="fas fa-arrow-up"></i> Produces Variables
+            </h4>
             <div class="io-tags">
               {% for var in item.outputs %}
-              <span class="io-tag output-tag">{{ var }}</span>
+              <span class="io-tag output-tag" title="This step produces: {{ var }}">
+                <i class="fas fa-database"></i> {{ var }}
+              </span>
               {% else %}
-              <span class="io-tag-empty">None</span>
+              <span class="io-tag-empty">
+                <i class="fas fa-exclamation-triangle"></i> No variables extracted
+              </span>
               {% endfor %}
             </div>
           </div>
         </div>
+        
+        <!-- Data Flow Indicators -->
+        {% if item.inputs or item.outputs %}
+        <div class="data-flow-summary">
+          {% if item.inputs and item.outputs %}
+            <span class="flow-indicator transform-flow">
+              <i class="fas fa-exchange-alt"></i> Data Transformer
+            </span>
+          {% elif item.inputs %}
+            <span class="flow-indicator consumer-flow">
+              <i class="fas fa-funnel-dollar"></i> Data Consumer
+            </span>
+          {% elif item.outputs %}
+            <span class="flow-indicator producer-flow">
+              <i class="fas fa-industry"></i> Data Producer
+            </span>
+          {% endif %}
+        </div>
+        {% endif %}
       </div>
     </div>
     {% if not loop.last %}

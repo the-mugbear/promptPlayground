@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Managing API Endpoints{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/help.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
+  <style>
+    .step-card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border-left: 4px solid var(--accent-color);
+    }
+    
+    .step-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    .step-number {
+      background: var(--accent-color);
+      color: var(--background-color);
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin-right: 1rem;
+    }
+    
+    .step-title {
+      color: var(--accent-color);
+      font-size: 1.4rem;
+      font-weight: bold;
+    }
+    
+    .step-description {
+      color: var(--text-color);
+      line-height: 1.6;
+    }
+    
+    .warning-box {
+      background: rgba(255, 193, 7, 0.1);
+      border: 1px solid var(--warning-color);
+      border-radius: var(--border-radius);
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    
+    .info-box {
+      background: rgba(0, 123, 255, 0.1);
+      border: 1px solid #007bff;
+      border-radius: var(--border-radius);
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    
+    .code-snippet {
+      background: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-sm);
+      padding: 1rem;
+      font-family: var(--font-mono);
+      margin: 1rem 0;
+      overflow-x: auto;
+    }
+    
+    .example-card {
+      background: var(--surface-color-light);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      margin: 1rem 0;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="content-card">
+    <div class="card-header">
+      <h1><i class="fas fa-plug fa-fw"></i> Managing API Endpoints</h1>
+      <p>Learn how to create, configure, test, and manage API endpoints for LLM security testing</p>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong><i class="fas fa-info-circle"></i> What are Endpoints?</strong><br>
+    Endpoints are configured API connections to LLM services (OpenAI, Anthropic, custom models, etc.). They store connection details, authentication, and payload templates needed to send test prompts to the target systems.
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">1</span>
+      <span class="step-title">Creating a New Endpoint</span>
+    </div>
+    <div class="step-description">
+      <p>Navigate to <strong>Endpoints &gt; Create Endpoint</strong> and fill in the required information:</p>
+      
+      <h4>Basic Information:</h4>
+      <ul>
+        <li><strong>Name:</strong> A descriptive name for your endpoint (e.g., "OpenAI GPT-4", "Custom Claude API")</li>
+        <li><strong>Description:</strong> Detailed notes about this endpoint's purpose and configuration</li>
+      </ul>
+      
+      <h4>Connection Details:</h4>
+      <ul>
+        <li><strong>Base URL:</strong> The API base URL (e.g., https://api.openai.com)</li>
+        <li><strong>Path:</strong> The specific endpoint path (e.g., /v1/chat/completions)</li>
+        <li><strong>Method:</strong> HTTP method (usually POST for LLM APIs)</li>
+        <li><strong>Payload Template:</strong> Select a template that matches your API format</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">2</span>
+      <span class="step-title">Configuring Authentication</span>
+    </div>
+    <div class="step-description">
+      <p>Set up authentication for your API:</p>
+      
+      <h4>Authentication Methods:</h4>
+      <ul>
+        <li><strong>None:</strong> No authentication required</li>
+        <li><strong>Bearer Token:</strong> For APIs that use Authorization: Bearer headers</li>
+        <li><strong>API Key:</strong> For APIs that use custom API key headers</li>
+        <li><strong>Basic Auth:</strong> Username/password authentication</li>
+      </ul>
+      
+      <div class="warning-box">
+        <strong><i class="fas fa-shield-alt"></i> Security Note:</strong> API keys and tokens are encrypted before storage. Never share endpoints containing sensitive credentials.
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">3</span>
+      <span class="step-title">Setting Up Headers</span>
+    </div>
+    <div class="step-description">
+      <p>Configure HTTP headers required by your API. Common headers include:</p>
+      
+      <div class="code-snippet">Content-Type: application/json
+Authorization: Bearer your-api-key-here
+User-Agent: FuzzyPrompts/1.0
+X-Custom-Header: custom-value</div>
+      
+      <p>You can paste headers in the raw format above, and they'll be automatically parsed into key-value pairs.</p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">4</span>
+      <span class="step-title">Understanding Payload Templates</span>
+    </div>
+    <div class="step-description">
+      <p>Payload templates define the JSON structure sent to your API. They must include the <code>{{INJECT_PROMPT}}</code> token where test prompts will be inserted:</p>
+      
+      <div class="example-card">
+        <h5>OpenAI Chat Completions Format:</h5>
+        <div class="code-snippet">{
+  "model": "gpt-4",
+  "messages": [
+    {
+      "role": "user",
+      "content": "{{INJECT_PROMPT}}"
+    }
+  ],
+  "max_tokens": 150,
+  "temperature": 0.7
+}</div>
+      </div>
+      
+      <div class="example-card">
+        <h5>Anthropic Claude Format:</h5>
+        <div class="code-snippet">{
+  "model": "claude-3-sonnet-20240229",
+  "max_tokens": 1000,
+  "messages": [
+    {
+      "role": "user",
+      "content": "{{INJECT_PROMPT}}"
+    }
+  ]
+}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">5</span>
+      <span class="step-title">Testing Your Endpoint</span>
+    </div>
+    <div class="step-description">
+      <p>Before using an endpoint in test runs, verify it works correctly:</p>
+      
+      <ol>
+        <li>After creating or editing an endpoint, click the <strong>"Test Endpoint"</strong> button</li>
+        <li>The system will send a sample request to your API</li>
+        <li>Review the response to ensure:</li>
+        <ul>
+          <li>The API responds with a successful status code (200)</li>
+          <li>The response format matches expectations</li>
+          <li>Authentication is working correctly</li>
+          <li>No error messages are returned</li>
+        </ul>
+      </ol>
+      
+      <div class="info-box">
+        <strong><i class="fas fa-lightbulb"></i> Pro Tip:</strong> Test your endpoint with a simple prompt like "Hello, how are you?" to verify basic functionality before running security tests.
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">6</span>
+      <span class="step-title">Advanced Configuration</span>
+    </div>
+    <div class="step-description">
+      <h4>Timeout and Retry Settings:</h4>
+      <ul>
+        <li><strong>Timeout Seconds:</strong> How long to wait for API responses (default: 30)</li>
+        <li><strong>Retry Attempts:</strong> Number of retries for failed requests (default: 3)</li>
+      </ul>
+      
+      <h4>Rate Limiting Considerations:</h4>
+      <p>When configuring test runs with this endpoint:</p>
+      <ul>
+        <li>Set appropriate delays between requests</li>
+        <li>Consider running tests serially for APIs with strict rate limits</li>
+        <li>Monitor your API usage to avoid exceeding quotas</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">7</span>
+      <span class="step-title">Managing Existing Endpoints</span>
+    </div>
+    <div class="step-description">
+      <h4>Editing Endpoints:</h4>
+      <p>You can modify endpoint configurations at any time. Changes affect future test runs but not currently running tests.</p>
+      
+      <h4>Deleting Endpoints:</h4>
+      <p>When deleting an endpoint that's used by test runs or API chains:</p>
+      <ul>
+        <li>The system will warn you about dependencies</li>
+        <li>You can choose to force delete (orphaning dependent resources)</li>
+        <li>Or update dependencies to use different endpoints first</li>
+      </ul>
+      
+      <div class="warning-box">
+        <strong><i class="fas fa-exclamation-triangle"></i> Important:</strong> Deleting an endpoint will break any test runs or API chains that depend on it. Consider the impact before deletion.
+      </div>
+    </div>
+  </div>
+
+  <div class="content-card">
+    <div class="card-header">
+      <h2><i class="fas fa-examples fa-fw"></i> Common Endpoint Examples</h2>
+    </div>
+    <div class="card-body">
+      <div class="example-card">
+        <h5>OpenAI GPT-4:</h5>
+        <ul>
+          <li><strong>Base URL:</strong> https://api.openai.com</li>
+          <li><strong>Path:</strong> /v1/chat/completions</li>
+          <li><strong>Headers:</strong> Authorization: Bearer sk-your-key-here</li>
+          <li><strong>Method:</strong> POST</li>
+        </ul>
+      </div>
+      
+      <div class="example-card">
+        <h5>Anthropic Claude:</h5>
+        <ul>
+          <li><strong>Base URL:</strong> https://api.anthropic.com</li>
+          <li><strong>Path:</strong> /v1/messages</li>
+          <li><strong>Headers:</strong> x-api-key: your-key-here, anthropic-version: 2023-06-01</li>
+          <li><strong>Method:</strong> POST</li>
+        </ul>
+      </div>
+      
+      <div class="example-card">
+        <h5>Local LLM (Ollama):</h5>
+        <ul>
+          <li><strong>Base URL:</strong> http://localhost:11434</li>
+          <li><strong>Path:</strong> /api/generate</li>
+          <li><strong>Headers:</strong> Content-Type: application/json</li>
+          <li><strong>Method:</strong> POST</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-card">
+    <div class="card-header">
+      <h2><i class="fas fa-question-circle fa-fw"></i> Next Steps</h2>
+    </div>
+    <div class="card-body">
+      <p>After setting up your endpoints:</p>
+      <ul>
+        <li><a href="{{ url_for('help_bp.create_test_run') }}">Create your first test run</a></li>
+        <li><a href="{{ url_for('help_bp.payload_templates') }}">Learn about payload templates</a></li>
+        <li><a href="{{ url_for('help_bp.api_chains') }}">Connect endpoints in API chains</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

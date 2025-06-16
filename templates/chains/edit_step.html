@@ -123,6 +123,9 @@
                     </div>
                 </details>
             </div>
+            
+            <!-- Interactive Response Data Picker -->
+            <div id="response-data-picker-container"></div>
         </div>
     </div>
 </div>
@@ -130,6 +133,7 @@
 
 {% block scripts %}
 {{ super() }}
+<script src="{{ url_for('static', filename='js/chains/response_picker.js') }}"></script>
 <script src="{{ url_for('static', filename='js/chains/step_editor.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -150,7 +154,7 @@
                 if (!endpointId) return;
 
                 // Fetch the details for the selected endpoint
-                fetch(`/api/endpoints/${endpointId}/details`)
+                fetch(`/endpoints/${endpointId}/details`)
                     .then(response => {
                         if (!response.ok) throw new Error('Network response was not ok');
                         return response.json();
@@ -173,7 +177,16 @@
             });
         }
 
-        // --- The working "Test Step" button logic ---
+        // Initialize Response Data Picker
+        const responsePicker = new ResponseDataPicker('response-data-picker-container');
+        
+        // Optional: Set up callback if you need custom behavior
+        responsePicker.onSelectionChange = function(selections) {
+            console.log('Response picker selections changed:', selections);
+            // The picker already updates the form field directly
+        };
+
+        // --- Enhanced "Test Step" button logic with response picker integration ---
         if (testBtn) {
             testBtn.addEventListener('click', function () {
                 const resultsContainer = document.getElementById('test-results-container');
@@ -205,11 +218,17 @@
                 })
                     .then(res => res.json())
                     .then(data => {
-                        // Logic to display results, same as before
+                        // Display results in collapsible sections
                         document.getElementById('rendered-payload-result').textContent = JSON.stringify(data.rendered_payload, null, 2);
                         document.getElementById('test-response-status-result').textContent = data.response?.status_code || 'N/A';
                         document.getElementById('test-response-body-result').textContent = JSON.stringify(data.response?.body, null, 2);
                         document.getElementById('extracted-data-result').textContent = JSON.stringify(data.extracted_data, null, 2);
+                        
+                        // Update response picker with new data
+                        if (data.response?.body) {
+                            responsePicker.setResponseData(data.response.body);
+                            // Click listeners are already added in setResponseData -> renderResponse
+                        }
                     })
                     .catch(err => {
                         console.error('Test step failed:', err);

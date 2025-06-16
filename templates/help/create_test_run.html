@@ -1,51 +1,230 @@
 {% extends "base.html" %}
 
-{% block title %}How to Perform [Action Name]{% endblock %}
+{% block title %}Creating Your First Test Run{% endblock %}
 
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/help.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
+  <style>
+    .step-card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border-left: 4px solid var(--accent-color);
+    }
+    
+    .step-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    .step-number {
+      background: var(--accent-color);
+      color: var(--background-color);
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin-right: 1rem;
+    }
+    
+    .step-title {
+      color: var(--accent-color);
+      font-size: 1.4rem;
+      font-weight: bold;
+    }
+    
+    .step-description {
+      color: var(--text-color);
+      line-height: 1.6;
+    }
+    
+    .warning-box {
+      background: rgba(255, 193, 7, 0.1);
+      border: 1px solid var(--warning-color);
+      border-radius: var(--border-radius);
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    
+    .info-box {
+      background: rgba(0, 123, 255, 0.1);
+      border: 1px solid #007bff;
+      border-radius: var(--border-radius);
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    
+    .code-snippet {
+      background: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-sm);
+      padding: 1rem;
+      font-family: var(--font-mono);
+      margin: 1rem 0;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
-<div class="help-container">
-  <div class="help-header">
-    <h1>How to create a Test Run</h1>
-    <p>Follow these simple steps to complete the process to create a test run. A test run contains the setup process to target an LLM endpoint and deliver
-        the desired test cases.
-    </p>
+<div class="container">
+  <div class="content-card">
+    <div class="card-header">
+      <h1><i class="fas fa-play-circle fa-fw"></i> Creating Your First Test Run</h1>
+      <p>Learn how to set up and execute security tests against LLM endpoints</p>
+    </div>
   </div>
 
-  <ol>
-    <li class="step-card">
-      <div>
-        <span class="step-number">1</span>
-        <span class="step-title">Step 1: Create a New Class</span>
+  <div class="info-box">
+    <strong><i class="fas fa-info-circle"></i> What is a Test Run?</strong><br>
+    A test run is a configured security testing session that executes multiple test cases against either a single API endpoint or a chain of connected endpoints. It allows you to systematically test LLM security using various prompt injection techniques and transformations.
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">1</span>
+      <span class="step-title">Navigate to Test Runs</span>
+    </div>
+    <div class="step-description">
+      <p>From the main dashboard, click on <strong>"Test Runs"</strong> in the navigation menu, then click the <strong>"Create Test Run"</strong> button.</p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">2</span>
+      <span class="step-title">Choose Your Test Target</span>
+    </div>
+    <div class="step-description">
+      <p>Select what you want to test:</p>
+      <ul>
+        <li><strong>API Endpoint:</strong> Test a single LLM API endpoint with various prompts</li>
+        <li><strong>API Chain:</strong> Test a sequence of connected API calls with data flow between steps</li>
+      </ul>
+      <p>For your first test run, choose <strong>"API Endpoint"</strong> and select an existing endpoint from the dropdown.</p>
+      
+      <div class="warning-box">
+        <strong><i class="fas fa-exclamation-triangle"></i> Prerequisites:</strong> You need to have created at least one endpoint before you can run tests. If you haven't created an endpoint yet, see the <a href="{{ url_for('help_bp.manage_endpoints') }}">Managing Endpoints</a> guide.
       </div>
-      <div class="step-description">
-        <p>Navigate to services -> transformers and use 'template.py' as a template. Copy the file and rename it to your desired transformer name.
-          This will be used to bootstrap development of your custom/new transformer and help it conform to project standards.
-        </p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">3</span>
+      <span class="step-title">Configure Test Settings</span>
+    </div>
+    <div class="step-description">
+      <p>Set up your test execution parameters:</p>
+      <ul>
+        <li><strong>Run Name:</strong> Give your test run a descriptive name (optional)</li>
+        <li><strong>Iterations:</strong> Number of times to run each test case (default: 1)</li>
+        <li><strong>Delay Between Requests:</strong> Time to wait between API calls to avoid rate limiting</li>
+        <li><strong>Run Serially:</strong> Check this to run tests one at a time instead of in parallel</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">4</span>
+      <span class="step-title">Select Test Suites</span>
+    </div>
+    <div class="step-description">
+      <p>Choose which test suites to include in your test run:</p>
+      <ol>
+        <li>Browse the available test suites in the "Find Test Suites" section</li>
+        <li>Use the search function to find specific test suites</li>
+        <li>Check the boxes next to test suites you want to include</li>
+        <li>Click <strong>"Add Selected Suites"</strong> to add them to your test run</li>
+      </ol>
+      <p>Selected test suites will appear in the "Selected Test Suites" section where you can remove them if needed.</p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">5</span>
+      <span class="step-title">Apply Transformations (Optional)</span>
+    </div>
+    <div class="step-description">
+      <p>Transformations modify test case prompts before they're sent to the API. Common transformations include:</p>
+      <ul>
+        <li><strong>ROT13:</strong> Simple letter substitution cipher</li>
+        <li><strong>Base64 Encode:</strong> Base64 encoding to obfuscate prompts</li>
+        <li><strong>Unicode Encode:</strong> Unicode escape sequences</li>
+        <li><strong>Prepend/Postpend Text:</strong> Add custom text before or after prompts</li>
+      </ul>
+      <p>Select transformations from the "Available Transformations" list. They will be applied in the order you select them.</p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">6</span>
+      <span class="step-title">Add Prompt Filters (Optional)</span>
+    </div>
+    <div class="step-description">
+      <p>Prompt filters allow you to apply consistent preprocessing to all test cases before transformations are applied. Select any relevant filters from the dropdown and click "Add Filter".</p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">7</span>
+      <span class="step-title">Preview and Create</span>
+    </div>
+    <div class="step-description">
+      <p>Before creating your test run:</p>
+      <ol>
+        <li>Review the "Test Case Preview" section to see how transformations will affect your prompts</li>
+        <li>Ensure you have selected at least one test suite</li>
+        <li>Verify your endpoint configuration is correct</li>
+        <li>Click <strong>"Create Test Run"</strong> to create the test run</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">8</span>
+      <span class="step-title">Execute the Test Run</span>
+    </div>
+    <div class="step-description">
+      <p>Once created, you'll be redirected to the test run details page where you can:</p>
+      <ul>
+        <li>Review the test run configuration</li>
+        <li>Start the test execution</li>
+        <li>Monitor progress in real-time</li>
+        <li>View results as they come in</li>
+      </ul>
+      
+      <div class="info-box">
+        <strong><i class="fas fa-lightbulb"></i> Pro Tip:</strong> Start with a small test suite and simple transformations for your first test run. You can always create more complex test runs as you become familiar with the platform.
       </div>
-    </li>
-    <li class="step-card">
-      <div>
-        <span class="step-number">2</span>
-        <span class="step-title">Step 2: Populate the Template</span>
-      </div>
-      <div class="step-description">
-        <p>Describe the next step in the process. Make sure each instruction is clear and actionable.</p>
-      </div>
-    </li>
-    <!-- Add more steps as needed -->
-    <li class="step-card">
-      <div>
-        <span class="step-number">3</span>
-        <span class="step-title">Step 3: [Title of Step]</span>
-      </div>
-      <div class="step-description">
-        <p>Final step description goes here. Summarize any important details and what to expect next.</p>
-      </div>
-    </li>
-  </ol>
+    </div>
+  </div>
+
+  <div class="content-card">
+    <div class="card-header">
+      <h2><i class="fas fa-question-circle fa-fw"></i> Next Steps</h2>
+    </div>
+    <div class="card-body">
+      <p>After creating your first test run:</p>
+      <ul>
+        <li><a href="{{ url_for('help_bp.results') }}">Learn how to interpret test results</a></li>
+        <li><a href="{{ url_for('help_bp.using_transformations') }}">Explore advanced transformations</a></li>
+        <li><a href="{{ url_for('help_bp.api_chains') }}">Create API chains for complex scenarios</a></li>
+      </ul>
+    </div>
+  </div>
 </div>
 {% endblock %}

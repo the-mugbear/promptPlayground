@@ -10,6 +10,13 @@ from sqlalchemy import func
 
 from . import chains_bp
 
+@chains_bp.route('/wizard', methods=['GET'])
+@login_required
+def chain_wizard():
+    """Guided chain creation wizard"""
+    endpoints = Endpoint.query.filter_by(user_id=current_user.id).all()
+    return render_template('chains/wizard.html', endpoints=endpoints, title="Chain Creation Wizard")
+
 @chains_bp.route('/', methods=['GET'])
 @login_required
 def list_chains():

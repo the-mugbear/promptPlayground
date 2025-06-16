@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 - Access Forbidden</title>
+    <style>
+        /* Define theme colors (consistent with other error pages) */
+        :root {
+            --background-color: #111;
+            --text-color: #eee;
+            --accent-color: #00FF41; /* Bright Green */
+            --secondary-color: #ff8800; /* Orange for access denied */
+            --border-color: rgba(0, 255, 65, 0.4);
+            --error-border-color: rgba(255, 136, 0, 0.6); /* Orange border */
+            --main-font: 'Consolas', 'Monaco', 'Courier New', monospace; /* Monospace font */
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: var(--main-font);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            background-color: rgba(0, 0, 0, 0.3);
+        }
+
+        .glitch-text {
+            font-size: 6rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            position: relative;
+            animation: glitch 1.5s infinite linear alternate-reverse;
+            margin-bottom: 1rem;
+        }
+
+        /* Glitch Animation Keyframes (using orange secondary color) */
+        @keyframes glitch {
+            0% { text-shadow: -2px -2px 0 var(--secondary-color), 2px 2px 0 var(--accent-color); transform: translate(0, 0); }
+            25% { text-shadow: 2px 2px 0 var(--secondary-color), -2px -2px 0 var(--accent-color); transform: translate(-1px, 1px); }
+            50% { text-shadow: -2px 2px 0 var(--secondary-color), 2px -2px 0 var(--accent-color); transform: translate(1px, -1px); }
+            75% { text-shadow: 2px -2px 0 var(--secondary-color), -2px 2px 0 var(--accent-color); transform: translate(-1px, 1px); }
+            100% { text-shadow: -2px -2px 0 var(--secondary-color), 2px 2px 0 var(--accent-color); transform: translate(0, 0); }
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: var(--text-color);
+            margin-top: 0;
+            margin-bottom: 1rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .home-link {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            border-radius: 4px;
+            margin-top: 1rem;
+        }
+
+        .home-link:hover {
+            background-color: var(--accent-color);
+            color: var(--background-color);
+            text-shadow: none;
+        }
+
+        /* Optional: Blinking cursor simulation */
+        .message::after {
+            content: '_';
+            opacity: 1;
+            animation: blink 1s infinite;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Icon styling */
+        .icon {
+            font-size: 3rem;
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="glitch-text" data-text="403">403</div>
+        <div class="icon">🔒</div>
+        <h1>ACCESS DENIED // Insufficient Privileges</h1>
+        <p class="message">Your current security clearance is insufficient for this operation. Access to the requested resource has been restricted.</p>
+
+        {# Link back to the homepage #}
+        <a href="{{ url_for('core_bp.index') }}" class="home-link">&gt; Return to Safe Zone</a>
+
+    </div>
+</body>
+</html>

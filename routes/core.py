@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 
 from models.model_TestRun import TestRun
 from models.model_TestSuite import TestSuite
+from models.model_TestRunAttempt import TestRunAttempt
+
 from sqlalchemy import desc
 
 core_bp = Blueprint('core_bp', __name__)
@@ -50,11 +52,11 @@ def index():
             'total_test_runs': TestRun.query.filter_by(user_id=current_user.id).count(),
             'total_test_suites': TestSuite.query.filter_by(user_id=current_user.id).count(),
             'total_endpoints': Endpoint.query.filter_by(user_id=current_user.id).count(),
-            'total_chains': APIChain.query.filter_by(user_id=current_user.id).count()
-            # 'tests_passed': TestExecution.query.join(TestRun).filter(
-            #     TestRun.user_id == current_user.id,
-            #     TestExecution.status == 'pass'
-            # ).count() if TestExecution.query.count() > 0 else 0
+            'total_chains': APIChain.query.filter_by(user_id=current_user.id).count(),
+            'tests_passed': TestExecution.query.join(TestRunAttempt).join(TestRun).filter(
+                TestRun.user_id == current_user.id,
+                TestExecution.status == 'pass'
+            ).count() if TestExecution.query.count() > 0 else 0
         }
         
         # Generate recent activity

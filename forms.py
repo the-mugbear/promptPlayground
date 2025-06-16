@@ -79,6 +79,15 @@ class ChainForm(FlaskForm):
     )
     submit = SubmitField('Create Chain')
 
+    def validate_name(self, name):
+        """
+        Custom validator to check if a chain with the same name already exists
+        for the current user.
+        """
+        chain = APIChain.query.filter_by(name=name.data, user_id=current_user.id).first()
+        if chain:
+            raise ValidationError('That chain name is already in use. Please choose a different one.')
+
 class ChainStepForm(FlaskForm):
     """Form for adding or editing a single step within a chain."""
     # A standard dropdown. The 'choices' for this field will be populated dynamically in the view function.
@@ -137,16 +146,5 @@ class EndpointForm(FlaskForm):
     # Fields for resiliency, with range validators to ensure sensible values.
     timeout_seconds = IntegerField('Timeout (seconds)', default=60, validators=[DataRequired(), NumberRange(min=1, max=300)])
     retry_attempts = IntegerField('Retry Attempts on Failure', default=0, validators=[DataRequired(), NumberRange(min=0, max=5)])
-    
-    # The field for selecting the Endpoint's primary purpose, which drives client-side validation.
-    purpose = RadioField(
-        'Endpoint Purpose',
-        choices=[
-            ('test_run', 'For Test Run (requires {{INJECT_PROMPT}} token)'),
-            ('chain', 'For API Chain (no token required)')
-        ],
-        default='test_run',
-        validators=[DataRequired()]
-    )
     
     submit = SubmitField('Save Endpoint')

@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}Chain Creation Wizard{% endblock %}
+
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/chains.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+.wizard-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.wizard-progress {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding: 0 1rem;
+}
+
+.progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+}
+
+.progress-step::after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: var(--border-color, #333);
+    z-index: 0;
+}
+
+.progress-step:last-child::after {
+    display: none;
+}
+
+.step-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--border-color, #333);
+    color: var(--text-muted, #999);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s ease;
+}
+
+.step-circle.active {
+    background: var(--accent-color, #00ff41);
+    color: var(--bg-color, #000);
+}
+
+.step-circle.completed {
+    background: var(--accent-color, #00ff41);
+    color: var(--bg-color, #000);
+}
+
+.step-label {
+    font-size: 0.85rem;
+    color: var(--text-muted, #999);
+    text-align: center;
+}
+
+.step-label.active {
+    color: var(--accent-color, #00ff41);
+    font-weight: 500;
+}
+
+.wizard-step {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.wizard-step.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.workflow-templates {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.template-card {
+    background: var(--surface-color, #0f0f0f);
+    border: 2px solid var(--border-color, #333);
+    border-radius: 8px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.template-card:hover {
+    border-color: var(--accent-color, #00ff41);
+    transform: translateY(-2px);
+}
+
+.template-card.selected {
+    border-color: var(--accent-color, #00ff41);
+    background: var(--accent-color-bg, rgba(0, 255, 65, 0.1));
+}
+
+.template-icon {
+    font-size: 2.5rem;
+    color: var(--accent-color, #00ff41);
+    margin-bottom: 1rem;
+}
+
+.template-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-color, #fff);
+}
+
+.template-description {
+    font-size: 0.9rem;
+    color: var(--text-muted, #999);
+    line-height: 1.4;
+}
+
+.wizard-navigation {
+    display: flex;
+    justify-content: space-between;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--border-color, #333);
+    margin-top: 2rem;
+}
+
+.endpoint-selector {
+    margin-bottom: 1rem;
+}
+
+.endpoint-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color, #333);
+    border-radius: 6px;
+}
+
+.endpoint-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color, #333);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.endpoint-item:hover {
+    background: var(--accent-color-bg, rgba(0, 255, 65, 0.1));
+}
+
+.endpoint-item:last-child {
+    border-bottom: none;
+}
+
+.endpoint-item input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+.endpoint-method {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    margin-right: 0.5rem;
+}
+
+.step-preview {
+    background: var(--surface-color, #0f0f0f);
+    border: 1px solid var(--border-color, #333);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.step-preview-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.step-number {
+    background: var(--accent-color, #00ff41);
+    color: var(--bg-color, #000);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container wizard-container">
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">Chain Creation Wizard</h1>
+            <p class="page-subtitle">Build powerful API workflows step by step</p>
+        </div>
+    </header>
+
+    <!-- Progress Indicator -->
+    <div class="wizard-progress">
+        <div class="progress-step" data-step="1">
+            <div class="step-circle active">1</div>
+            <div class="step-label active">Template</div>
+        </div>
+        <div class="progress-step" data-step="2">
+            <div class="step-circle">2</div>
+            <div class="step-label">Endpoints</div>
+        </div>
+        <div class="progress-step" data-step="3">
+            <div class="step-circle">3</div>
+            <div class="step-label">Configuration</div>
+        </div>
+        <div class="progress-step" data-step="4">
+            <div class="step-circle">4</div>
+            <div class="step-label">Review</div>
+        </div>
+    </div>
+
+    <!-- Step 1: Choose Template -->
+    <div class="wizard-step active" data-step="1">
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-template"></i> Choose a Workflow Template</h3>
+                <p class="text-muted">Select a template that matches your use case, or start from scratch</p>
+            </div>
+            <div class="card-body">
+                <div class="workflow-templates">
+                    <div class="template-card" data-template="auth-data">
+                        <div class="template-icon">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <div class="template-title">Authentication + Data Fetch</div>
+                        <div class="template-description">
+                            Login to get an access token, then use it to fetch protected data
+                        </div>
+                    </div>
+                    
+                    <div class="template-card" data-template="create-process">
+                        <div class="template-icon">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <div class="template-title">Create + Process</div>
+                        <div class="template-description">
+                            Create a resource, then run additional processing or updates on it
+                        </div>
+                    </div>
+                    
+                    <div class="template-card" data-template="search-analyze">
+                        <div class="template-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="template-title">Search + Analyze</div>
+                        <div class="template-description">
+                            Search for data, then analyze or transform the results
+                        </div>
+                    </div>
+                    
+                    <div class="template-card" data-template="notification-chain">
+                        <div class="template-icon">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <div class="template-title">Notification Chain</div>
+                        <div class="template-description">
+                            Create content, then send notifications through multiple channels
+                        </div>
+                    </div>
+                    
+                    <div class="template-card" data-template="custom">
+                        <div class="template-icon">
+                            <i class="fas fa-puzzle-piece"></i>
+                        </div>
+                        <div class="template-title">Custom Workflow</div>
+                        <div class="template-description">
+                            Start from scratch and build your own unique workflow
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Select Endpoints -->
+    <div class="wizard-step" data-step="2">
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-plug"></i> Select Endpoints</h3>
+                <p class="text-muted">Choose the API endpoints you want to include in your workflow</p>
+            </div>
+            <div class="card-body">
+                <div class="endpoint-selector">
+                    <div class="endpoint-list" id="endpoint-list">
+                        {% for endpoint in endpoints %}
+                        <div class="endpoint-item" data-endpoint-id="{{ endpoint.id }}">
+                            <input type="checkbox" id="endpoint-{{ endpoint.id }}" data-endpoint-id="{{ endpoint.id }}">
+                            <label for="endpoint-{{ endpoint.id }}">
+                                <span class="endpoint-method http-{{ endpoint.method.lower() }}">{{ endpoint.method }}</span>
+                                <strong>{{ endpoint.name }}</strong>
+                                <div class="text-muted" style="font-size: 0.8rem;">
+                                    {{ endpoint.base_url }}{{ endpoint.path }}
+                                </div>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="chain-name">Chain Name</label>
+                    <input type="text" id="chain-name" class="form-control" placeholder="Enter a name for your chain" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="chain-description">Description</label>
+                    <textarea id="chain-description" class="form-control" rows="3" placeholder="Describe what this chain does"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Configuration -->
+    <div class="wizard-step" data-step="3">
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-cog"></i> Configure Steps</h3>
+                <p class="text-muted">Set the order and data flow for your selected endpoints</p>
+            </div>
+            <div class="card-body">
+                <div id="steps-configuration">
+                    <!-- Dynamic content will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 4: Review -->
+    <div class="wizard-step" data-step="4">
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-check"></i> Review & Create</h3>
+                <p class="text-muted">Review your workflow configuration before creating the chain</p>
+            </div>
+            <div class="card-body">
+                <div id="chain-review">
+                    <!-- Dynamic content will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="wizard-navigation">
+        <button type="button" id="prev-btn" class="btn btn-secondary" disabled>
+            <i class="fas fa-arrow-left"></i> Previous
+        </button>
+        <button type="button" id="next-btn" class="btn btn-primary">
+            Next <i class="fas fa-arrow-right"></i>
+        </button>
+        <button type="button" id="create-btn" class="btn btn-success" style="display: none;">
+            <i class="fas fa-plus"></i> Create Chain
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/chains/wizard.js') }}"></script>
+{% endblock %}

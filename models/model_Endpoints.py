@@ -35,7 +35,6 @@ class Endpoint(db.Model):
     retry_backoff_factor = db.Column(db.Float, default=2.0, nullable=False)
     
     # --- Other Existing Fields ---
-    purpose = db.Column(db.String(30), nullable=False, default='test_run')
     headers = db.relationship('EndpointHeader', back_populates='endpoint', lazy='dynamic', cascade="all, delete-orphan")
     
     # This creates the "many" side of a one-to-many relationship.
@@ -60,7 +59,6 @@ class Endpoint(db.Model):
             "auth_method": self.auth_method,
             "timeout_seconds": self.timeout_seconds,
             "retry_attempts": self.retry_attempts,
-            "purpose": self.purpose,
             "headers": [header.to_dict() for header in self.headers],
             "user_id": self.user_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,

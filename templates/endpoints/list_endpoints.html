@@ -37,7 +37,6 @@
               <th>Name</th>
               <th>Method</th>
               <th>URL</th>
-              <th>Purpose</th>
               <th class="text-right">Actions</th>
             </tr>
           </thead>
@@ -54,10 +53,6 @@
                 </td>
                 <td>
                   <code class="endpoint-url">{{ ep.base_url }}{{ ep.path }}</code>
-                </td>
-                <td>
-                  {# --- Display the new 'purpose' field --- #}
-                  <span class="badge">{{ ep.purpose.replace('_', ' ')|title }}</span>
                 </td>
                 <td class="text-right">
                   <div class="action-buttons">

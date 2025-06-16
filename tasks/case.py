@@ -53,7 +53,7 @@ def execute_single_test_case(
         attempt = db.session.get(TestRunAttempt, test_run_attempt_id)
         run = db.session.query(TestRun).options(
             selectinload(TestRun.filters),
-            joinedload(TestRun.endpoint)
+            selectinload(TestRun.endpoint)
         ).get(test_run_id)
         case_obj = db.session.get(TestCase, test_case_id)
         endpoint_obj = run.endpoint if run else None

@@ -199,14 +199,119 @@ def create_app(config_object=Config): # Pass the class itself
     # --- Application-Level Error Handlers ---
     @app.errorhandler(500)
     def internal_server_error(error):
+        """
+        Handle 500 Internal Server Errors gracefully.
+        Logs the error, rolls back database session, and shows user-friendly error page.
+        """
         app.logger.error(f'Server Error: {error}', exc_info=True)
-        db.session.rollback() # Rollback session in case of DB error during request
+        
+        # Rollback database session in case of DB error during request
+        try:
+            db.session.rollback()
+        except Exception as rollback_error:
+            app.logger.error(f'Error during rollback: {rollback_error}')
+        
+        # Check if this is an AJAX/API request
+        is_ajax_request = (
+            (request.content_type and 'application/json' in request.content_type.lower()) or
+            request.is_json or
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+            (request.accept_mimetypes.best and 'application/json' in request.accept_mimetypes.best.lower())
+        )
+        
+        if is_ajax_request:
+            # Return JSON error response for AJAX requests
+            return jsonify({
+                'error': 'Internal server error occurred',
+                'message': 'An unexpected error occurred. Please try again later.',
+                'status_code': 500
+            }), 500
+        
+        # Return HTML error page for regular requests
         return render_template('errors/500.html', error=error), 500
 
     @app.errorhandler(404)
     def page_not_found(error):
+        """Handle 404 Not Found errors gracefully."""
         app.logger.info(f'Page not found: {request.url}')
+        
+        # Check if this is an AJAX/API request
+        is_ajax_request = (
+            (request.content_type and 'application/json' in request.content_type.lower()) or
+            request.is_json or
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+            (request.accept_mimetypes.best and 'application/json' in request.accept_mimetypes.best.lower())
+        )
+        
+        if is_ajax_request:
+            # Return JSON error response for AJAX requests
+            return jsonify({
+                'error': 'Not found',
+                'message': f'The requested resource was not found: {request.path}',
+                'status_code': 404
+            }), 404
+        
+        # Return HTML error page for regular requests
         return render_template('errors/404.html', error=error), 404
+    
+    @app.errorhandler(403)
+    def forbidden(error):
+        """Handle 403 Forbidden errors gracefully."""
+        app.logger.warning(f'Forbidden access attempt: {request.url}')
+        
+        # Check if this is an AJAX/API request
+        is_ajax_request = (
+            (request.content_type and 'application/json' in request.content_type.lower()) or
+            request.is_json or
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+            (request.accept_mimetypes.best and 'application/json' in request.accept_mimetypes.best.lower())
+        )
+        
+        if is_ajax_request:
+            # Return JSON error response for AJAX requests
+            return jsonify({
+                'error': 'Forbidden',
+                'message': 'You do not have permission to access this resource.',
+                'status_code': 403
+            }), 403
+        
+        # For regular requests, redirect to home page with flash message
+        from flask import flash
+        flash('You do not have permission to access that resource.', 'error')
+        return redirect(url_for('core_bp.index'))
+    
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(error):
+        """
+        Catch-all handler for unexpected exceptions.
+        This ensures that any unhandled exception gets properly logged and handled.
+        """
+        app.logger.error(f'Unexpected error: {error}', exc_info=True)
+        
+        # Rollback database session
+        try:
+            db.session.rollback()
+        except Exception as rollback_error:
+            app.logger.error(f'Error during rollback: {rollback_error}')
+        
+        # Check if this is an AJAX/API request
+        is_ajax_request = (
+            (request.content_type and 'application/json' in request.content_type.lower()) or
+            request.is_json or
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+            (request.accept_mimetypes.best and 'application/json' in request.accept_mimetypes.best.lower())
+        )
+        
+        if is_ajax_request:
+            # Return JSON error response for AJAX requests
+            return jsonify({
+                'error': 'Internal server error',
+                'message': 'An unexpected error occurred. Please try again later.',
+                'status_code': 500
+            }), 500
+        
+        # Return HTML error page for regular requests
+        return render_template('errors/500.html', error=error), 500
     
     # Defines a whitelist of public blueprints and endpoints
     @app.before_request

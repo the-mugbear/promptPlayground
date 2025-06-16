@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block title %}API Chains & Workflows{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/help.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
+  <style>
+    .step-card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border-left: 4px solid var(--accent-color);
+    }
+    
+    .step-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    .step-number {
+      background: var(--accent-color);
+      color: var(--background-color);
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin-right: 1rem;
+    }
+    
+    .step-title {
+      color: var(--accent-color);
+      font-size: 1.4rem;
+      font-weight: bold;
+    }
+    
+    .flow-diagram {
+      background: var(--surface-color-light);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 2rem;
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+    
+    .flow-step {
+      display: inline-block;
+      background: var(--accent-color);
+      color: var(--background-color);
+      padding: 0.5rem 1rem;
+      border-radius: var(--border-radius-sm);
+      margin: 0.25rem;
+      font-weight: bold;
+    }
+    
+    .flow-arrow {
+      color: var(--accent-color);
+      font-size: 1.5rem;
+      margin: 0 0.5rem;
+    }
+    
+    .warning-box {
+      background: rgba(255, 193, 7, 0.1);
+      border: 1px solid var(--warning-color);
+      border-radius: var(--border-radius);
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    
+    .info-box {
+      background: rgba(0, 123, 255, 0.1);
+      border: 1px solid #007bff;
+      border-radius: var(--border-radius);
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    
+    .code-snippet {
+      background: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-sm);
+      padding: 1rem;
+      font-family: var(--font-mono);
+      margin: 1rem 0;
+      overflow-x: auto;
+    }
+    
+    .example-scenario {
+      background: var(--surface-color-lighter);
+      border-left: 3px solid var(--success-color);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="content-card">
+    <div class="card-header">
+      <h1><i class="fas fa-link fa-fw"></i> API Chains & Workflows</h1>
+      <p>Create multi-step API workflows where responses from one endpoint feed into the next, enabling complex attack scenarios and sophisticated testing patterns</p>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong><i class="fas fa-info-circle"></i> What are API Chains?</strong><br>
+    API Chains are sequences of connected API calls where the response from one step becomes input for the next step. This enables complex testing scenarios like multi-turn conversations, information gathering followed by exploitation, or building context before launching attacks.
+  </div>
+
+  <div class="flow-diagram">
+    <div class="flow-step">Step 1: Recon</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">Step 2: Context Building</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">Step 3: Attack</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">Step 4: Exploitation</div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">1</span>
+      <span class="step-title">Creating Your First Chain</span>
+    </div>
+    <div class="step-description">
+      <p>Navigate to <strong>Chains → Create Chain</strong> and start building your workflow:</p>
+      
+      <h4>Basic Information:</h4>
+      <ul>
+        <li><strong>Chain Name:</strong> Descriptive name for your workflow</li>
+        <li><strong>Description:</strong> Explain the purpose and strategy of this chain</li>
+      </ul>
+      
+      <h4>First Step Configuration:</h4>
+      <ul>
+        <li><strong>Step Name:</strong> Descriptive name for this step</li>
+        <li><strong>Endpoint:</strong> Select the API endpoint to call</li>
+        <li><strong>Input Variables:</strong> Define what data this step needs</li>
+        <li><strong>Prompt Template:</strong> How to format the API request</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">2</span>
+      <span class="step-title">Data Flow & Variable Extraction</span>
+    </div>
+    <div class="step-description">
+      <p>The power of API chains comes from passing data between steps:</p>
+      
+      <h4>Output Data Extraction:</h4>
+      <ul>
+        <li><strong>Response Data Picker:</strong> Interactive tool to select JSON response fields</li>
+        <li><strong>Variable Names:</strong> Assign meaningful names to extracted data</li>
+        <li><strong>JSONPath Support:</strong> Extract nested data from complex responses</li>
+      </ul>
+      
+      <h4>Variable Usage in Next Steps:</h4>
+      <ul>
+        <li><strong>Input Variables:</strong> Reference data from previous steps</li>
+        <li><strong>Template Substitution:</strong> Use <code>{{variable_name}}</code> syntax</li>
+        <li><strong>Multiple Sources:</strong> Combine data from multiple previous steps</li>
+      </ul>
+      
+      <div class="code-snippet">// Example: Using extracted data in next step
+{
+  "model": "gpt-4",
+  "messages": [
+    {
+      "role": "user", 
+      "content": "Based on this information: {{previous_response}}, now tell me about {{extracted_topic}}"
+    }
+  ]
+}</div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">3</span>
+      <span class="step-title">Building Multi-Step Workflows</span>
+    </div>
+    <div class="step-description">
+      <p>Add additional steps to create complex workflows:</p>
+      
+      <ol>
+        <li><strong>Add Step:</strong> Click "Add Step" to create subsequent steps</li>
+        <li><strong>Configure Dependencies:</strong> Define which previous steps this step depends on</li>
+        <li><strong>Map Variables:</strong> Connect outputs from previous steps to inputs of current step</li>
+        <li><strong>Test Each Step:</strong> Use the step debugger to verify functionality</li>
+      </ol>
+      
+      <div class="warning-box">
+        <strong><i class="fas fa-exclamation-triangle"></i> Step Order:</strong> Steps execute in sequence. Each step waits for all its dependencies to complete before executing.
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-number">4</span>
+      <span class="step-title">Using the Chain Debugger</span>
+    </div>
+    <div class="step-description">
+      <p>Test your chain before using it in test runs:</p>
+      
+      <h4>Debugger Features:</h4>
+      <ul>
+        <li><strong>Step-by-Step Execution:</strong> Run individual steps to verify functionality</li>
+        <li><strong>Response Preview:</strong> See actual API responses and extracted data</li>
+        <li><strong>Variable Inspection:</strong> View all variables available at each step</li>
+        <li><strong>Error Diagnostics:</strong> Identify configuration issues and API errors</li>
+      </ul>
+      
+      <h4>Testing Process:</h4>
+      <ol>
+        <li>Provide test values for input variables</li>
+        <li>Execute steps one by one</li>
+        <li>Verify data extraction is working correctly</li>
+        <li>Adjust variable mappings as needed</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="content-card">
+    <div class="card-header">
+      <h2><i class="fas fa-lightbulb fa-fw"></i> Common Chain Patterns</h2>
+    </div>
+  </div>
+
+  <div class="example-scenario">
+    <h4><i class="fas fa-search fa-fw"></i> Information Gathering → Exploitation</h4>
+    <ol>
+      <li><strong>Reconnaissance:</strong> Query the LLM about its capabilities and restrictions</li>
+      <li><strong>Context Analysis:</strong> Extract key information about security measures</li>
+      <li><strong>Targeted Attack:</strong> Use gathered information to craft specific bypass attempts</li>
+    </ol>
+    <p><strong>Use Case:</strong> Adaptive jailbreaking that learns from initial responses</p>
+  </div>
+
+  <div class="example-scenario">
+    <h4><i class="fas fa-comments fa-fw"></i> Multi-Turn Conversation Attack</h4>
+    <ol>
+      <li><strong>Establish Trust:</strong> Start with innocent, helpful requests</li>
+      <li><strong>Build Context:</strong> Gradually introduce sensitive topics</li>
+      <li><strong>Escalate Request:</strong> Make increasingly problematic requests</li>
+      <li><strong>Extract Information:</strong> Attempt to get harmful content</li>
+    </ol>
+    <p><strong>Use Case:</strong> Testing conversation-based manipulation resistance</p>
+  </div>
+
+  <div class="example-scenario">
+    <h4><i class="fas fa-code fa-fw"></i> Code Generation Pipeline</h4>
+    <ol>
+      <li><strong>Request Framework:</strong> Ask for code structure or framework</li>
+      <li><strong>Add Features:</strong> Request specific functionality to be added</li>
+      <li><strong>Refine Implementation:</strong> Ask for optimizations or modifications</li>
+      <li><strong>Test Boundaries:</strong> Request potentially harmful modifications</li>
+    </ol>
+    <p><strong>Use Case:</strong> Testing progressive code generation attacks</p>
+  </div>
+
+  <div class="example-scenario">
+    <h4><i class="fas fa-user-secret fa-fw"></i> Role-Playing Escalation</h4>
+    <ol>
+      <li><strong>Establish Role:</strong> Set up a fictional scenario or character</li>
+      <li><strong>Build Narrative:</strong> Develop the story and context</li>
+      <li><strong>Introduce Conflict:</strong> Add elements that require harmful advice</li>
+      <li><strong>Request Assistance:</strong> Ask for help with the problematic situation</li>
+    </ol>
+    <p><strong>Use Case:</strong> Testing resistance to social engineering and role manipulation</p>
+  </div>
+
+  <div class="content-card">
+    <div class="card-header">
+      <h2><i class="fas fa-cogs fa-fw"></i> Advanced Features</h2>
+    </div>
+    <div class="card-body">
+      <h4>Conditional Logic:</h4>
+      <p>Chains can include conditional steps that execute based on previous responses:</p>
+      <ul>
+        <li><strong>Response Analysis:</strong> Check if responses contain specific keywords or patterns</li>
+        <li><strong>Branching Paths:</strong> Take different actions based on API responses</li>
+        <li><strong>Error Handling:</strong> Define fallback steps for failed API calls</li>
+      </ul>
+      
+      <h4>Variable Transformation:</h4>
+      <p>Apply transformations to extracted data before using it in subsequent steps:</p>
+      <ul>
+        <li><strong>Text Processing:</strong> Clean, format, or modify extracted text</li>
+        <li><strong>Data Formatting:</strong> Convert between different data formats</li>
+        <li><strong>Content Analysis:</strong> Extract specific information from responses</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="content-card">
+    <div class="card-header">
+      <h2><i class="fas fa-exclamation-triangle fa-fw"></i> Best Practices</h2>
+    </div>
+    <div class="card-body">
+      <ul>
+        <li><strong>Start Simple:</strong> Begin with 2-3 step chains before building complex workflows</li>
+        <li><strong>Test Frequently:</strong> Use the debugger after adding each step</li>
+        <li><strong>Handle Errors:</strong> Plan for API failures and unexpected responses</li>
+        <li><strong>Document Purpose:</strong> Clearly explain the attack strategy in descriptions</li>
+        <li><strong>Validate Extraction:</strong> Ensure data extraction works with various response formats</li>
+        <li><strong>Monitor Rate Limits:</strong> Consider API quotas when designing long chains</li>
+        <li><strong>Version Control:</strong> Save different versions of chains for testing variations</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="content-card">
+    <div class="card-header">
+      <h2><i class="fas fa-play fa-fw"></i> Using Chains in Test Runs</h2>
+    </div>
+    <div class="card-body">
+      <p>Once your chain is built and tested:</p>
+      <ol>
+        <li><strong>Create Test Run:</strong> Select "API Chain" as the test target</li>
+        <li><strong>Choose Chain:</strong> Select your configured chain from the dropdown</li>
+        <li><strong>Select Test Suites:</strong> Choose test cases that provide initial prompts</li>
+        <li><strong>Configure Execution:</strong> Set iterations, delays, and other parameters</li>
+        <li><strong>Monitor Results:</strong> Watch the chain execute across multiple test cases</li>
+      </ol>
+      
+      <div class="info-box">
+        <strong><i class="fas fa-lightbulb"></i> Pro Tip:</strong> Test your chain with a single test case first before running it against large test suites.
+      </div>
+    </div>
+  </div>
+
+  <div class="content-card">
+    <div class="card-header">
+      <h2><i class="fas fa-question-circle fa-fw"></i> Next Steps</h2>
+    </div>
+    <div class="card-body">
+      <p>After mastering API chains:</p>
+      <ul>
+        <li><a href="{{ url_for('help_bp.create_test_run') }}">Run chains in test runs</a></li>
+        <li><a href="{{ url_for('help_bp.results') }}">Analyze chain execution results</a></li>
+        <li><a href="{{ url_for('help_bp.manage_endpoints') }}">Optimize endpoints for chains</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

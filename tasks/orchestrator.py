@@ -41,7 +41,7 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
         .options(
             selectinload(TestRun.filters), # For the new helper function access later
             selectinload(TestRun.test_suites).selectinload(TestSuite.test_cases),
-            joinedload(TestRun.endpoint) # Eagerly load endpoint if not already
+            selectinload(TestRun.endpoint) # Eagerly load endpoint if not already
         )
         .get(run_id)
     )

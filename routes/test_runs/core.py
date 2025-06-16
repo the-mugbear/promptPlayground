@@ -190,13 +190,18 @@ def create_test_run_form():
 
     pagination = suites_query.paginate(page=page, per_page=10, error_out=False)
     test_suites = pagination.items
-    endpoints = Endpoint.query.all()
+    endpoints = Endpoint.query.filter_by(user_id=current_user.id).all()
     prompt_filters = PromptFilter.query.order_by(PromptFilter.name).all()
+    
+    # Add chains for the current user
+    from models.model_APIChain import APIChain
+    chains = APIChain.query.filter_by(user_id=current_user.id).order_by(APIChain.name).all()
 
     return render_template(
         'test_runs/create_test_run.html',
         endpoints=endpoints,
         test_suites=test_suites,
+        chains=chains,
         pagination=pagination,
         search=search,
         prompt_filters=prompt_filters
@@ -221,7 +226,9 @@ def create_test_run():
         or back to the creation form with error message on failure
     """
     run_name = request.form.get('run_name')
+    target_type = request.form.get('target_type', 'endpoint')
     endpoint_id = request.form.get('endpoint_id')
+    chain_id = request.form.get('chain_id')
     selected_suite_ids = request.form.getlist('suite_ids')
     selected_filter_ids = request.form.getlist('filter_ids')
     payload_override = request.form.get('endpointPayload')
@@ -270,30 +277,80 @@ def create_test_run():
 
     # Generate default name if none provided
     if not run_name:
-        run_name = f"Run for Endpoint {endpoint_id} at {datetime.now()}"
-    if not endpoint_id or not selected_suite_ids:
-        flash("Missing required fields: endpoint_id, or suite_ids", 'error')
+        if target_type == 'chain' and chain_id:
+            run_name = f"Chain Run {chain_id} at {datetime.now()}"
+        elif endpoint_id:
+            run_name = f"Endpoint Run {endpoint_id} at {datetime.now()}"
+        else:
+            run_name = f"Test Run at {datetime.now()}"
+    
+    # Validate required fields based on target type
+    if target_type == 'endpoint':
+        if not endpoint_id or not selected_suite_ids:
+            flash("Missing required fields: endpoint must be selected for endpoint runs, and at least one test suite", 'error')
+            return redirect(url_for('test_runs_bp.create_test_run_form'))
+    elif target_type == 'chain':
+        if not chain_id or not selected_suite_ids:
+            flash("Missing required fields: chain must be selected for chain runs, and at least one test suite", 'error')
+            return redirect(url_for('test_runs_bp.create_test_run_form'))
+    else:
+        flash("Invalid target type", 'error')
         return redirect(url_for('test_runs_bp.create_test_run_form'))
 
     try:
-        # Validate and update endpoint if payload override provided
-        endpoint_to_update = Endpoint.query.get(endpoint_id)
-        if not endpoint_to_update:
-            flash(
-                f"Selected endpoint with ID {endpoint_id} not found.", 'error')
-            return redirect(url_for('test_runs_bp.create_test_run_form'))
-
-        if payload_override and payload_override.strip():
-            if "{{INJECT_PROMPT}}" not in payload_override:
+        # Handle validation based on target type
+        if target_type == 'endpoint':
+            # Validate and update endpoint if payload override provided
+            endpoint_to_update = Endpoint.query.get(endpoint_id)
+            if not endpoint_to_update:
                 flash(
-                    "Error: The overridden payload must still contain '{{INJECT_PROMPT}}'. Endpoint not updated.", 'error')
-            else:
-                endpoint_to_update.http_payload = payload_override
+                    f"Selected endpoint with ID {endpoint_id} not found.", 'error')
+                return redirect(url_for('test_runs_bp.create_test_run_form'))
+
+            # Check if endpoint has required {{INJECT_PROMPT}} token for test runs
+            current_payload = payload_override.strip() if payload_override and payload_override.strip() else None
+            
+            # Get the payload to check - either override or from endpoint's template
+            payload_to_check = current_payload
+            if not payload_to_check and endpoint_to_update.payload_template:
+                payload_to_check = endpoint_to_update.payload_template.template
+            
+            # Validate that payload contains {{INJECT_PROMPT}} token
+            if not payload_to_check or "{{INJECT_PROMPT}}" not in payload_to_check:
+                # Create a helpful error message with a suggested payload
+                suggested_payload = '{\n  "messages": [\n    {\n      "role": "user",\n      "content": "{{INJECT_PROMPT}}"\n    }\n  ]\n}'
+                
+                flash(
+                    f"Error: This endpoint cannot be used for test runs because its payload doesn't contain the required '{{{{INJECT_PROMPT}}}}' token. "
+                    f"Test cases need this token to substitute their prompts. You can either: "
+                    f"1) Edit the endpoint to add a payload template with the token, or "
+                    f"2) Use the 'Payload Override' field below with a payload like: {suggested_payload}", 
+                    'error')
+                return redirect(url_for('test_runs_bp.create_test_run_form'))
+
+            # Update endpoint payload if override provided
+            if current_payload:
+                endpoint_to_update.http_payload = current_payload
+                
+        elif target_type == 'chain':
+            # Validate chain exists and belongs to user
+            from models.model_APIChain import APIChain
+            chain_to_use = APIChain.query.filter_by(id=chain_id, user_id=current_user.id).first()
+            if not chain_to_use:
+                flash(
+                    f"Selected chain with ID {chain_id} not found or doesn't belong to you.", 'error')
+                return redirect(url_for('test_runs_bp.create_test_run_form'))
+            
+            # For chain runs, we don't need to validate {{INJECT_PROMPT}} tokens
+            # as chains handle data flow differently
+            endpoint_to_update = None  # Not applicable for chain runs
 
         # Create new test run
         new_run = TestRun(
             name=run_name,
-            endpoint_id=endpoint_id,
+            target_type=target_type,
+            endpoint_id=endpoint_id if target_type == 'endpoint' else None,
+            chain_id=chain_id if target_type == 'chain' else None,
             status='Not Started',
             user_id=current_user.id,
             run_transformations=transform_configs,

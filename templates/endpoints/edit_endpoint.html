@@ -9,6 +9,75 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/endpoints.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/endpoints/test_endpoint_modal.css') }}">
+  <style>
+    .dependency-section {
+      margin-bottom: 1.5rem;
+    }
+    
+    .dependency-section h4 {
+      color: var(--text-color);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .dependency-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .dependency-list li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border-color-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .dependency-list li:last-child {
+      border-bottom: none;
+    }
+    
+    .dependency-list a {
+      color: var(--accent-color);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .dependency-list a:hover {
+      text-decoration: underline;
+    }
+    
+    .dependency-meta {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    
+    .dependency-actions {
+      margin-top: 2rem;
+    }
+    
+    .alert {
+      padding: 1rem;
+      border-radius: var(--border-radius);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    
+    .alert-warning {
+      background: rgba(255, 193, 7, 0.1);
+      border: 1px solid rgba(255, 193, 7, 0.3);
+      color: #ffc107;
+    }
+    
+    .alert-warning i {
+      margin-top: 0.1rem;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
@@ -74,11 +143,6 @@
             </div>
         </fieldset>
 
-        <fieldset class="form-section full-width">
-            <legend>Purpose</legend>
-             {{ render_field(form.purpose) }}
-        </fieldset>
-
         <div class="form-actions-full">
             <a href="{{ url_for('endpoints_bp.list_endpoints') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left fa-fw"></i>
@@ -89,6 +153,69 @@
       </form>
     </div>
   </div>
+
+  <!-- Dependencies Section -->
+  {% if dependent_test_runs or dependent_chain_steps %}
+  <div class="content-card">
+    <div class="card-header">
+      <h3><i class="fas fa-link fa-fw"></i> Dependencies</h3>
+      <p class="text-muted">This endpoint is currently used by the following resources:</p>
+    </div>
+    <div class="card-body">
+      {% if dependent_test_runs %}
+      <div class="dependency-section">
+        <h4><i class="fas fa-vial"></i> Test Runs ({{ dependent_test_runs|length }})</h4>
+        <ul class="dependency-list">
+          {% for test_run in dependent_test_runs[:5] %}
+          <li>
+            <a href="{{ url_for('test_runs_bp.view_test_run', run_id=test_run.id) }}">{{ test_run.name or 'Test Run #' + test_run.id|string }}</a>
+            <span class="dependency-meta">{{ test_run.created_at.strftime('%Y-%m-%d') }}</span>
+          </li>
+          {% endfor %}
+          {% if dependent_test_runs|length > 5 %}
+          <li class="text-muted">... and {{ dependent_test_runs|length - 5 }} more</li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if dependent_chain_steps %}
+      <div class="dependency-section">
+        <h4><i class="fas fa-link"></i> Chain Steps ({{ dependent_chain_steps|length }})</h4>
+        <ul class="dependency-list">
+          {% for step in dependent_chain_steps[:5] %}
+          <li>
+            <a href="{{ url_for('chains_bp.chain_details', chain_id=step.chain_id) }}">{{ step.chain.name or 'Chain #' + step.chain_id|string }}</a>
+            <span class="dependency-meta">Step {{ step.step_order }}: {{ step.name or 'Unnamed Step' }}</span>
+          </li>
+          {% endfor %}
+          {% if dependent_chain_steps|length > 5 %}
+          <li class="text-muted">... and {{ dependent_chain_steps|length - 5 }} more</li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <div class="dependency-actions">
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle"></i>
+          <strong>Warning:</strong> Deleting this endpoint will orphan the resources listed above. 
+          Consider updating them to use a different endpoint first.
+        </div>
+        
+        <form action="{{ url_for('endpoints_bp.delete_endpoint', endpoint_id=endpoint.id) }}" method="POST" 
+              onsubmit="return confirm('Are you sure you want to force delete this endpoint? This will orphan {{ (dependent_test_runs|length) + (dependent_chain_steps|length) }} dependent resources.');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="force_delete" value="true">
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash fa-fw"></i>
+            Force Delete Anyway
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   {# --- Test Result Modal (from your original file) --- #}
   <div id="testResultModalOverlay" class="dialog-overlay" style="display: none;">

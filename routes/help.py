@@ -68,6 +68,23 @@ def citations():
     ]
     return render_template('help/citations.html', research_items=research_items)
 
+# New help pages referenced in the updated index
+@help_bp.route('/api_chains')
+def api_chains():
+    return render_template('help/api_chains.html')
+
+@help_bp.route('/prompt_filters')
+def prompt_filters():
+    return render_template('help/prompt_filters.html')
+
+@help_bp.route('/best_of_n')
+def best_of_n():
+    return render_template('help/best_of_n.html')
+
+@help_bp.route('/payload_templates')
+def payload_templates():
+    return render_template('help/payload_templates.html')
+
 
 
 # ********************************
@@ -90,30 +107,3 @@ def purge():
     else:
         flash("No orphaned test cases found.", "info")
     return redirect(url_for('help_bp.index'))
-
-# --- NEW ROUTE for VACUUM ---
-# @help_bp.route('/vacuum', methods=['POST']) # Use POST to prevent accidental execution
-# @admin_required
-# def vacuum_database():
-#     """
-#     Executes the VACUUM command on the SQLite database.
-#     """
-#     print("Attempting to VACUUM database...") # Add logging
-#     try:
-#         # Get the underlying SQLAlchemy engine
-#         engine = db.engine 
-#         # Execute the VACUUM command directly
-#         # Using 'with engine.connect()' ensures connection is closed
-#         with engine.connect() as connection:
-#              # Need transaction for VACUUM in some contexts
-#              with connection.begin():
-#                  connection.execute(text("VACUUM"))
-        
-#         flash("Database VACUUM command executed successfully. Unused space has been reclaimed.", "success")
-#         print("VACUUM command completed.")
-#     except Exception as e:
-#         db.session.rollback() # Rollback any potential session state issues
-#         flash(f"Error executing VACUUM command: {str(e)}", "error")
-#         print(f"Error during VACUUM: {e}")
-    
-#     return redirect(url_for('help_bp.index')) # Redirect back to the help index
