@@ -245,6 +245,15 @@ def create_test_run():
     iterations = request.form.get('iterations', 1, type=int)
     delay_between_requests = request.form.get('delay_between_requests', 0, type=float)
     run_serially = request.form.get('run_serially') is not None
+    
+    # Parse header overrides
+    override_keys = request.form.getlist('override_key')
+    override_values = request.form.getlist('override_value')
+    header_overrides = {}
+    
+    for key, value in zip(override_keys, override_values):
+        if key.strip() and value.strip():  # Only include non-empty key-value pairs
+            header_overrides[key.strip()] = value.strip()
 
     # 2) Parse the ordered list of transformation names from our hidden field
     ordered_json = request.form.get('ordered_transformations', '[]')
@@ -364,6 +373,7 @@ def create_test_run():
             status='Not Started',
             user_id=current_user.id,
             run_transformations=transform_configs,
+            header_overrides=header_overrides if header_overrides else None,
             iterations=iterations,
             delay_between_requests=delay_between_requests,
             run_serially=run_serially

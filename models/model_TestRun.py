@@ -34,7 +34,12 @@ class TestRun(db.Model):
     #     "name": "prepend_text",
     #     "params": {"text_to_prepend": "UserPrefix: "}
     # }
-    run_transformations = db.Column(db.JSON, nullable=True) 
+    run_transformations = db.Column(db.JSON, nullable=True)
+    
+    # --- HEADER OVERRIDES FOR RUN-SPECIFIC AUTHENTICATION ---
+    # Allows users to override specific headers (especially Authorization) for this test run
+    # Format: {"Authorization": "Bearer new-token", "X-API-Key": "updated-key"}
+    header_overrides = db.Column(db.JSON, nullable=True) 
 
     # --- Status Field ---
     # Default to 'not_started'.

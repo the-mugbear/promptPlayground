@@ -4,7 +4,8 @@
       "Bash(grep:*)",
       "Bash(rg:*)",
       "Bash(python:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(podman-compose:*)"
     ],
     "deny": []
   }

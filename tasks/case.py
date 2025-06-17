@@ -136,11 +136,23 @@ def execute_single_test_case(
         
         # Prepare headers directly as a dictionary. No need to convert to a raw string.
         headers_dict = {h.key: h.value for h in (endpoint_obj.headers or [])}
+        
+        # Apply any run-specific header overrides (e.g., updated Authorization tokens)
+        if run.header_overrides:
+            logger.debug(f"Task {task_id}: Applying header overrides: {run.header_overrides}")
+            headers_dict.update(run.header_overrides)
         logger.info(f"HTTP payload being sent: {http_payload_str_for_request}")
 
         # --- Debug Logging for Test Case Execution ---
         logger.debug(f"Task {task_id}: Detailed Request Info - Method: {endpoint_obj.method}, URL: {endpoint_obj.base_url}/{endpoint_obj.path}, Headers: {headers_dict}")
         logger.debug(f"Task {task_id}: Request Payload: {http_payload_str_for_request}")
+        
+        # Specific cookie debugging
+        cookie_header = headers_dict.get('Cookie') or headers_dict.get('cookie')
+        if cookie_header:
+            logger.debug(f"Task {task_id}: Cookie header found: {cookie_header}")
+        else:
+            logger.debug(f"Task {task_id}: No cookie header found in headers")
 
         # --- 2) Make HTTP call ---
         # This nested try-except is specifically for handling errors from the HTTP request itself
@@ -172,11 +184,20 @@ def execute_single_test_case(
                 'method': endpoint_obj.method,
                 'full_url': full_url,
                 'headers_sent': resp.get("request_headers_sent", headers_dict),
+                'cookies_sent': resp.get("request_cookies_sent", {}),
+                'headers_with_cookies': resp.get("request_headers_with_cookies", headers_dict),
                 'response_headers': resp.get("response_headers", {}),
                 'request_successful': status_code is not None,
                 'error_type': None,
                 'error_context': {}
             }
+            
+            # Enhanced cookie debugging logging
+            cookies_sent = resp.get("request_cookies_sent", {})
+            if cookies_sent:
+                logger.debug(f"Task {task_id}: Cookies successfully extracted and sent: {cookies_sent}")
+            elif cookie_header:
+                logger.warning(f"Task {task_id}: Cookie header was present but no cookies were extracted: {cookie_header}")
 
             # Determine error message for the TestExecution record based on HTTP outcome.
             if error_msg_http and status_code is None: # E.g. connection error, ReadTimeout
@@ -304,12 +325,26 @@ def create_execution_record(attempt, case, seq, iteration_num, payload_dict, sta
         execution.response_headers = request_details.get('response_headers')
         
         # Store structured error details for better debugging
+        error_details = {}
         if error_msg and request_details.get('error_type'):
-            execution.error_details = {
+            error_details.update({
                 'error_type': request_details.get('error_type'),
                 'error_context': request_details.get('error_context', {}),
                 'request_sent': request_details.get('request_successful', False)
-            }
+            })
+        
+        # Add cookie debugging information
+        cookies_sent = request_details.get('cookies_sent', {})
+        headers_with_cookies = request_details.get('headers_with_cookies', {})
+        if cookies_sent or headers_with_cookies:
+            error_details.update({
+                'cookies_sent': cookies_sent,
+                'headers_with_cookies': headers_with_cookies,
+                'cookie_processing_success': bool(cookies_sent) if headers_with_cookies.get('Cookie') else None
+            })
+        
+        if error_details:
+            execution.error_details = error_details
     
     return execution
 
@@ -424,6 +459,12 @@ def execute_single_test_case_chain(
             
             # Execute the chain using the chain execution service
             logger.info(f"Chain Task {task_id}: Executing chain '{chain_obj.name}' (ID: {chain_obj.id}) with initial context: {initial_context}")
+            
+            # Apply any run-specific header overrides to the chain context
+            if run.header_overrides:
+                logger.debug(f"Chain Task {task_id}: Applying header overrides to chain context: {run.header_overrides}")
+                initial_context.update(run.header_overrides)
+            
             executor = APIChainExecutor()
             chain_result = executor.execute_chain(chain_obj.id, initial_context=initial_context)
             

@@ -6,7 +6,7 @@ import logging
 from typing import Dict, Any, Union
 
 # Other imports remain the same...
-from services.common.header_parser_service import parse_raw_headers_with_cookies
+from services.common.header_parser_service import parse_raw_headers_with_cookies, parse_cookie_header
 from urllib.parse import urlparse
 import socket
 
@@ -89,10 +89,10 @@ def execute_api_request(
         cookies_str = final_headers.pop(
             'Cookie', None) or final_headers.pop('cookie', None)
         if cookies_str:
-            for part in cookies_str.split(';'):
-                if '=' in part:
-                    name, value = part.split('=', 1)
-                    cookies[name.strip()] = value.strip()
+            # Use the sophisticated cookie parsing instead of simple split
+            logger.debug(f"Parsing cookie header: {cookies_str}")
+            cookies = parse_cookie_header(cookies_str)
+            logger.debug(f"Extracted cookies: {cookies}")
 
     # --- Preparation Step 2: URL ---
     if hostname_url.startswith(('http://127.0.0.1', 'http://localhost')):
@@ -137,6 +137,16 @@ def execute_api_request(
         verify=verify
     )
 
-    # Add the request headers to the final result for debugging purposes
-    result['request_headers_sent'] = final_headers
+    # Add the request headers and cookies to the final result for debugging purposes
+    result['request_headers_sent'] = final_headers.copy()
+    result['request_cookies_sent'] = cookies.copy()
+    
+    # Also add a combined view showing what the actual HTTP request looked like
+    combined_debug_headers = final_headers.copy()
+    if cookies:
+        # Add the cookies back as a Cookie header for debugging visibility
+        cookie_header_value = "; ".join(f"{k}={v}" for k, v in cookies.items())
+        combined_debug_headers['Cookie'] = cookie_header_value
+    result['request_headers_with_cookies'] = combined_debug_headers
+    
     return result

@@ -98,6 +98,89 @@
 .suite-selection {
     max-height: 300px;
     overflow-y: auto;
+}
+
+/* Header Overrides Styling */
+.headers-display {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.header-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color-light);
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.9rem;
+}
+
+.header-item:last-child {
+    border-bottom: none;
+}
+
+.header-key {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.header-value {
+    color: var(--text-muted-color);
+    word-break: break-all;
+}
+
+.header-override-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    align-items: center;
+}
+
+.header-override-row:last-child {
+    margin-bottom: 0;
+}
+
+.remove-header-btn {
+    background: var(--danger-color);
+    border: none;
+    color: white;
+}
+
+.remove-header-btn:hover {
+    background: var(--danger-color-dark, #c82333);
+}
+
+.jwt-warnings {
+    margin-top: 1rem;
+}
+
+.jwt-warning {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid var(--warning-color, #ffc107);
+    border-radius: var(--border-radius);
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.jwt-warning.expired {
+    background: rgba(220, 53, 69, 0.1);
+    border-color: var(--danger-color, #dc3545);
+}
+
+.jwt-warning i {
+    color: var(--warning-color, #ffc107);
+}
+
+.jwt-warning.expired i {
+    color: var(--danger-color, #dc3545);
+}
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     padding: 1rem;
@@ -283,6 +366,45 @@
                         </label>
                         <small class="form-text">When enabled, tests run one at a time instead of in parallel</small>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Header Overrides -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-key fa-fw"></i> Authentication & Headers</h3>
+                <small class="text-muted">Override endpoint headers for this test run (useful for updating authorization tokens)</small>
+            </div>
+            <div class="card-body">
+                <div id="endpoint-headers-section" style="display: none;">
+                    <div class="form-group">
+                        <label>Current Endpoint Headers:</label>
+                        <div id="current-headers-display" class="headers-display">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Header Overrides (Optional):</label>
+                        <small class="form-text">Specify headers to override for this test run. Common examples: Authorization, X-API-Key, etc.</small>
+                        <div id="header-overrides-container">
+                            <div class="header-override-row">
+                                <input type="text" class="form-control header-key" placeholder="Header Name (e.g., Authorization)" style="width: 30%;" name="override_key">
+                                <input type="text" class="form-control header-value" placeholder="Header Value (e.g., Bearer new-token)" style="width: 60%;" name="override_value">
+                                <button type="button" class="btn btn-sm btn-secondary add-header-btn" style="width: 8%;">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="jwt-warnings" class="jwt-warnings">
+                            <!-- JWT expiration warnings will appear here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="no-endpoint-selected" class="text-muted">
+                    <i class="fas fa-info-circle"></i> Select an endpoint above to configure header overrides
                 </div>
             </div>
         </div>

@@ -75,9 +75,27 @@ select:focus {
 
 /* Textarea specific */
 textarea {
-    min-height: 120px;
     resize: vertical;
     line-height: 1.5;
+}
+
+/* Apply min-height only to textareas without rows attribute or with many rows */
+textarea:not([rows]) {
+    min-height: 120px;
+}
+
+/* Small textareas (3-4 rows) should respect their rows attribute */
+textarea[rows="3"] {
+    height: calc(1.5em * 3 + 1rem); /* 3 rows + padding */
+}
+
+textarea[rows="4"] {
+    height: calc(1.5em * 4 + 1rem); /* 4 rows + padding */
+}
+
+/* Larger textareas can have a minimum height */
+textarea[rows]:not([rows="3"]):not([rows="4"]) {
+    min-height: 120px;
 }
 
 /* Select dropdowns */
@@ -388,11 +406,32 @@ input[type="search"]:focus::-webkit-search-cancel-button {
 
 .payload-textarea {
     width: 100% !important;
-    height: 300px !important;
-    min-height: 300px !important;
     font-family: var(--mono-font, monospace) !important;
     resize: vertical !important;
     box-sizing: border-box !important;
+}
+
+/* Apply default height only to payload textareas without rows attribute */
+.payload-textarea:not([rows]) {
+    height: 300px !important;
+    min-height: 300px !important;
+}
+
+/* Allow payload textareas with rows attribute to respect their height */
+.payload-textarea[rows] {
+    height: auto !important;
+    min-height: 120px !important;
+}
+
+/* Specific heights for common payload textarea row counts */
+.payload-textarea[rows="15"] {
+    height: calc(1.5em * 15 + 2rem) !important;
+    min-height: calc(1.5em * 15 + 2rem) !important;
+}
+
+.payload-textarea[rows="10"] {
+    height: calc(1.5em * 10 + 2rem) !important;
+    min-height: calc(1.5em * 10 + 2rem) !important;
 }
 
 /* === JSON VALIDATION BADGE === */
