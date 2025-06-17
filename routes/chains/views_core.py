@@ -155,6 +155,29 @@ def edit_step(chain_id, step_id):
     form = ChainStepForm(obj=step)
     form.endpoint.choices = [(e.id, e.name) for e in db.session.query(Endpoint).order_by(Endpoint.name).all()]
     
+    # Get available inputs from previous steps
+    previous_steps = []
+    all_available_vars = set()
+    
+    # Get all steps before this one, sorted by step_order
+    prior_steps = APIChainStep.query.filter(
+        APIChainStep.chain_id == chain.id,
+        APIChainStep.step_order < step.step_order
+    ).order_by(APIChainStep.step_order).all()
+    
+    for prior_step in prior_steps:
+        step_vars = set()
+        if prior_step.data_extraction_rules:
+            for rule in prior_step.data_extraction_rules:
+                if rule.get('variable_name'):
+                    step_vars.add(rule['variable_name'])
+        
+        previous_steps.append({
+            'step': prior_step,
+            'variables': sorted(list(step_vars))
+        })
+        all_available_vars.update(step_vars)
+    
     if form.validate_on_submit():
         # Update the step object with new values from the form
         step.name = form.name.data
@@ -179,7 +202,13 @@ def edit_step(chain_id, step_id):
         if step.data_extraction_rules:
             form.data_extraction_rules.data = json.dumps(step.data_extraction_rules, indent=2)
 
-    return render_template('chains/edit_step.html', form=form, chain=chain, step=step, title="Edit Step")
+    return render_template('chains/edit_step.html', 
+                         form=form, 
+                         chain=chain, 
+                         step=step, 
+                         previous_steps=previous_steps,
+                         all_available_vars=sorted(list(all_available_vars)),
+                         title="Edit Step")
 
 @chains_bp.route('/<int:chain_id>/steps/<int:step_id>/delete', methods=['POST'])
 @login_required

@@ -15,7 +15,7 @@ from models.model_TestRunAttempt import TestRunAttempt
 from models.model_TestSuite import TestSuite
 from tasks.base import ContextTask
 from tasks.helpers import with_session, emit_run_update
-from tasks.case import execute_single_test_case
+from tasks.case import execute_single_test_case, execute_single_test_case_chain
 from services.transformers.registry import apply_transformation
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy import func
@@ -41,7 +41,8 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
         .options(
             selectinload(TestRun.filters), # For the new helper function access later
             selectinload(TestRun.test_suites).selectinload(TestSuite.test_cases),
-            selectinload(TestRun.endpoint) # Eagerly load endpoint if not already
+            selectinload(TestRun.endpoint), # Eagerly load endpoint if target_type is 'endpoint'
+            selectinload(TestRun.chain) # Eagerly load chain if target_type is 'chain'
         )
         .get(run_id)
     )
@@ -49,11 +50,18 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
         logger.error(f"Orchestrator TR_ID:{run_id}: TestRun not found.")
         return {'status': 'FAILED', 'reason': 'not found'}
 
-    # Ensure endpoint is loaded, critical for later use in execute_single_test_case
-    if not run.endpoint:
-         logger.error(f"Orchestrator TR_ID:{run_id}: TestRun has no associated endpoint. Aborting.")
-         # You might want a specific _finalize_run_status call here
-         return {'status': 'ERROR', 'message': 'TestRun has no endpoint.'}
+    # Validate target based on target_type
+    if run.target_type == 'endpoint':
+        if not run.endpoint:
+            logger.error(f"Orchestrator TR_ID:{run_id}: TestRun has target_type 'endpoint' but no associated endpoint. Aborting.")
+            return {'status': 'ERROR', 'message': 'TestRun has target_type endpoint but no endpoint.'}
+    elif run.target_type == 'chain':
+        if not run.chain:
+            logger.error(f"Orchestrator TR_ID:{run_id}: TestRun has target_type 'chain' but no associated chain. Aborting.")
+            return {'status': 'ERROR', 'message': 'TestRun has target_type chain but no chain.'}
+    else:
+        logger.error(f"Orchestrator TR_ID:{run_id}: TestRun has unknown target_type '{run.target_type}'. Aborting.")
+        return {'status': 'ERROR', 'message': f'Unknown target_type: {run.target_type}'}
 
     # 2) Initialize/Update run metadata (as in your existing orchestrator.py)
     run.celery_task_id = self.request.id
@@ -105,20 +113,38 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
             f"Iteration:{iteration} with AttemptID:{attempt_id}."
         )
 
-        # fetch the endpoint_id from run.endpoint.id (or however you store it)
-        endpoint_obj = run.endpoint
-        if not endpoint_obj:
-            logger.error(f"Orchestrator TR_ID:{run_id}: Missing endpoint, cannot build child sig.")
-            return {'status': 'ERROR', 'message': 'No endpoint'}
+        # Create signature based on target type
+        if run.target_type == 'endpoint':
+            endpoint_obj = run.endpoint
+            if not endpoint_obj:
+                logger.error(f"Orchestrator TR_ID:{run_id}: Missing endpoint, cannot build child sig.")
+                return {'status': 'ERROR', 'message': 'No endpoint'}
 
-        sig = execute_single_test_case.s(
-            test_run_attempt_id=attempt_id,
-            test_case_id=case_id,
-            endpoint_id=endpoint_obj.id,   
-            test_run_id=run_id,            
-            sequence_num=seq,
-            iteration_num=iteration
-        )
+            sig = execute_single_test_case.s(
+                test_run_attempt_id=attempt_id,
+                test_case_id=case_id,
+                endpoint_id=endpoint_obj.id,   
+                test_run_id=run_id,            
+                sequence_num=seq,
+                iteration_num=iteration
+            )
+        elif run.target_type == 'chain':
+            chain_obj = run.chain
+            if not chain_obj:
+                logger.error(f"Orchestrator TR_ID:{run_id}: Missing chain, cannot build child sig.")
+                return {'status': 'ERROR', 'message': 'No chain'}
+
+            sig = execute_single_test_case_chain.s(
+                test_run_attempt_id=attempt_id,
+                test_case_id=case_id,
+                chain_id=chain_obj.id,   
+                test_run_id=run_id,            
+                sequence_num=seq,
+                iteration_num=iteration
+            )
+        else:
+            logger.error(f"Orchestrator TR_ID:{run_id}: Unknown target_type '{run.target_type}', cannot build child sig.")
+            return {'status': 'ERROR', 'message': f'Unknown target_type: {run.target_type}'}
         all_sigs.append(sig)
     
     logger.info(f"Orchestrator TR_ID:{run_id}: Finished building {len(all_sigs)} lightweight signatures in {time.time() - loop_start_time:.4f}s.")

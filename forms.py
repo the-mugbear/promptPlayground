@@ -7,6 +7,8 @@
 # ==============================================================================
 
 from flask_wtf import FlaskForm
+from flask_login import current_user
+from models.model_APIChain import APIChain
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, IntegerField, TextAreaField, RadioField
 from wtforms.validators import DataRequired, Email, EqualTo, ValidationError, Optional, Length, URL, NumberRange
 from wtforms_sqlalchemy.fields import QuerySelectField

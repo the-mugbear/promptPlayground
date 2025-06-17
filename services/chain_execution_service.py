@@ -32,14 +32,15 @@ class APIChainExecutor:
     def __init__(self):
         pass
 
-    def execute_chain(self, chain_id: int, execute_until_step_id: int = None):
+    def execute_chain(self, chain_id: int, execute_until_step_id: int = None, initial_context: dict = None):
         chain = db.session.get(APIChain, chain_id)
         if not chain:
             raise ChainExecutionError(
                 f"APIChain with ID {chain_id} not found.")
 
         # This context is built dynamically, carrying values from one step to the next.
-        chain_context = {}
+        # Start with any provided initial context (e.g., from test cases)
+        chain_context = initial_context.copy() if initial_context else {}
         execution_results = []
 
         # Sort steps by their defined order

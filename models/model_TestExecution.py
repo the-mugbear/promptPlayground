@@ -22,11 +22,21 @@ class TestExecution(db.Model):
     # What was sent
     processed_prompt = db.Column(db.Text, nullable=True)
     request_payload = db.Column(db.JSON, nullable=True)
-
+    
+    # Enhanced request debugging information
+    request_headers = db.Column(db.JSON, nullable=True)  # Headers actually sent
+    request_url = db.Column(db.Text, nullable=True)      # Full constructed URL
+    request_method = db.Column(db.String(10), nullable=True)  # HTTP method used
+    
     # What was received
     response_data = db.Column(db.Text, nullable=True)
     status_code = db.Column(db.Integer, nullable=True)
+    response_headers = db.Column(db.JSON, nullable=True)  # Response headers received
+    
+    # Enhanced timing and debugging information
+    request_duration_ms = db.Column(db.Integer, nullable=True)  # Request duration in milliseconds
     error_message = db.Column(db.Text, nullable=True) # Specific errors during request/response handling
+    error_details = db.Column(db.JSON, nullable=True)  # Structured error information
 
     # Outcome
     status = db.Column(db.String(50), default="pending") # 'pass', 'fail', 'error', 'pending'

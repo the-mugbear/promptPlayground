@@ -93,7 +93,17 @@ def view_test_run(run_id):
                 'response': execution.response_data,
                 'started_at': execution.started_at,
                 'finished_at': execution.finished_at,
-                'processed_prompt': execution.processed_prompt
+                'processed_prompt': execution.processed_prompt,
+                # Enhanced debugging information
+                'request_method': execution.request_method,
+                'request_url': execution.request_url,
+                'request_headers': execution.request_headers,
+                'request_payload': execution.request_payload,
+                'request_duration_ms': execution.request_duration_ms,
+                'response_headers': execution.response_headers,
+                'status_code': execution.status_code,
+                'error_message': execution.error_message,
+                'error_details': execution.error_details
             })
 
     # 4) Sort each test case’s executions by attempt_number

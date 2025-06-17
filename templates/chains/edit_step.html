@@ -87,7 +87,48 @@
         </div>
 
         <div class="right-card">
-            <h2><i class="fas fa-flask"></i> Step Tester</h2>
+            <!-- Available Variables Section -->
+            <div class="available-vars-section">
+                <h3><i class="fas fa-database"></i> Available Variables</h3>
+                {% if previous_steps %}
+                <p class="text-muted">Variables from previous steps that you can use in templates:</p>
+                
+                {% for prev_step in previous_steps %}
+                <div class="prev-step-card">
+                    <div class="prev-step-header">
+                        <span class="step-badge">Step {{ prev_step.step.step_order }}</span>
+                        <span class="step-name">{{ prev_step.step.name or 'Unnamed Step' }}</span>
+                    </div>
+                    <div class="variables-list">
+                        {% for var in prev_step.variables %}
+                        <span class="variable-tag" onclick="insertVariable('{{ var }}')" title="Click to insert {{ '{{' }}{{ var }}{{ '}}' }}">
+                            <i class="fas fa-code"></i>{{ var }}
+                        </span>
+                        {% else %}
+                        <span class="text-muted">No variables extracted</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                {% if all_available_vars %}
+                <div class="quick-vars">
+                    <strong>Quick Insert:</strong>
+                    {% for var in all_available_vars %}
+                    <button type="button" class="btn btn-sm variable-btn" onclick="insertVariable('{{ var }}')">
+                        {{ '{{' }}{{ var }}{{ '}}' }}
+                    </button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="text-muted">This is the first step - no previous variables available.</p>
+                {% endif %}
+            </div>
+
+            <hr>
+
+            <h3><i class="fas fa-flask"></i> Step Tester</h3>
             <p class="text-muted">Test your step configuration with mock context data.</p>
 
             <div class="form-group">
@@ -136,6 +177,36 @@
 <script src="{{ url_for('static', filename='js/chains/response_picker.js') }}"></script>
 <script src="{{ url_for('static', filename='js/chains/step_editor.js') }}"></script>
 <script>
+    // Global variable to track the last focused textarea
+    let lastFocusedTextarea = null;
+
+    // Function to insert a variable into the currently focused or last focused textarea
+    function insertVariable(varName) {
+        const target = lastFocusedTextarea || document.getElementById('payload');
+        if (target) {
+            const templateVar = `{{ '{{' }}${varName}{{ '}}' }}`;
+            const start = target.selectionStart;
+            const end = target.selectionEnd;
+            const currentValue = target.value;
+            
+            target.value = currentValue.substring(0, start) + templateVar + currentValue.substring(end);
+            target.focus();
+            target.selectionStart = target.selectionEnd = start + templateVar.length;
+        }
+    }
+
+    // Function to format JSON in textareas
+    function formatTextarea(textarea) {
+        try {
+            const parsed = JSON.parse(textarea.value);
+            textarea.value = JSON.stringify(parsed, null, 2);
+            textarea.classList.remove('is-invalid');
+        } catch (e) {
+            // Don't format if it's not valid JSON
+            textarea.classList.add('is-invalid');
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const csrfToken = document.getElementById('csrf_token')?.value;
         if (!csrfToken) {
@@ -145,7 +216,24 @@
         const endpointSelect = document.getElementById('endpoint');
         const headersTextarea = document.getElementById('headers');
         const payloadTextarea = document.getElementById('payload');
+        const dataExtractionTextarea = document.getElementById('data_extraction_rules');
         const testBtn = document.getElementById('test-step-btn');
+
+        // Track focused textareas for variable insertion
+        [headersTextarea, payloadTextarea, dataExtractionTextarea].forEach(textarea => {
+            if (textarea) {
+                textarea.addEventListener('focus', function() {
+                    lastFocusedTextarea = this;
+                });
+
+                // Add formatting on blur for JSON textareas
+                if (textarea.id !== 'data_extraction_rules') {
+                    textarea.addEventListener('blur', function() {
+                        formatTextarea(this);
+                    });
+                }
+            }
+        });
 
         // --- NEW: Event Listener for the Endpoint Dropdown ---
         if (endpointSelect) {
