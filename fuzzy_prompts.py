@@ -34,7 +34,8 @@ from routes.test_cases import test_cases_bp
 from routes.test_suites import test_suites_bp
 from routes.test_runs import test_runs_bp
 from routes.prompt_filter import prompt_filter_bp
-from routes.reports import report_bp 
+from routes.reports import report_bp
+from routes.reports_new import reports_bp 
 from routes.help import help_bp
 from routes.testing_grounds import testing_grounds_bp
 from routes.dialogues import dialogue_bp
@@ -186,6 +187,7 @@ def create_app(config_object=Config): # Pass the class itself
     app.register_blueprint(test_runs_bp)
     app.register_blueprint(prompt_filter_bp)
     app.register_blueprint(report_bp)
+    app.register_blueprint(reports_bp)
     app.register_blueprint(help_bp)
     app.register_blueprint(testing_grounds_bp)
     app.register_blueprint(dialogue_bp) 

@@ -14,10 +14,14 @@
     <link id="theme-cyberpunk" rel="stylesheet" href="{{ url_for('static', filename='css/themes/cyberpunk.css') }}">
     <link id="theme-modern" rel="stylesheet" href="{{ url_for('static', filename='css/themes/modern.css') }}" disabled>
 
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    
     <!-- Component CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navbar.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/animations.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/flash-messages.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/modals.css') }}">
 
     <!-- Page-specific CSS -->
     {% block head %}{% endblock %}
@@ -61,73 +65,74 @@
 
                 <li
                     class="dropdown {% if request.endpoint and request.endpoint.startswith('test_runs_bp') %}active{% endif %}">
-                    <a href="#">Run</a>
+                    <a href="#"><i class="fas fa-play"></i> Run</a>
                     <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('test_runs_bp.create_test_run_form') }}">Design a new Test</a></li>
-                        <li><a href="{{ url_for('test_runs_bp.list_test_runs') }}">List Existing Tests</a></li>
+                        <li><a href="{{ url_for('test_runs_bp.create_test_run_form') }}"><i class="fas fa-plus"></i> Design a new Test</a></li>
+                        <li><a href="{{ url_for('test_runs_bp.list_test_runs') }}"><i class="fas fa-list"></i> List Existing Tests</a></li>
                     </ul>
                 </li>
 
                 <li
                     class="dropdown {% if request.endpoint and request.endpoint.startswith('chains_bp') %}active{% endif %}">
-                    <a href="#">Chains</a>
+                    <a href="#"><i class="fas fa-sitemap"></i> Chains</a>
                     <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('chains_bp.create_chain') }}">Create New Chain</a></li>
-                        <li><a href="{{ url_for('chains_bp.list_chains') }}">View All Chains</a></li>
+                        <li><a href="{{ url_for('chains_bp.create_chain') }}"><i class="fas fa-plus"></i> Create New Chain</a></li>
+                        <li><a href="{{ url_for('chains_bp.list_chains') }}"><i class="fas fa-list"></i> View All Chains</a></li>
                     </ul>
                 </li>
 
                 <li
                     class="dropdown {% if request.endpoint and (request.endpoint.startswith('endpoints_bp') or request.endpoint.startswith('payload_templates_bp') or request.endpoint.startswith('test_suites_bp')) %}active{% endif %}">
-                    <a href="#">Configuration</a>
+                    <a href="#"><i class="fas fa-cog"></i> Configuration</a>
                     <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('endpoints_bp.list_endpoints') }}">Endpoints</a></li>
-                        <li><a href="{{ url_for('payload_templates_bp.list_templates') }}">Payload Templates</a></li>
-                        <li><a href="{{ url_for('test_suites_bp.list_test_suites') }}">Test Suites</a></li>
+                        <li><a href="{{ url_for('endpoints_bp.list_endpoints') }}"><i class="fas fa-plug"></i> Endpoints</a></li>
+                        <li><a href="{{ url_for('payload_templates_bp.list_templates') }}"><i class="fas fa-code"></i> Payload Templates</a></li>
+                        <li><a href="{{ url_for('test_suites_bp.list_test_suites') }}"><i class="fas fa-folder"></i> Test Suites</a></li>
                         <li>
                             <hr class="dropdown-divider">
                         </li>
-                        <li><a href="{{ url_for('endpoints_bp.manual_test') }}">Manual Endpoint Tester</a></li>
+                        <li><a href="{{ url_for('endpoints_bp.manual_test') }}"><i class="fas fa-flask"></i> Manual Endpoint Tester</a></li>
                     </ul>
                 </li>
 
                 <li class="dropdown {% if request.endpoint and request.endpoint.startswith('prompt_filter_bp') %}active{% endif %}">
-                    <a href="#">Utilities</a>
+                    <a href="#"><i class="fas fa-tools"></i> Utilities</a>
                     <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('prompt_filter_bp.create_prompt_filter') }}">Create Prompt Filter</a></li>
-                        <li><a href="{{ url_for('prompt_filter_bp.list_prompt_filters') }}">View Prompt Filters</a></li>
+                        <li><a href="{{ url_for('prompt_filter_bp.create_prompt_filter') }}"><i class="fas fa-filter"></i> Create Prompt Filter</a></li>
+                        <li><a href="{{ url_for('prompt_filter_bp.list_prompt_filters') }}"><i class="fas fa-list"></i> View Prompt Filters</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a href="{{ url_for('utils_bp.risk_calculator') }}">Risk Calculator</a></li>
+                        <li><a href="{{ url_for('utils_bp.risk_calculator') }}"><i class="fas fa-calculator"></i> Risk Calculator</a></li>
                     </ul>
                 </li>
 
                 <li
-                    class="dropdown {% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
-                    <a href="#">Reports</a>
+                    class="dropdown {% if request.endpoint and (request.endpoint.startswith('report_bp') or request.endpoint.startswith('reports_bp')) %}active{% endif %}">
+                    <a href="#"><i class="fas fa-chart-pie"></i> Reports</a>
                     <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('report_bp.report') }}">View Reports</a></li>
+                        <li><a href="{{ url_for('reports_bp.dashboard') }}"><i class="fas fa-chart-line"></i> Analytics Dashboard</a></li>
+                        <li><a href="{{ url_for('report_bp.report') }}"><i class="fas fa-chart-bar"></i> Legacy Reports</a></li>
                     </ul>
                 </li>
 
                 <li
                     class="dropdown {% if request.endpoint and (request.endpoint.startswith('evil_agent_bp') or request.endpoint.startswith('best_of_n_bp')) %}active{% endif %}">
-                    <a href="#">Attacks</a>
+                    <a href="#"><i class="fas fa-shield-alt"></i> Attacks</a>
                     <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('evil_agent_bp.evil_agent_index') }}">Evil Agent</a></li>
-                        <li><a href="{{ url_for('best_of_n_bp.best_of_n_index') }}">Best of N</a></li>
+                        <li><a href="{{ url_for('evil_agent_bp.evil_agent_index') }}"><i class="fas fa-user-secret"></i> Evil Agent</a></li>
+                        <li><a href="{{ url_for('best_of_n_bp.best_of_n_index') }}"><i class="fas fa-dice"></i> Best of N</a></li>
                     </ul>
                 </li>
 
                 {% if current_user.is_authenticated %}
                 <li class="dropdown user-menu">
-                    <a href="#">{{ current_user.username }}</a>
+                    <a href="#"><i class="fas fa-user"></i> {{ current_user.username }}</a>
                     <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('user_bp.profile') }}">My Profile</a></li>
+                        <li><a href="{{ url_for('user_bp.profile') }}"><i class="fas fa-user-cog"></i> My Profile</a></li>
                         {% if current_user.is_admin %}
-                        <li><a href="{{ url_for('admin_bp.list_invitations') }}">Manage Invitations</a></li>
+                        <li><a href="{{ url_for('admin_bp.list_invitations') }}"><i class="fas fa-users-cog"></i> Manage Invitations</a></li>
                         {% endif %}
-                        <li><a href="{{ url_for('help_bp.index') }}">Help</a></li>
-                        <li><a href="{{ url_for('auth_bp.logout') }}">Logout</a></li>
+                        <li><a href="{{ url_for('help_bp.index') }}"><i class="fas fa-question-circle"></i> Help</a></li>
+                        <li><a href="{{ url_for('auth_bp.logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                     </ul>
                 </li>
                 {% else %}
@@ -214,6 +219,10 @@
             }
         });
     </script>
+
+    <!-- Global JavaScript Libraries -->
+    <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/three.min.js') }}"></script>
 
     {% block scripts %}{% endblock %}
 </body>

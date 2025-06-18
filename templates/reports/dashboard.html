@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Testing Dashboard{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/charts.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+  <!-- Dashboard Header -->
+  <header class="dashboard-header">
+    <div class="header-content">
+      <h1 class="dashboard-title">
+        <i class="fas fa-chart-line"></i>
+        Testing Analytics Dashboard
+      </h1>
+      <p class="dashboard-subtitle">Comprehensive insights into endpoint and chain testing performance</p>
+    </div>
+    
+    <!-- Filter Controls -->
+    <div class="dashboard-filters">
+      <div class="filter-group">
+        <label for="timeRange">Time Range:</label>
+        <select id="timeRange" class="filter-select">
+          <option value="7">Last 7 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="90">Last 90 days</option>
+          <option value="365">Last year</option>
+          <option value="all">All time</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="targetType">Test Type:</label>
+        <select id="targetType" class="filter-select">
+          <option value="all" selected>All Tests</option>
+          <option value="endpoint">Direct Endpoints</option>
+          <option value="chain">Chain Executions</option>
+        </select>
+      </div>
+      
+      <button id="refreshDashboard" class="btn btn-primary">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
+    </div>
+  </header>
+
+  <!-- Key Metrics Cards -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-icon success">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <div class="metric-content">
+        <div class="metric-value" id="totalTests">-</div>
+        <div class="metric-label">Total Tests</div>
+        <div class="metric-change positive" id="testsChange">-</div>
+      </div>
+    </div>
+    
+    <div class="metric-card">
+      <div class="metric-icon primary">
+        <i class="fas fa-percentage"></i>
+      </div>
+      <div class="metric-content">
+        <div class="metric-value" id="successRate">-</div>
+        <div class="metric-label">Success Rate</div>
+        <div class="metric-change" id="successRateChange">-</div>
+      </div>
+    </div>
+    
+    <div class="metric-card">
+      <div class="metric-icon warning">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="metric-content">
+        <div class="metric-value" id="avgDuration">-</div>
+        <div class="metric-label">Avg Duration</div>
+        <div class="metric-change" id="durationChange">-</div>
+      </div>
+    </div>
+    
+    <div class="metric-card">
+      <div class="metric-icon info">
+        <i class="fas fa-link"></i>
+      </div>
+      <div class="metric-content">
+        <div class="metric-value" id="activeEndpoints">-</div>
+        <div class="metric-label">Active Endpoints</div>
+        <div class="metric-change" id="endpointsChange">-</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Charts Grid -->
+  <div class="charts-container">
+    <!-- Test Type Distribution -->
+    <div class="chart-card full-width">
+      <div class="chart-header">
+        <h3><i class="fas fa-chart-pie"></i> Test Distribution Overview</h3>
+        <div class="chart-actions">
+          <button class="btn btn-sm btn-secondary" onclick="exportChart('distributionChartContainer')">
+            <i class="fas fa-download"></i>
+          </button>
+        </div>
+      </div>
+      <div class="chart-container" id="distributionChartContainer">
+        </div>
+    </div>
+
+    <!-- Success Rate Timeline -->
+    <div class="chart-card full-width">
+      <div class="chart-header">
+        <h3><i class="fas fa-chart-line"></i> Success Rate Trends</h3>
+        <div class="chart-toggles">
+          <label class="toggle-switch">
+            <input type="checkbox" id="showEndpoints" checked>
+            <span class="slider"></span>
+            Endpoints
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="showChains" checked>
+            <span class="slider"></span>
+            Chains
+          </label>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="timelineChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Top Performers -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3><i class="fas fa-trophy"></i> Top Performing</h3>
+        <select id="performanceMetric" class="metric-selector">
+          <option value="success_rate">Success Rate</option>
+          <option value="execution_count">Most Tested</option>
+          <option value="avg_duration">Fastest</option>
+        </select>
+      </div>
+      <div class="chart-container">
+        <canvas id="topPerformersChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Problem Areas -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3><i class="fas fa-exclamation-triangle"></i> Problem Areas</h3>
+        <select id="problemMetric" class="metric-selector">
+          <option value="failure_rate">Highest Failure Rate</option>
+          <option value="error_frequency">Most Errors</option>
+          <option value="timeout_rate">Most Timeouts</option>
+        </select>
+      </div>
+      <div class="chart-container">
+        <canvas id="problemAreasChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Chain Analysis -->
+    <div class="chart-card full-width" id="chainAnalysisCard">
+      <div class="chart-header">
+        <h3><i class="fas fa-sitemap"></i> Chain Execution Analysis</h3>
+        <div class="chain-controls">
+          <select id="chainSelector" class="chain-selector">
+            <option value="all">All Chains</option>
+          </select>
+          <button class="btn btn-sm btn-primary" onclick="showChainDetails()">
+            <i class="fas fa-search"></i> Details
+          </button>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="chainAnalysisChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Status Code Heatmap -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3><i class="fas fa-th"></i> Status Code Distribution</h3>
+      </div>
+      <div class="chart-container">
+        <div id="statusHeatmap" class="heatmap-container"></div>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3><i class="fas fa-clock"></i> Recent Activity</h3>
+        <span class="activity-count" id="activityCount">Last 24h</span>
+      </div>
+      <div class="activity-list" id="recentActivity">
+        <!-- Activity items populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Analysis Section -->
+  <div class="analysis-section" id="detailedAnalysis" style="display: none;">
+    <div class="analysis-header">
+      <h2 id="analysisTitle">Detailed Analysis</h2>
+      <button class="btn btn-secondary" onclick="hideDetailedAnalysis()">
+        <i class="fas fa-times"></i> Close
+      </button>
+    </div>
+    <div class="analysis-content" id="analysisContent">
+      <!-- Dynamic content populated by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Chain Details Modal -->
+<div class="modal" id="chainDetailsModal">
+  <div class="modal-content" style="max-width: 1200px;">
+    <div class="modal-header">
+      <h3 id="chainModalTitle">Chain Execution Details</h3>
+      <span class="close" onclick="closeChainModal()">&times;</span>
+    </div>
+    <div class="modal-body" id="chainModalContent">
+      <!-- Chain details populated by JS -->
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reports/cyberpunk-canvas.js') }}"></script>
+<script src="{{ url_for('static', filename='js/reports/dashboard.js') }}"></script>
+{% endblock %}
