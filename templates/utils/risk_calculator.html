@@ -13,6 +13,7 @@
     >
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/risk-calculator.css') }}">
+    <script src="{{ url_for('static', filename='js/reports/cyberpunk-canvas.js') }}"></script>
     <style>
         .copy-button.copied {
             background-color: var(--success-color, #28a745);
@@ -25,19 +26,211 @@
         }
         /* AITC Description Area */
         #aitcDescriptionArea {
-            padding: 0.75rem 1rem;                              /* Padding */
-            margin-top: 0.5rem;                                 /* Space above */
-            min-height: 70px;                                   /* Minimum height */
+            padding: 0.75rem 1rem;
+            margin-top: 0.5rem;
+            min-height: 70px;
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: var(--border-radius-sm, 4px);
+            background: var(--surface-color, #f8f9fa);
+            transition: all 0.3s ease;
         }
-        #aitcDescriptionArea h6 { /* Styling for the label inside description */
+        #aitcDescriptionArea:hover {
+            box-shadow: var(--shadow-md, 0 2px 8px rgba(0,0,0,0.15));
+        }
+        #aitcDescriptionArea h6 {
             font-size: 1rem; 
-            color: var(--text-color, #212529);
+            color: var(--accent-color, #007bff);
             margin-bottom: 0.25rem;
+            font-weight: bold;
         }
-        #aitcDescriptionArea p { /* Styling for the description text */
+        #aitcDescriptionArea p {
             font-size: 0.875rem;
             color: var(--text-color-secondary, #6c757d);
             margin-bottom: 0;
+            line-height: 1.4;
+        }
+        
+        /* Enhanced Risk Score Display */
+        .risk-gauge-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 20px auto;
+        }
+        
+        .risk-gauge {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .score-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+        
+        .score-value {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 0;
+            text-shadow: var(--shadow-sm, 0 0 5px currentColor);
+        }
+        
+        .score-label {
+            font-size: 1.2rem;
+            margin: 0;
+            opacity: 0.8;
+        }
+        
+        /* Interactive Form Elements */
+        .form-section {
+            position: relative;
+            background: var(--surface-color, #ffffff);
+            border-radius: var(--border-radius, 8px);
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid var(--border-color, #eee);
+            transition: all 0.3s ease;
+        }
+        
+        .form-section:hover {
+            box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.1));
+            transform: translateY(-2px);
+        }
+        
+        .form-section h3 {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .form-section h3::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent-color, #007bff);
+            transition: width 0.3s ease;
+        }
+        
+        .form-section:hover h3::after {
+            width: 100%;
+        }
+        
+        /* Enhanced Radio Buttons */
+        .form-check {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: var(--border-radius-sm, 4px);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .form-check:hover {
+            background: rgba(var(--accent-color-rgb, 0, 123, 255), 0.05);
+            transform: translateX(5px);
+        }
+        
+        .form-check-input:checked + .form-check-label {
+            color: var(--accent-color, #007bff);
+            font-weight: bold;
+        }
+        
+        /* Progress Animation */
+        .calculation-progress {
+            width: 100%;
+            height: 4px;
+            background: var(--border-color, #eee);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .calculation-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-color, #007bff), var(--secondary-color, #6c757d));
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 2px;
+        }
+        
+        /* Component Impact Visualization */
+        .impact-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .impact-component {
+            background: var(--surface-color, #f8f9fa);
+            padding: 20px;
+            border-radius: var(--border-radius, 8px);
+            border: 1px solid var(--border-color, #ddd);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .impact-component:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-lg, 0 8px 25px rgba(0,0,0,0.15));
+        }
+        
+        .impact-bar {
+            width: 100%;
+            height: 20px;
+            background: var(--border-color, #eee);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .impact-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success-color, #28a745), var(--warning-color, #ffc107), var(--error-color, #dc3545));
+            width: 0%;
+            transition: width 1s ease;
+            border-radius: 10px;
+        }
+        
+        /* Pulse Animation for Active Elements */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .calculating {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Vector String Styling */
+        .vector-display {
+            background: var(--code-bg-color, #f8f9fa);
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: var(--border-radius, 8px);
+            padding: 15px;
+            font-family: var(--font-family-monospace, 'Courier New', monospace);
+            font-size: 0.9rem;
+            word-break: break-all;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .vector-display::before {
+            content: 'VECTOR:';
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            background: var(--surface-color, #ffffff);
+            padding: 0 8px;
+            font-size: 0.7rem;
+            color: var(--text-muted-color, #6c757d);
+            font-weight: bold;
         }
     </style>
 {% endblock %}
@@ -113,42 +306,96 @@
         
         <div id="generalFormError" class="alert alert-danger mt-3" style="display: none;"></div>
 
+        <div class="calculation-progress" id="calculationProgress" style="display: none;">
+            <div class="calculation-progress-bar" id="calculationProgressBar"></div>
+        </div>
+        
         <div id="resultsSection" class="results-section mt-5" style="display: none;">
-            <div class="d-flex justify-content-between align-items-center">
-                <h3>Calculation Results</h3>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3>Risk Assessment Results</h3>
                 <button type="button" id="copyResultsButton" class="btn btn-sm btn-outline-secondary copy-button">
                     <i class="bi bi-clipboard"></i> Copy Results
                 </button>
             </div>
-            <hr>
             
-            <h4>Selected Values:</h4>
-            <ul id="selectedValuesList">
-                <li><strong>Attack Vector:</strong> <span data-key="attack_vector"></span></li>
-                <li><strong>Privileges Required:</strong> <span data-key="privileges_required"></span></li>
-                <li><strong>Attack Complexity:</strong> <span data-key="attack_complexity"></span></li>
-                <li><strong>User Interaction:</strong> <span data-key="user_interaction"></span></li>
-                <li><strong>AI Trustworthy Characteristic:</strong> <span data-key="aitc_label"></span></li>
-                <li><strong>Characteristic Impact:</strong> <span data-key="characteristic_impact"></span></li>
-                <li><strong>Legal Impact:</strong> <span data-key="legal_impact"></span></li>
-            </ul>
-
-            <h4 class="mt-4">Calculated Scores:</h4>
-            <p><strong>Base Exploitability Component:</strong> <span id="baseScoreDisplay">0.0</span> / 10.0</p>
-            <p><strong>Impact Component:</strong> <span id="impactScoreDisplay">0.0</span> / 10.0</p>
+            <!-- Risk Score Gauge -->
+            <div class="risk-gauge-container">
+                <canvas id="riskGauge" class="risk-gauge"></canvas>
+                <div class="score-center">
+                    <div class="score-value" id="gaugeScoreValue">0.0</div>
+                    <div class="score-label" id="gaugeScoreLabel">Informational</div>
+                </div>
+            </div>
             
-            <h4 class="mt-3">Overall Risk Score:</h4>
-            <p id="overallScoreParagraph" class="score-display score-informational">
-                <span id="finalScoreDisplay">0.0</span> / 10.0
-            </p>
-            <p><strong>Qualitative Assessment:</strong> 
-                <span id="qualitativeAssessmentDisplay" class="score-text-informational">Informational</span>
-            </p>
-
-            <h4 class="mt-3">Risk Vector:</h4>
-            <p id="vectorStringDisplay" class="vector-string-display">N/A</p>
+            <!-- Impact Component Breakdown -->
+            <div class="impact-breakdown">
+                <div class="impact-component">
+                    <h5>Base Exploitability</h5>
+                    <div class="impact-bar">
+                        <div class="impact-fill" id="baseScoreFill"></div>
+                    </div>
+                    <div><span id="baseScoreDisplay">0.0</span> / 10.0</div>
+                </div>
+                <div class="impact-component">
+                    <h5>Impact Component</h5>
+                    <div class="impact-bar">
+                        <div class="impact-fill" id="impactScoreFill"></div>
+                    </div>
+                    <div><span id="impactScoreDisplay">0.0</span> / 10.0</div>
+                </div>
+            </div>
             
-            <p class="mt-3 text-muted-color"><small><em><strong>Note:</strong> <span id="notesDisplay"></span></em></small></p>
+            <!-- Selected Values Accordion -->
+            <div class="accordion mt-4" id="resultsAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#selectedValuesCollapse">
+                            Selected Configuration Values
+                        </button>
+                    </h2>
+                    <div id="selectedValuesCollapse" class="accordion-collapse collapse" data-bs-parent="#resultsAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Base Metrics</h6>
+                                            <ul class="list-unstyled mb-0">
+                                                <li><strong>Attack Vector:</strong> <span data-key="attack_vector"></span></li>
+                                                <li><strong>Privileges Required:</strong> <span data-key="privileges_required"></span></li>
+                                                <li><strong>Attack Complexity:</strong> <span data-key="attack_complexity"></span></li>
+                                                <li><strong>User Interaction:</strong> <span data-key="user_interaction"></span></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Impact Metrics</h6>
+                                            <ul class="list-unstyled mb-0">
+                                                <li><strong>AI Trustworthy Characteristic:</strong> <span data-key="aitc_label"></span></li>
+                                                <li><strong>Characteristic Impact:</strong> <span data-key="characteristic_impact"></span></li>
+                                                <li><strong>Legal Impact:</strong> <span data-key="legal_impact"></span></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Risk Vector Display -->
+            <div class="mt-4">
+                <h5>Risk Vector String</h5>
+                <div class="vector-display" id="vectorStringDisplay">N/A</div>
+            </div>
+            
+            <div class="mt-3 text-center">
+                <small class="text-muted"><em><strong>Note:</strong> <span id="notesDisplay"></span></em></small>
+            </div>
         </div>
     </div>
 
@@ -232,22 +479,47 @@ document.addEventListener('DOMContentLoaded', function () {
         generalFormErrorDiv.style.display = 'none';
 
         if (resData.selected_data) {
-            selectedValuesList.querySelectorAll('span[data-key]').forEach(span => {
+            document.querySelectorAll('span[data-key]').forEach(span => {
                 const key = span.dataset.key;
                 span.textContent = resData.selected_data[key] !== undefined ? resData.selected_data[key] : 'N/A';
             });
         }
 
-        baseScoreDisplay.textContent = parseFloat(resData.base_score_component).toFixed(1);
-        impactScoreDisplay.textContent = parseFloat(resData.impact_score_component).toFixed(1);
-        finalScoreDisplay.textContent = parseFloat(resData.final_score).toFixed(1);
-        qualitativeAssessmentDisplay.textContent = resData.qualitative_assessment;
+        const baseScore = parseFloat(resData.base_score_component);
+        const impactScore = parseFloat(resData.impact_score_component);
+        const finalScore = parseFloat(resData.final_score);
+        
+        baseScoreDisplay.textContent = baseScore.toFixed(1);
+        impactScoreDisplay.textContent = impactScore.toFixed(1);
+        
+        // Update gauge display
+        const gaugeScoreValue = document.getElementById('gaugeScoreValue');
+        const gaugeScoreLabel = document.getElementById('gaugeScoreLabel');
+        if (gaugeScoreValue) gaugeScoreValue.textContent = finalScore.toFixed(1);
+        if (gaugeScoreLabel) gaugeScoreLabel.textContent = resData.qualitative_assessment;
+        
+        // Update impact bars with animation
+        const baseScoreFill = document.getElementById('baseScoreFill');
+        const impactScoreFill = document.getElementById('impactScoreFill');
+        
+        setTimeout(() => {
+            if (baseScoreFill) baseScoreFill.style.width = `${(baseScore / 10) * 100}%`;
+            if (impactScoreFill) impactScoreFill.style.width = `${(impactScore / 10) * 100}%`;
+        }, 300);
+        
         vectorStringDisplay.textContent = resData.vector_string;
         notesDisplay.textContent = resData.notes;
 
         const scoreClass = (resData.qualitative_assessment || 'informational').toLowerCase();
-        overallScoreParagraph.className = `score-display score-${scoreClass}`;
-        qualitativeAssessmentDisplay.className = `score-text-${scoreClass}`;
+        
+        // Update gauge color based on score
+        if (gaugeScoreValue) {
+            gaugeScoreValue.className = `score-value score-${scoreClass}`;
+        }
+        
+        // Create risk gauge visualization
+        createRiskGauge(finalScore, resData.qualitative_assessment);
+        
         if(copyResultsButton) copyResultsButton.disabled = false;
     }
     function hideResults() { 
@@ -286,6 +558,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         clearAllErrors();
         calculationSpinner.style.display = 'inline-block';
+        
+        // Show progress bar
+        const progressBar = document.getElementById('calculationProgress');
+        const progressFill = document.getElementById('calculationProgressBar');
+        if (progressBar && progressFill) {
+            progressBar.style.display = 'block';
+            progressFill.style.width = '0%';
+            setTimeout(() => progressFill.style.width = '30%', 100);
+        }
 
         const data = {};
         requiredFieldNames.forEach(fieldName => {
@@ -334,6 +615,16 @@ document.addEventListener('DOMContentLoaded', function () {
             return response.json(); // Expect JSON for successful responses
         })
         .then(responseData => {
+            // Complete progress bar
+            const progressFill = document.getElementById('calculationProgressBar');
+            if (progressFill) {
+                progressFill.style.width = '100%';
+                setTimeout(() => {
+                    const progressBar = document.getElementById('calculationProgress');
+                    if (progressBar) progressBar.style.display = 'none';
+                }, 500);
+            }
+            
             if (responseData.results) {
                 updateResultsOnPage(responseData.results);
             } else if (responseData.errors) { // Should be handled by !response.ok if status is 400/422
@@ -345,6 +636,11 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(error => {
             calculationSpinner.style.display = 'none';
+            
+            // Hide progress bar on error
+            const progressBar = document.getElementById('calculationProgress');
+            if (progressBar) progressBar.style.display = 'none';
+            
             hideResults();
             console.error('Calculation error object:', error);
             if (error.type === 'validation' && error.data && error.data.errors) {
@@ -434,6 +730,123 @@ document.addEventListener('DOMContentLoaded', function () {
         });
      }
 
+    // Risk Gauge Creation Function
+    function createRiskGauge(score, assessment) {
+        const canvas = document.getElementById('riskGauge');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        canvas.width = 300;
+        canvas.height = 300;
+        
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 120;
+        const scoreAngle = ((score / 10) * 180) * (Math.PI / 180); // Convert to radians for half circle
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw background arc
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, Math.PI, 2 * Math.PI);
+        ctx.lineWidth = 20;
+        ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)';
+        ctx.stroke();
+        
+        // Determine color based on score
+        let gaugeColor = '#28a745'; // Low/green
+        if (score >= 7) gaugeColor = '#dc3545'; // High/red
+        else if (score >= 4) gaugeColor = '#ffc107'; // Medium/yellow
+        else if (score >= 1) gaugeColor = '#17a2b8'; // Low-medium/blue
+        
+        // Draw score arc with animation
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, Math.PI, Math.PI + scoreAngle);
+        ctx.lineWidth = 20;
+        ctx.strokeStyle = gaugeColor;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        
+        // Draw tick marks
+        for (let i = 0; i <= 10; i++) {
+            const tickAngle = Math.PI + (i / 10) * Math.PI;
+            const tickStart = radius - 15;
+            const tickEnd = radius + 5;
+            
+            ctx.beginPath();
+            ctx.moveTo(
+                centerX + Math.cos(tickAngle) * tickStart,
+                centerY + Math.sin(tickAngle) * tickStart
+            );
+            ctx.lineTo(
+                centerX + Math.cos(tickAngle) * tickEnd,
+                centerY + Math.sin(tickAngle) * tickEnd
+            );
+            ctx.lineWidth = i % 2 === 0 ? 3 : 1;
+            ctx.strokeStyle = '#666';
+            ctx.stroke();
+            
+            // Add numbers for major ticks
+            if (i % 2 === 0) {
+                ctx.font = 'bold 14px Arial';
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const textRadius = radius + 25;
+                ctx.fillText(
+                    i.toString(),
+                    centerX + Math.cos(tickAngle) * textRadius,
+                    centerY + Math.sin(tickAngle) * textRadius
+                );
+            }
+        }
+        
+        // Draw needle
+        const needleAngle = Math.PI + scoreAngle;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(
+            centerX + Math.cos(needleAngle) * (radius - 10),
+            centerY + Math.sin(needleAngle) * (radius - 10)
+        );
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#333';
+        ctx.stroke();
+        
+        // Draw center dot
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
+        ctx.fillStyle = '#333';
+        ctx.fill();
+    }
+    
+    // Enhanced form interactions
+    document.querySelectorAll('.form-check').forEach(check => {
+        check.addEventListener('mouseenter', function() {
+            this.style.background = 'rgba(var(--accent-color-rgb, 0, 123, 255), 0.05)';
+        });
+        check.addEventListener('mouseleave', function() {
+            if (!this.querySelector('input').checked) {
+                this.style.background = 'transparent';
+            }
+        });
+    });
+    
+    // Add calculating class during computation
+    const originalTriggerCalculation = triggerCalculation;
+    triggerCalculation = function() {
+        document.querySelector('.risk-calculator-container').classList.add('calculating');
+        originalTriggerCalculation();
+    };
+    
+    // Remove calculating class when done
+    const originalUpdateResults = updateResultsOnPage;
+    updateResultsOnPage = function(resData) {
+        originalUpdateResults(resData);
+        document.querySelector('.risk-calculator-container').classList.remove('calculating');
+    };
+    
     triggerCalculation(); 
 });
 </script>
