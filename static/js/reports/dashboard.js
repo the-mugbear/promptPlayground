@@ -358,10 +358,11 @@ class DashboardManager {
             }));
 
             if (this.charts.topPerformersCanvas) {
-                window.cyberpunkCanvas.destroy('topPerformersChart');
+                // Use the container ID for destruction
+                window.cyberpunkCanvas.destroy('topPerformersChartContainer');
             }
 
-            this.charts.topPerformersCanvas = window.cyberpunkCanvas.createCyberBarChart('topPerformersChart', chartData, {
+            this.charts.topPerformersCanvas = window.cyberpunkCanvas.createCyberBarChart('topPerformersChartContainer', chartData, {
                 horizontal: true,
                 metric: metric
             });
@@ -371,13 +372,18 @@ class DashboardManager {
         }
 
         // Fallback to regular chart
-        const ctx = document.getElementById('topPerformersChart').getContext('2d');
+        const container = document.getElementById('topPerformersChartContainer');
+        container.innerHTML = ''; // Clear the container first
+        const canvas = document.createElement('canvas');
+        container.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+
         if (this.charts.topPerformers) {
             this.charts.topPerformers.destroy();
         }
 
         const metricKey = metric === 'success_rate' ? 'success_rate' : 
-                         metric === 'execution_count' ? 'execution_count' : 'avg_duration';
+                          metric === 'execution_count' ? 'execution_count' : 'avg_duration';
 
         this.charts.topPerformers = new Chart(ctx, {
             type: 'bar',
