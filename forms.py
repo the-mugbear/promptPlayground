@@ -173,7 +173,7 @@ class EndpointForm(FlaskForm):
 
     # Fields for resiliency, with range validators to ensure sensible values.
     timeout_seconds = IntegerField('Timeout (seconds)', default=60, validators=[DataRequired(), NumberRange(min=1, max=300)])
-    retry_attempts = IntegerField('Retry Attempts on Failure', default=0, validators=[DataRequired(), NumberRange(min=0, max=5)])
+    retry_attempts = IntegerField('Retry Attempts on Failure', default=0, validators=[InputRequired(), NumberRange(min=0, max=5)])
     
     submit = SubmitField('Save Endpoint')
     
