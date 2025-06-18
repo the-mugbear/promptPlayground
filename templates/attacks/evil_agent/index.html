@@ -6,11 +6,360 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/communication_log.css') }}">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    /* === EVIL AGENT SPECIFIC STYLING === */
+    .evil-agent-header {
+      text-align: center;
+      margin-bottom: var(--spacing-xl);
+      padding: var(--spacing-lg);
+      border: 2px solid var(--accent-color);
+      border-radius: var(--border-radius-md);
+      background: linear-gradient(135deg, rgba(0, 255, 65, 0.1) 0%, rgba(255, 0, 170, 0.1) 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .evil-agent-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.2), transparent);
+      animation: scan 3s infinite;
+    }
+    
+    @keyframes scan {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+    
+    .evil-agent-header h1 {
+      font-family: var(--heading-font);
+      font-size: var(--font-size-3xl);
+      margin: 0;
+      color: var(--accent-color);
+      text-shadow: 0 0 10px currentColor;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .evil-agent-subtitle {
+      font-size: var(--font-size-sm);
+      color: var(--text-muted-color);
+      margin-top: var(--spacing-sm);
+      font-family: var(--mono-font);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* === CHAT RESULTS STYLING === */
+    .chat-row.center {
+      text-align: center;
+      margin: var(--spacing-xl) 0;
+    }
+    
+    .chat-bubble.success {
+      background: linear-gradient(135deg, rgba(0, 255, 65, 0.2) 0%, rgba(0, 255, 65, 0.1) 100%);
+      border: 2px solid var(--accent-color);
+      color: var(--accent-color);
+      padding: var(--spacing-lg);
+      border-radius: var(--border-radius-md);
+      display: inline-block;
+      font-family: var(--mono-font);
+      box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+      animation: pulse-success 2s ease-in-out;
+    }
+    
+    .chat-bubble.failure {
+      background: linear-gradient(135deg, rgba(255, 79, 79, 0.2) 0%, rgba(255, 79, 79, 0.1) 100%);
+      border: 2px solid var(--error-color);
+      color: var(--error-color);
+      padding: var(--spacing-lg);
+      border-radius: var(--border-radius-md);
+      display: inline-block;
+      font-family: var(--mono-font);
+      box-shadow: 0 0 20px rgba(255, 79, 79, 0.3);
+    }
+    
+    @keyframes pulse-success {
+      0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 65, 0.3); }
+      50% { box-shadow: 0 0 30px rgba(0, 255, 65, 0.6); }
+    }
+
+    /* === ADVANCED CONFIGURATION STYLING === */
+    .advanced-config {
+      margin-top: var(--spacing-xl);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      background: var(--surface-color);
+      overflow: hidden;
+    }
+    
+    .advanced-config summary {
+      cursor: pointer;
+      padding: var(--spacing-md) var(--spacing-lg);
+      background: linear-gradient(135deg, var(--surface-color) 0%, rgba(0, 255, 65, 0.1) 100%);
+      border: none;
+      color: var(--accent-color);
+      font-family: var(--heading-font);
+      font-size: var(--font-size-sm);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: var(--transition-normal);
+      position: relative;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .advanced-config summary:hover {
+      background: linear-gradient(135deg, rgba(0, 255, 65, 0.1) 0%, rgba(0, 255, 65, 0.2) 100%);
+      box-shadow: inset 0 0 10px rgba(0, 255, 65, 0.2);
+    }
+    
+    .advanced-config summary::marker {
+      color: var(--accent-color);
+    }
+    
+    .advanced-config[open] summary {
+      border-bottom: 1px solid var(--accent-color);
+      box-shadow: 0 1px 0 var(--accent-color);
+    }
+    
+    .config-content {
+      padding: var(--spacing-lg);
+      background: var(--card-bg-color);
+      border-top: none;
+    }
+    
+    .config-grid {
+      display: grid;
+      gap: var(--spacing-lg);
+    }
+    
+    .config-section {
+      padding: var(--spacing-md);
+      border: 1px solid var(--border-color-subtle);
+      border-radius: var(--border-radius-sm);
+      background: rgba(0, 255, 65, 0.05);
+    }
+    
+    .config-section h4 {
+      margin: 0 0 var(--spacing-md) 0;
+      color: var(--accent-color);
+      font-size: var(--font-size-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border-color-subtle);
+      padding-bottom: var(--spacing-sm);
+    }
+
+    /* === STRATEGY GRID === */
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-sm);
+      margin-top: var(--spacing-sm);
+    }
+    
+    .strategy-item {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm);
+      border: 1px solid var(--border-color-subtle);
+      border-radius: var(--border-radius-sm);
+      background: rgba(0, 0, 0, 0.3);
+      transition: var(--transition-fast);
+    }
+    
+    .strategy-item:hover {
+      border-color: var(--accent-color);
+      background: rgba(0, 255, 65, 0.1);
+    }
+    
+    .strategy-item input[type="checkbox"] {
+      accent-color: var(--accent-color);
+      transform: scale(1.2);
+    }
+    
+    .strategy-item label {
+      margin: 0;
+      color: var(--text-color);
+      font-size: var(--font-size-sm);
+      cursor: pointer;
+      flex-grow: 1;
+    }
+
+    /* === FORM ENHANCEMENTS === */
+    .form-group small {
+      display: block;
+      color: var(--text-muted-color);
+      font-size: var(--font-size-xs);
+      margin-top: var(--spacing-sm);
+      font-family: var(--mono-font);
+      line-height: var(--line-height-relaxed);
+    }
+    
+    .threshold-control {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      margin-top: var(--spacing-sm);
+    }
+    
+    .threshold-control input[type="range"] {
+      flex-grow: 1;
+      accent-color: var(--accent-color);
+    }
+    
+    #threshold_display {
+      font-weight: bold;
+      color: var(--accent-color);
+      font-family: var(--mono-font);
+      font-size: var(--font-size-lg);
+      text-shadow: 0 0 5px currentColor;
+      min-width: 3ch;
+      text-align: center;
+    }
+    
+    /* === RUN BUTTON ENHANCEMENT === */
+    .run-attack-btn {
+      background: linear-gradient(135deg, var(--accent-color) 0%, var(--secondary-color) 100%);
+      border: none;
+      color: var(--background-color);
+      padding: var(--spacing-md) var(--spacing-xl);
+      font-size: var(--font-size-lg);
+      font-family: var(--heading-font);
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-radius: var(--border-radius-md);
+      cursor: pointer;
+      transition: var(--transition-normal);
+      position: relative;
+      overflow: hidden;
+      margin-top: var(--spacing-lg);
+      width: 100%;
+    }
+    
+    .run-attack-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.5s;
+    }
+    
+    .run-attack-btn:hover::before {
+      left: 100%;
+    }
+    
+    .run-attack-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 255, 65, 0.4);
+    }
+    
+    .run-attack-btn:active {
+      transform: translateY(0);
+    }
+
+    /* === ENDPOINT DETAILS STYLING === */
+    .endpoint-details {
+      margin-top: var(--spacing-md);
+      padding: var(--spacing-md);
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color-subtle);
+      border-radius: var(--border-radius-sm);
+      font-family: var(--mono-font);
+      font-size: var(--font-size-xs);
+      transition: var(--transition-normal);
+    }
+    
+    .endpoint-details:not(:empty) {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+    }
+    
+    .endpoint-details p {
+      margin: var(--spacing-xs) 0;
+      color: var(--text-muted-color);
+    }
+    
+    .endpoint-details strong {
+      color: var(--accent-color);
+    }
+    
+    /* === LOADING AND STATUS INDICATORS === */
+    .loading-indicator {
+      display: inline-block;
+      color: var(--accent-color);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .attack-status {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--surface-color);
+      border: 2px solid var(--accent-color);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-md);
+      font-family: var(--mono-font);
+      font-size: var(--font-size-sm);
+      color: var(--accent-color);
+      z-index: 1000;
+      box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+      display: none;
+    }
+    
+    .attack-status.active {
+      display: block;
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    /* === RESPONSIVE DESIGN === */
+    @media (max-width: 768px) {
+      .strategy-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .config-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .threshold-control {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .evil-agent-header h1 {
+        font-size: var(--font-size-2xl);
+      }
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
-  <h1>Evil Agent</h1>
+  <div class="evil-agent-header">
+    <h1>Evil Agent</h1>
+    <div class="evil-agent-subtitle">Advanced Adversarial AI Testing Framework</div>
+  </div>
+  
   <div class="form-card">
     <form id="bon-form">
       <div class="form-group">
@@ -21,7 +370,7 @@
             <option value="{{ ep.id }}">{{ ep.name }}</option>
           {% endfor %}
         </select>
-        <div id="adversarial_details"></div>
+        <div id="adversarial_details" class="endpoint-details"></div>
       </div>
       
       <div class="form-group">
@@ -32,7 +381,7 @@
             <option value="{{ ep.id }}">{{ ep.name }}</option>
           {% endfor %}
         </select>
-        <div id="recipient_details"></div>
+        <div id="recipient_details" class="endpoint-details"></div>
       </div>
       
       <div class="form-group">
@@ -40,19 +389,140 @@
         <textarea name="initial_prompt" id="initial_prompt" rows="4" placeholder="Enter your initial prompt here"></textarea>
       </div>
       
-      <button type="button" id="run-jailbreak">Run Jailbreak</button>
+      <!-- Advanced Configuration Section -->
+      <div class="form-group">
+        <details class="advanced-config">
+          <summary>⚙️ Advanced Configuration</summary>
+          <div class="config-content">
+            <div class="config-grid">
+              
+              <div class="config-section">
+                <h4>🧠 Algorithm Selection</h4>
+                <div class="form-group">
+                  <label for="use_advanced">Algorithm:</label>
+                  <select name="use_advanced" id="use_advanced">
+                    <option value="true" selected>Advanced Evil Agent (Recommended)</option>
+                    <option value="false">Legacy Algorithm</option>
+                  </select>
+                  <small>Advanced algorithm uses sophisticated attack strategies and intelligent success detection.</small>
+                </div>
+              </div>
+              
+              <div class="config-section">
+                <h4>🎯 Attack Parameters</h4>
+                <div class="form-group">
+                  <label for="max_rounds">Maximum Rounds:</label>
+                  <input type="number" name="max_rounds" id="max_rounds" value="10" min="1" max="50">
+                  <small>Number of attack attempts before giving up (default: 10)</small>
+                </div>
+                
+                <div class="form-group">
+                  <label for="success_threshold">Success Threshold:</label>
+                  <div class="threshold-control">
+                    <input type="range" name="success_threshold" id="success_threshold" value="0.7" min="0.1" max="1.0" step="0.1">
+                    <span id="threshold_display">0.7</span>
+                  </div>
+                  <small>Confidence threshold for declaring jailbreak success (0.1 = very permissive, 1.0 = very strict)</small>
+                </div>
+              </div>
+              
+              <div class="config-section">
+                <h4>🗡️ Attack Strategies</h4>
+                <div class="strategy-grid">
+                  <div class="strategy-item">
+                    <input type="checkbox" name="strategies" value="role_playing" checked id="role_playing">
+                    <label for="role_playing">Role Playing</label>
+                  </div>
+                  <div class="strategy-item">
+                    <input type="checkbox" name="strategies" value="social_engineering" checked id="social_engineering">
+                    <label for="social_engineering">Social Engineering</label>
+                  </div>
+                  <div class="strategy-item">
+                    <input type="checkbox" name="strategies" value="context_injection" checked id="context_injection">
+                    <label for="context_injection">Context Injection</label>
+                  </div>
+                  <div class="strategy-item">
+                    <input type="checkbox" name="strategies" value="prompt_injection" checked id="prompt_injection">
+                    <label for="prompt_injection">Prompt Injection</label>
+                  </div>
+                  <div class="strategy-item">
+                    <input type="checkbox" name="strategies" value="authority_appeal" checked id="authority_appeal">
+                    <label for="authority_appeal">Authority Appeal</label>
+                  </div>
+                  <div class="strategy-item">
+                    <input type="checkbox" name="strategies" value="urgency_pressure" checked id="urgency_pressure">
+                    <label for="urgency_pressure">Urgency Pressure</label>
+                  </div>
+                  <div class="strategy-item">
+                    <input type="checkbox" name="strategies" value="leetspeak" id="leetspeak">
+                    <label for="leetspeak">Leetspeak Encoding</label>
+                  </div>
+                  <div class="strategy-item">
+                    <input type="checkbox" name="strategies" value="unicode_obfuscation" id="unicode_obfuscation">
+                    <label for="unicode_obfuscation">Unicode Obfuscation</label>
+                  </div>
+                  <div class="strategy-item">
+                    <input type="checkbox" name="strategies" value="character_substitution" id="character_substitution">
+                    <label for="character_substitution">Character Substitution</label>
+                  </div>
+                  <div class="strategy-item">
+                    <input type="checkbox" name="strategies" value="base64_encode" id="base64_encode">
+                    <label for="base64_encode">Base64 Encoding</label>
+                  </div>
+                  <div class="strategy-item">
+                    <input type="checkbox" name="strategies" value="rot13" id="rot13">
+                    <label for="rot13">ROT13 Encoding</label>
+                  </div>
+                  <div class="strategy-item">
+                    <input type="checkbox" name="strategies" value="multi_turn_buildup" id="multi_turn_buildup">
+                    <label for="multi_turn_buildup">Multi-turn Buildup</label>
+                  </div>
+                </div>
+                <small>Select which attack strategies to enable (more strategies = more thorough testing)</small>
+              </div>
+              
+              <div class="config-section">
+                <h4>🔄 Behavior Options</h4>
+                <div class="strategy-item">
+                  <input type="checkbox" name="learning_enabled" checked id="learning_enabled">
+                  <label for="learning_enabled">Enable Learning</label>
+                </div>
+                <small>Allow the system to adapt prompts based on previous failures</small>
+                
+                <div class="strategy-item" style="margin-top: var(--spacing-md);">
+                  <input type="checkbox" name="use_adversarial_feedback" checked id="use_adversarial_feedback">
+                  <label for="use_adversarial_feedback">Use Adversarial Feedback</label>
+                </div>
+                <small>Query the adversarial endpoint for strategy suggestions</small>
+              </div>
+              
+            </div>
+          </div>
+        </details>
+      </div>
+      
+      <button type="button" id="run-jailbreak" class="run-attack-btn">🚀 Execute Evil Agent Attack</button>
     </form>
   </div>
   
-  <h2>Communication Log</h2>
-  <div class="filter-container">
-    <label for="filter-select">Filter by key:</label>
-    <select id="filter-select">
-      <option value="">Show All</option>
-    </select>
+  <div class="communication-log-section">
+    <h2 style="color: var(--accent-color); font-family: var(--heading-font); border-bottom: 2px solid var(--border-color); padding-bottom: var(--spacing-sm);">
+      📡 Communication Log
+    </h2>
+    <div class="filter-container" style="margin: var(--spacing-md) 0;">
+      <label for="filter-select" style="color: var(--text-color); font-size: var(--font-size-sm);">Filter by key:</label>
+      <select id="filter-select" style="margin-left: var(--spacing-sm);">
+        <option value="">Show All</option>
+      </select>
+    </div>
+    <div id="attempts_log" class="chat-container">
+      <!-- Chat messages will be appended here -->
+    </div>
   </div>
-  <div id="attempts_log" class="chat-container">
-    <!-- Chat messages will be appended here -->
+
+  <!-- Attack Status Indicator -->
+  <div id="attack-status" class="attack-status">
+    <div id="status-text">Ready</div>
   </div>
 </div>
 {% endblock %}
@@ -60,6 +530,11 @@
 {% block scripts %}
 <script>
   $(document).ready(function(){
+
+    // Update threshold display when slider changes
+    $('#success_threshold').on('input', function() {
+      $('#threshold_display').text($(this).val());
+    });
 
     // Update the filter dropdown with new keys from the JSON object.
     function updateFilterOptions(jsonObj) {
@@ -123,10 +598,21 @@
     });
 
     $('#run-jailbreak').click(function(){
+      // Clear previous results
       $('#attempts_log').html('');
+      
+      // Show status indicator
+      $('#attack-status').addClass('active');
+      $('#status-text').html('<span class="loading-indicator">🚀 Initializing Attack...</span>');
+      
+      // Disable the run button
+      $(this).prop('disabled', true).text('🔄 Attack in Progress...');
+      
       var formData = $('#bon-form').serialize();
       var url = "{{ url_for('evil_agent_bp.run_evil_agent') }}?" + formData;
       var source = new EventSource(url);
+      
+      var roundCount = 0;
 
       source.onmessage = function(event) {
         var data = JSON.parse(event.data);
@@ -141,23 +627,93 @@
 
         var chatHtml = "";
         if (data.final) {
+          // Final results - show summary
+          if (data.success_analysis && data.success_analysis.success) {
+            chatHtml += '<div class="chat-row center"><div class="chat-bubble success"><strong>✅ JAILBREAK SUCCESSFUL!</strong><br>';
+            chatHtml += 'Round: ' + data.success_analysis.successful_round + '<br>';
+            chatHtml += 'Final Strategy: ' + (data.success_analysis.all_results && data.success_analysis.all_results.length > 0 ? 
+                       data.success_analysis.all_results[data.success_analysis.all_results.length - 1].strategy_used : 'Unknown') + '</div></div>';
+          } else {
+            chatHtml += '<div class="chat-row center"><div class="chat-bubble failure"><strong>❌ Jailbreak Failed</strong><br>';
+            chatHtml += 'All ' + (data.success_analysis && data.success_analysis.all_results ? data.success_analysis.all_results.length : 'available') + ' strategies attempted without success.</div></div>';
+          }
+          
           if(data.adv_response) {
-            chatHtml += '<div class="chat-row left"><div class="chat-bubble"><strong>Adversarial:</strong>' + extractFilteredContent(data.adv_response) + '</div></div>';
+            chatHtml += '<div class="chat-row left"><div class="chat-bubble"><strong>Final Adversarial:</strong>' + extractFilteredContent(data.adv_response) + '</div></div>';
           }
           if(data.response) {
-            chatHtml += '<div class="chat-row right"><div class="chat-bubble"><strong>Recipient:</strong>' + extractFilteredContent(data.response) + '</div></div>';
+            chatHtml += '<div class="chat-row right"><div class="chat-bubble"><strong>Final Recipient:</strong>' + extractFilteredContent(data.response) + '</div></div>';
           }
           $('#attempts_log').append(chatHtml);
+          
+          // Reset UI state
+          $('#run-jailbreak').prop('disabled', false).text('🚀 Execute Evil Agent Attack');
+          
+          // Update status indicator
+          if (data.success_analysis && data.success_analysis.success) {
+            $('#status-text').html('✅ Attack Completed Successfully!');
+            setTimeout(function() {
+              $('#attack-status').removeClass('active');
+            }, 5000);
+          } else {
+            $('#status-text').html('❌ Attack Completed - No Success');
+            setTimeout(function() {
+              $('#attack-status').removeClass('active');
+            }, 5000);
+          }
+          
           source.close();
         } else {
-          chatHtml += '<div class="chat-row left"><div class="chat-bubble"><strong>Adversarial:</strong>' + extractFilteredContent(data.adv_response) + '</div></div>';
-          chatHtml += '<div class="chat-row right"><div class="chat-bubble"><strong>Recipient:</strong>' + extractFilteredContent(data.response) + '</div></div>';
+          // Intermediate results - show strategy and analysis
+          roundCount++;
+          
+          // Update status indicator
+          $('#status-text').html('<span class="loading-indicator">⚔️ Round ' + roundCount + ' - ' + 
+                                (data.strategy_used ? data.strategy_used.replace(/_/g, ' ').toUpperCase() : 'UNKNOWN') + '</span>');
+          
+          var strategyInfo = '';
+          if (data.strategy_used) {
+            strategyInfo = '<small style="color: var(--text-muted-color);">Strategy: ' + data.strategy_used.replace(/_/g, ' ').toUpperCase() + '</small><br>';
+          }
+          
+          var analysisInfo = '';
+          if (data.is_successful !== undefined) {
+            var statusIcon = data.is_successful ? '✅' : '❌';
+            var confidenceColor = data.confidence_score > 0.7 ? 'var(--success-color)' : data.confidence_score > 0.4 ? 'var(--warning-color)' : 'var(--error-color)';
+            analysisInfo = '<br><small style="color: ' + confidenceColor + ';">' + statusIcon + ' Confidence: ' + 
+                          (data.confidence_score * 100).toFixed(1) + '%</small>';
+            if (data.explanation) {
+              analysisInfo += '<br><small style="color: var(--text-muted-color);">' + data.explanation + '</small>';
+            }
+          }
+          
+          if (data.adv_response) {
+            chatHtml += '<div class="chat-row left"><div class="chat-bubble">' + strategyInfo + '<strong>Adversarial:</strong>' + 
+                       extractFilteredContent(data.adv_response) + '</div></div>';
+          }
+          
+          if (data.response) {
+            chatHtml += '<div class="chat-row right"><div class="chat-bubble"><strong>Recipient:</strong>' + 
+                       extractFilteredContent(data.response) + analysisInfo + '</div></div>';
+          }
+          
           $('#attempts_log').append(chatHtml);
+          
+          // Auto-scroll to bottom
+          $('#attempts_log').scrollTop($('#attempts_log')[0].scrollHeight);
         }
       };
 
       source.onerror = function() {
-        $('#attempts_log').append('<p>Error receiving stream.</p>');
+        $('#attempts_log').append('<div class="chat-row center"><div class="chat-bubble failure"><strong>⚠️ Connection Error</strong><br>Error receiving stream from server.</div></div>');
+        
+        // Reset UI state
+        $('#run-jailbreak').prop('disabled', false).text('🚀 Execute Evil Agent Attack');
+        $('#status-text').html('❌ Connection Error');
+        setTimeout(function() {
+          $('#attack-status').removeClass('active');
+        }, 3000);
+        
         source.close();
       };
     });
