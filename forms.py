@@ -6,11 +6,12 @@
 # and the frontend HTML templates.
 # ==============================================================================
 
+import json
 from flask_wtf import FlaskForm
 from flask_login import current_user
 from models.model_APIChain import APIChain
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, IntegerField, TextAreaField, RadioField
-from wtforms.validators import DataRequired, Email, EqualTo, ValidationError, Optional, Length, URL, NumberRange
+from wtforms.validators import DataRequired, Email, EqualTo, ValidationError, Optional, Length, URL, NumberRange, InputRequired
 from wtforms_sqlalchemy.fields import QuerySelectField
 from models.model_User import User 
 from models.model_Endpoints import Endpoint
@@ -125,14 +126,39 @@ class EndpointForm(FlaskForm):
     
     method = SelectField('HTTP Method', choices=[('POST', 'POST'), ('GET', 'GET'), ('PUT', 'PUT'), ('DELETE', 'DELETE')], validators=[DataRequired()])
     
+    # Payload template options - users can either select existing or create new
+    payload_option = RadioField(
+        'Payload Template Option',
+        choices=[('existing', 'Use Existing Template'), ('new', 'Create New Template'), ('none', 'No Payload Template')],
+        default='none',
+        validators=[DataRequired()]
+    )
+    
     # This special field dynamically creates a dropdown from a database query.
     # It will show a list of all existing PayloadTemplates.
     payload_template = QuerySelectField(
-        'Default Payload Template',
+        'Select Existing Template',
         query_factory=lambda: PayloadTemplate.query.order_by(PayloadTemplate.name),
         get_label='name',
         allow_blank=True, # Allows an endpoint to have no default payload.
-        description="Select a reusable payload template. This can be overridden at the chain step level."
+        description="Select from existing reusable payload templates."
+    )
+    
+    # New payload template fields for inline creation
+    new_template_name = StringField(
+        'Template Name',
+        validators=[Optional(), Length(max=255)],
+        render_kw={"placeholder": "e.g., OpenAI Chat Completion"}
+    )
+    new_template_description = TextAreaField(
+        'Template Description',
+        validators=[Optional(), Length(max=1000)],
+        render_kw={"rows": 2, "placeholder": "Brief description of this payload template"}
+    )
+    new_template_content = TextAreaField(
+        'Payload Template (JSON)',
+        validators=[Optional()],
+        render_kw={"rows": 15, "placeholder": "{\n  \"model\": \"gpt-3.5-turbo\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"{{ prompt }}\"}\n  ]\n}"}
     )
     
     # Fields for the new, structured authentication system.
@@ -150,3 +176,25 @@ class EndpointForm(FlaskForm):
     retry_attempts = IntegerField('Retry Attempts on Failure', default=0, validators=[DataRequired(), NumberRange(min=0, max=5)])
     
     submit = SubmitField('Save Endpoint')
+    
+    def validate_new_template_name(self, field):
+        """Validate new template name is provided when creating new template."""
+        if self.payload_option.data == 'new' and not field.data:
+            raise ValidationError('Template name is required when creating a new template.')
+    
+    def validate_new_template_content(self, field):
+        """Validate new template content is provided when creating new template."""
+        if self.payload_option.data == 'new' and not field.data:
+            raise ValidationError('Template content is required when creating a new template.')
+        
+        # Validate JSON format if content is provided
+        if field.data:
+            try:
+                json.loads(field.data)
+            except json.JSONDecodeError as e:
+                raise ValidationError(f'Invalid JSON format: {str(e)}')
+    
+    def validate_payload_template(self, field):
+        """Validate existing template is selected when using existing option."""
+        if self.payload_option.data == 'existing' and not field.data:
+            raise ValidationError('Please select an existing template or choose a different option.')

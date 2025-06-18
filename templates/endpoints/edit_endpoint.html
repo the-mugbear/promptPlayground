@@ -77,6 +77,35 @@
     .alert-warning i {
       margin-top: 0.1rem;
     }
+
+
+    /* Debug JSON Styling */
+    .debug-json {
+        font-family: var(--mono-font, 'Monaco', 'Consolas', monospace);
+        font-size: 0.85rem;
+        max-height: 300px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+        background: var(--background-color);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 0.75rem;
+        color: var(--text-color);
+        margin: 0.5rem 0;
+    }
+
+    /* Test Results Section */
+    #testResultsSection .card-body > div {
+        gap: 2rem;
+    }
+
+    @media (max-width: 768px) {
+        #testResultsSection .card-body > div {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+    }
   </style>
 {% endblock %}
 
@@ -217,9 +246,67 @@
   </div>
   {% endif %}
 
-  {# --- Test Result Modal (from your original file) --- #}
-  <div id="testResultModalOverlay" class="dialog-overlay" style="display: none;">
-    {# ... The full modal HTML from your file goes here ... #}
+  <!-- Test Results Section -->
+  <div id="testResultsSection" class="content-card" style="display: none;">
+    <div class="card-header">
+      <h3><i class="fas fa-flask fa-fw"></i> Test Results</h3>
+      <p class="text-muted">Results from testing the current endpoint configuration</p>
+    </div>
+    <div class="card-body">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+        <div>
+          <div class="debug-section">
+            <h6 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+              <i class="fas fa-arrow-up"></i> Request Details
+            </h6>
+            <div class="debug-details">
+              <div class="debug-item" style="margin-bottom: 1rem;">
+                <strong>Method:</strong> 
+                <code style="color: var(--accent-color);" id="test-request-method">-</code>
+              </div>
+              
+              <div class="debug-item" style="margin-bottom: 1rem;">
+                <strong>URL:</strong> 
+                <code style="word-break: break-all;" id="test-request-url">-</code>
+              </div>
+              
+              <div class="debug-item" style="margin-bottom: 1rem;">
+                <strong>Request Headers:</strong>
+                <pre class="debug-json" id="test-request-headers">No headers sent</pre>
+              </div>
+              
+              <div class="debug-item" style="margin-bottom: 1rem;">
+                <strong>Request Payload:</strong>
+                <pre class="debug-json" id="test-request-payload">No payload sent</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="debug-section">
+            <h6 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+              <i class="fas fa-arrow-down"></i> Response Details
+            </h6>
+            <div class="debug-details">
+              <div class="debug-item" style="margin-bottom: 1rem;">
+                <strong>Status Code:</strong> 
+                <span id="test-status-code-display" style="padding: 0.25rem 0.5rem; border-radius: 4px;">-</span>
+              </div>
+              
+              <div class="debug-item" style="margin-bottom: 1rem;">
+                <strong>Response Data:</strong>
+                <pre class="debug-json" id="test-response-data">No response data</pre>
+              </div>
+              
+              <div class="debug-item" style="margin-bottom: 1rem;" id="test-error-section" style="display: none;">
+                <strong>Error Message:</strong>
+                <div style="background: rgba(220, 53, 69, 0.1); border: 1px solid var(--danger-color, #dc3545); color: var(--danger-color, #dc3545); padding: 0.5rem; border-radius: 4px;" id="test-error-message"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -249,35 +336,139 @@ document.addEventListener('DOMContentLoaded', function() {
         testForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const mainForm = document.querySelector('form[method="POST"]');
-            const formData = new FormData(mainForm);
+            // Create new FormData and include current form values for testing
+            const formData = new FormData();
             
-            // The test endpoint still needs the raw headers string
-            // For now, we are not editing headers on this page, so we leave it blank
+            // Add CSRF token
+            formData.append('csrf_token', csrfToken);
+            
+            // Add current form field values (what user has entered)
+            formData.append('base_url', document.getElementById('base_url').value);
+            formData.append('path', document.getElementById('path').value);
+            formData.append('method', document.getElementById('method').value);
+            
+            // Add payload template if selected
+            const payloadTemplateSelect = document.getElementById('payload_template');
+            if (payloadTemplateSelect && payloadTemplateSelect.value) {
+                formData.append('payload_template', payloadTemplateSelect.value);
+            }
+            
+            // Add raw headers
             formData.append('raw_headers', document.getElementById('raw_headers').value);
 
-            // Use your existing Test In Progress Modal logic here if you have it
-            // For simplicity, this example just makes the fetch call
             
             fetch(this.action, {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
-            .then(res => res.json())
+            .then(res => {
+                // Check if response is JSON
+                const contentType = res.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return res.json();
+                } else {
+                    // If not JSON, it's likely HTML (template rendered)
+                    throw new Error('Expected JSON response but got HTML. Check server logs.');
+                }
+            })
             .then(data => {
-                // Populate and show the test result modal
-                console.log("Test Result:", data);
-                // (Add your existing logic here to populate the modal fields)
-                document.getElementById('testResultModalOverlay').style.display = 'block';
+                // Populate and show the test results section
+                populateTestResults(data, formData);
+                showTestResults();
             })
             .catch(err => {
                 console.error("Test failed:", err);
-                alert("An error occurred while testing the endpoint.");
+                alert("An error occurred while testing the endpoint: " + err.message);
             });
         });
     }
-    // Add logic for closing the modal
+
+    // Function to populate the test results section
+    function populateTestResults(data, formData) {
+        // Request details - get values directly from form fields
+        const method = document.getElementById('method').value || 'POST';
+        const baseUrl = document.getElementById('base_url').value || '';
+        const path = document.getElementById('path').value || '';
+        const fullUrl = baseUrl + path;
+
+        document.getElementById('test-request-method').textContent = method.toUpperCase();
+        document.getElementById('test-request-url').textContent = fullUrl;
+        
+        // Request headers
+        const requestHeaders = data.request_headers_sent || {};
+        document.getElementById('test-request-headers').textContent = 
+            Object.keys(requestHeaders).length > 0 ? JSON.stringify(requestHeaders, null, 2) : 'No headers sent';
+        
+        // Request payload
+        const payload = data.payload_sent;
+        if (payload) {
+            document.getElementById('test-request-payload').textContent = 
+                typeof payload === 'object' ? JSON.stringify(payload, null, 2) : payload;
+        } else {
+            document.getElementById('test-request-payload').textContent = 'No payload sent';
+        }
+        
+        // Response details
+        const statusCode = data.status_code;
+        const statusCodeElement = document.getElementById('test-status-code-display');
+        statusCodeElement.textContent = statusCode || 'No status code';
+        
+        // Style status code based on value
+        if (statusCode >= 200 && statusCode < 300) {
+            statusCodeElement.style.background = 'var(--success-color, #28a745)';
+            statusCodeElement.style.color = 'white';
+        } else if (statusCode >= 400) {
+            statusCodeElement.style.background = 'var(--danger-color, #dc3545)';
+            statusCodeElement.style.color = 'white';
+        } else if (statusCode >= 300) {
+            statusCodeElement.style.background = 'var(--warning-color, #ffc107)';
+            statusCodeElement.style.color = 'black';
+        } else {
+            statusCodeElement.style.background = 'var(--secondary-color, #6c757d)';
+            statusCodeElement.style.color = 'white';
+        }
+        
+        // Response data
+        const responseData = data.response_data;
+        if (responseData) {
+            document.getElementById('test-response-data').textContent = 
+                typeof responseData === 'object' ? JSON.stringify(responseData, null, 2) : responseData;
+        } else {
+            document.getElementById('test-response-data').textContent = 'No response data';
+        }
+        
+        // Error handling
+        const errorSection = document.getElementById('test-error-section');
+        const errorMessage = data.error_message;
+        if (errorMessage) {
+            document.getElementById('test-error-message').textContent = errorMessage;
+            errorSection.style.display = 'block';
+        } else {
+            errorSection.style.display = 'none';
+        }
+    }
+
+    // Function to show test results and scroll to them
+    function showTestResults() {
+        const resultsSection = document.getElementById('testResultsSection');
+        if (resultsSection) {
+            // Show the results section
+            resultsSection.style.display = 'block';
+            
+            // Scroll to the results section smoothly
+            resultsSection.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+            
+            // Add a brief highlight effect
+            resultsSection.style.border = '2px solid var(--accent-color)';
+            setTimeout(() => {
+                resultsSection.style.border = '';
+            }, 2000);
+        }
+    }
 });
 </script>
 <script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>

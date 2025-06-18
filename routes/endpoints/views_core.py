@@ -25,6 +25,26 @@ def create_endpoint():
     # The QuerySelectField in the form handles populating its own choices.
     
     if form.validate_on_submit():
+        # Handle payload template creation based on user selection
+        payload_template = None
+        
+        if form.payload_option.data == 'existing':
+            payload_template = form.payload_template.data
+        elif form.payload_option.data == 'new':
+            # Create a new payload template
+            new_payload_template = PayloadTemplate(
+                user_id=current_user.id,
+                name=form.new_template_name.data,
+                description=form.new_template_description.data or '',
+                template=form.new_template_content.data
+            )
+            db.session.add(new_payload_template)
+            db.session.flush()  # Get the ID without committing
+            payload_template = new_payload_template
+            
+            flash(f'New payload template "{new_payload_template.name}" created successfully!', 'success')
+        # If payload_option is 'none', payload_template remains None
+        
         # Create a new Endpoint object from the validated form data
         new_endpoint = Endpoint(
             user_id=current_user.id,
@@ -33,7 +53,7 @@ def create_endpoint():
             base_url=form.base_url.data,
             path=form.path.data,
             method=form.method.data,
-            payload_template=form.payload_template.data, # The form gives us the full object
+            payload_template=payload_template,
             auth_method=form.auth_method.data,
             # NOTE: In a production app, you would encrypt this value before saving.
             credentials_encrypted=form.credentials_encrypted.data,

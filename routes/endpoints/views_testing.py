@@ -51,11 +51,26 @@ def test_endpoint(endpoint_id=None):
         return redirect(url_for('endpoints_bp.list_endpoints'))
 
     # Gather effective data from form, with fallback to DB object if it exists
+    # For the test, we prioritize current form data to allow testing modifications
+    base_url = request.form.get('base_url', endpoint.base_url if endpoint else '')
+    path = request.form.get('path', endpoint.path if endpoint else '')
+    method = request.form.get('method', endpoint.method if endpoint else 'POST')
+    
+    # Handle payload template - if a template ID is provided, fetch the template
+    payload_template_id = request.form.get('payload_template')
+    if payload_template_id and payload_template_id.isdigit():
+        from models.model_PayloadTemplate import PayloadTemplate
+        template_obj = db.session.get(PayloadTemplate, int(payload_template_id))
+        http_payload = template_obj.template if template_obj else ''
+    else:
+        # Fallback to endpoint's existing template
+        http_payload = endpoint.payload_template.template if endpoint and endpoint.payload_template else ''
+    
     form_data = {
-        'hostname': request.form.get('hostname', endpoint.base_url if endpoint else ''),
-        'endpoint': request.form.get('endpoint', endpoint.path if endpoint else ''),
-        'http_payload': request.form.get('http_payload', endpoint.payload_template.template if endpoint and endpoint.payload_template else ''),
-        'method': request.form.get('method', endpoint.method if endpoint else 'POST'),
+        'hostname': base_url,
+        'endpoint': path,
+        'http_payload': http_payload,
+        'method': method,
         'raw_headers': request.form.get('raw_headers')
     }
 
@@ -70,6 +85,7 @@ def test_endpoint(endpoint_id=None):
 
     is_ajax_request = request.headers.get(
         'X-Requested-With') == 'XMLHttpRequest'
+    
 
     # --- Validation ---
     # Helper function to avoid repetition when handling validation errors
@@ -131,5 +147,14 @@ def test_endpoint(endpoint_id=None):
     else:
         # For a standard form post, re-render the page with the results displayed
         flash("Endpoint test completed!", "info")
-        template = 'endpoints/view_endpoint.html' if endpoint_id else 'endpoints/create_endpoint.html'
+        # Determine which template to use based on the referrer or endpoint_id
+        if endpoint_id:
+            # Check if we came from edit page
+            referrer = request.headers.get('Referer', '')
+            if 'edit' in referrer:
+                template = 'endpoints/edit_endpoint.html'
+            else:
+                template = 'endpoints/view_endpoint.html'
+        else:
+            template = 'endpoints/create_endpoint.html'
         return render_template(template, endpoint=endpoint, test_result=test_result_data, **form_data)

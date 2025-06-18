@@ -119,15 +119,15 @@ def execute_single_test_case(
 
             except json.JSONDecodeError as e:
                 # Catch JSON errors specifically if the template renders invalid JSON
-                logger.error(f"Task {task_id}: Rendered payload is not valid JSON. Error: {e}. Template: '{endpoint_obj.http_payload}'", exc_info=True)
+                logger.error(f"Task {task_id}: Rendered payload is not valid JSON. Error: {e}. Template: '{endpoint_obj.payload_template.template if endpoint_obj.payload_template else 'No template'}'", exc_info=True)
                 raise # Re-raise to be caught by the main exception handler
             except Exception as e:
                 # Catch any other errors during template rendering
-                logger.error(f"Task {task_id}: Failed to build payload from template. Error: {e}. Template: '{endpoint_obj.http_payload}'", exc_info=True)
+                logger.error(f"Task {task_id}: Failed to build payload from template. Error: {e}. Template: '{endpoint_obj.payload_template.template if endpoint_obj.payload_template else 'No template'}'", exc_info=True)
                 raise # Re-raise to be caught by the main exception handler
         else:
             # The improved fallback logic creates a 'messages' array automatically
-            logger.warning(f"Task {task_id}: Endpoint {endpoint_obj.id} has no http_payload. Falling back to default 'messages' array.")
+            logger.warning(f"Task {task_id}: Endpoint {endpoint_obj.id} has no payload_template. Falling back to default 'messages' array.")
             payload_dict = {
                 "messages": [{"role": "user", "content": final_prompt}]
             }

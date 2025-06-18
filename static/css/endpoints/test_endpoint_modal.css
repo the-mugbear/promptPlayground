@@ -1,0 +1,86 @@
+/* ===================================================================
+   TEST ENDPOINT MODAL
+   - Styles for the test endpoint modal in edit endpoint page
+   - Uses existing modal components from modals.css
+   =================================================================== */
+
+/* Additional debug section styling for test endpoint modal */
+.debug-section {
+    margin-bottom: 2rem;
+}
+
+.debug-details {
+    background: var(--surface-color);
+    border-radius: var(--border-radius-sm, 4px);
+    padding: var(--spacing-md, 1rem);
+}
+
+.debug-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.debug-item strong {
+    color: var(--accent-color);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.debug-item code {
+    background: var(--background-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius-sm, 4px);
+    border: 1px solid var(--border-color);
+    font-family: var(--mono-font, 'Monaco', 'Consolas', monospace);
+    font-size: 0.85rem;
+}
+
+/* Ensure proper spacing in grid layout */
+.modal-body > div[style*="grid"] {
+    gap: 2rem;
+}
+
+@media (max-width: 768px) {
+    .modal-body > div[style*="grid"] {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+/* Test result specific styling */
+.test-result-modal .debug-json {
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm, 4px);
+    padding: 0.75rem;
+    color: var(--text-color);
+    font-family: var(--mono-font, 'Monaco', 'Consolas', monospace);
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Status code styling based on HTTP status */
+.test-result-modal .status-code-success {
+    background: var(--success-color, #28a745) !important;
+    color: white !important;
+}
+
+.test-result-modal .status-code-error {
+    background: var(--danger-color, #dc3545) !important;
+    color: white !important;
+}
+
+.test-result-modal .status-code-warning {
+    background: var(--warning-color, #ffc107) !important;
+    color: black !important;
+}
+
+.test-result-modal .status-code-info {
+    background: var(--info-color, #17a2b8) !important;
+    color: white !important;
+}

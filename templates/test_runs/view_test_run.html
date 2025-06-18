@@ -4,6 +4,7 @@
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/tables.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/charts.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/modals.css') }}">
 <style>
     .prompt-comparison-section {
         margin-top: var(--spacing-sm, 0.5rem);
@@ -85,86 +86,52 @@
         font-family: monospace;
     }
 
-    /* Debug Panel Styling */
-    .debug-panel {
-        background: var(--surface-color, #1a1a1a);
-        border: 1px solid var(--border-color, #333);
-        border-radius: 6px;
-        padding: 1rem;
-        margin-top: 0.5rem;
-    }
-
-    .debug-section {
-        margin-bottom: 1rem;
-    }
-
-    .debug-section:last-child {
-        margin-bottom: 0;
-    }
-
-    .debug-section h6 {
-        color: var(--accent-color, #00d4aa);
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-        font-weight: 600;
-    }
-
-    .debug-details {
-        margin-left: 1rem;
-    }
-
-    .debug-item {
-        margin-bottom: 0.75rem;
-    }
-
-    .debug-item:last-child {
-        margin-bottom: 0;
-    }
-
+    /* Debug Modal Styling */
     .debug-json {
-        background: var(--background-color, #0f0f0f);
-        border: 1px solid var(--border-color, #333);
-        border-radius: 4px;
-        padding: 0.5rem;
-        font-family: 'Monaco', 'Consolas', monospace;
+        font-family: var(--mono-font, 'Monaco', 'Consolas', monospace);
         font-size: 0.85rem;
-        color: var(--text-color, #e0e0e0);
-        max-height: 200px;
+        max-height: 300px;
         overflow-y: auto;
-        margin: 0;
-    }
-
-    .debug-error {
-        background: rgba(220, 53, 69, 0.1);
-        border-color: var(--danger-color, #dc3545);
-        color: var(--danger-color, #dc3545);
-        font-size: 0.85rem;
-        padding: 0.5rem;
-        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+        background: var(--background-color);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 0.75rem;
+        color: var(--text-color);
+        margin: 0.5rem 0;
     }
 
     .debug-warning {
-        background: rgba(255, 193, 7, 0.1);
-        border-color: var(--warning-color, #ffc107);
-        color: var(--warning-color, #ffc107);
         font-size: 0.85rem;
-        padding: 0.5rem;
-        margin: 0.5rem 0 0 0;
-        border-radius: 4px;
-        border: 1px solid;
+        margin: 0.5rem 0;
     }
 
-    .debug-toggle {
-        background: transparent;
-        border: 1px solid var(--info-color, #17a2b8);
-        color: var(--info-color, #17a2b8);
-        font-size: 0.8rem;
-        padding: 0.25rem 0.5rem;
+    /* Force hide modals by default */
+    .modal {
+        display: none !important;
+    }
+    
+    .modal.modal-visible {
+        display: block !important;
     }
 
-    .debug-toggle:hover {
-        background: var(--info-color, #17a2b8);
+    /* Highlight debug buttons for failed tests */
+    .debug-modal-btn.btn-outline-danger {
+        border-color: var(--danger-color, #dc3545);
+        color: var(--danger-color, #dc3545);
+        animation: pulse-danger 2s infinite;
+    }
+
+    .debug-modal-btn.btn-outline-danger:hover {
+        background-color: var(--danger-color, #dc3545);
         color: white;
+    }
+
+    @keyframes pulse-danger {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+        50% { box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
     }
 
     .response-container {
@@ -540,96 +507,13 @@
                                     <div class="response-container">
                                         <div class="code-block json-response">{{ attempt_data.response | prettyjson }}</div>
                                         
-                                        <!-- Debugging Panel -->
-                                        <button type="button" class="btn btn-sm btn-outline-info mt-2 debug-toggle" 
-                                                data-target="debug-panel-{{ attempt_data.execution_id }}"
-                                                title="Show/Hide Request/Response Details">
+                                        <!-- Debug Info Button -->
+                                        <button type="button" class="btn btn-sm {% if attempt_data.status in ['failed', 'error'] %}btn-outline-danger{% else %}btn-outline-info{% endif %} mt-2 debug-modal-btn" 
+                                                data-modal-target="debugModal-{{ attempt_data.execution_id }}"
+                                                title="View Request/Response Details">
                                             <i class="fas fa-bug"></i> Debug Info
+                                            {% if attempt_data.status in ['failed', 'error'] %}<i class="fas fa-exclamation-triangle ms-1"></i>{% endif %}
                                         </button>
-                                        
-                                        <div id="debug-panel-{{ attempt_data.execution_id }}" class="debug-panel mt-2" style="display: none;">
-                                            <div class="debug-section">
-                                                <h6><i class="fas fa-arrow-up"></i> Request Details</h6>
-                                                <div class="debug-details">
-                                                    {% if attempt_data.request_method %}
-                                                    <div class="debug-item">
-                                                        <strong>Method:</strong> <code>{{ attempt_data.request_method }}</code>
-                                                    </div>
-                                                    {% endif %}
-                                                    {% if attempt_data.request_url %}
-                                                    <div class="debug-item">
-                                                        <strong>URL:</strong> <code>{{ attempt_data.request_url }}</code>
-                                                    </div>
-                                                    {% endif %}
-                                                    {% if attempt_data.request_headers %}
-                                                    <div class="debug-item">
-                                                        <strong>Headers:</strong>
-                                                        <pre class="debug-json">{{ attempt_data.request_headers | tojson(indent=2) }}</pre>
-                                                    </div>
-                                                    {% endif %}
-                                                    {% if attempt_data.error_details and attempt_data.error_details.get('cookies_sent') %}
-                                                    <div class="debug-item">
-                                                        <strong>Cookies Sent:</strong>
-                                                        <pre class="debug-json">{{ attempt_data.error_details.get('cookies_sent') | tojson(indent=2) }}</pre>
-                                                        {% if attempt_data.error_details.get('cookie_processing_success') == false %}
-                                                        <div class="alert alert-warning debug-warning">
-                                                            <i class="fas fa-exclamation-triangle"></i> Cookie header was present but no cookies were extracted
-                                                        </div>
-                                                        {% endif %}
-                                                    </div>
-                                                    {% endif %}
-                                                    {% if attempt_data.error_details and attempt_data.error_details.get('headers_with_cookies') %}
-                                                    <div class="debug-item">
-                                                        <strong>Complete Request (Headers + Cookies):</strong>
-                                                        <pre class="debug-json">{{ attempt_data.error_details.get('headers_with_cookies') | tojson(indent=2) }}</pre>
-                                                    </div>
-                                                    {% endif %}
-                                                    {% if attempt_data.request_payload %}
-                                                    <div class="debug-item">
-                                                        <strong>Payload:</strong>
-                                                        <pre class="debug-json">{{ attempt_data.request_payload | tojson(indent=2) }}</pre>
-                                                    </div>
-                                                    {% endif %}
-                                                    {% if attempt_data.request_duration_ms %}
-                                                    <div class="debug-item">
-                                                        <strong>Duration:</strong> <span class="badge bg-info">{{ attempt_data.request_duration_ms }}ms</span>
-                                                    </div>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="debug-section">
-                                                <h6><i class="fas fa-arrow-down"></i> Response Details</h6>
-                                                <div class="debug-details">
-                                                    {% if attempt_data.status_code %}
-                                                    <div class="debug-item">
-                                                        <strong>Status Code:</strong> 
-                                                        <span class="badge {% if attempt_data.status_code >= 200 and attempt_data.status_code < 300 %}bg-success{% elif attempt_data.status_code >= 400 %}bg-danger{% else %}bg-warning{% endif %}">
-                                                            {{ attempt_data.status_code }}
-                                                        </span>
-                                                    </div>
-                                                    {% endif %}
-                                                    {% if attempt_data.response_headers %}
-                                                    <div class="debug-item">
-                                                        <strong>Response Headers:</strong>
-                                                        <pre class="debug-json">{{ attempt_data.response_headers | tojson(indent=2) }}</pre>
-                                                    </div>
-                                                    {% endif %}
-                                                    {% if attempt_data.error_message %}
-                                                    <div class="debug-item">
-                                                        <strong>Error Message:</strong>
-                                                        <div class="alert alert-danger debug-error">{{ attempt_data.error_message }}</div>
-                                                    </div>
-                                                    {% endif %}
-                                                    {% if attempt_data.error_details %}
-                                                    <div class="debug-item">
-                                                        <strong>Error Details:</strong>
-                                                        <pre class="debug-json">{{ attempt_data.error_details | tojson(indent=2) }}</pre>
-                                                    </div>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
                                 </td>
                                 <td>
@@ -667,6 +551,180 @@
         </div>
     </div>
 </div>
+
+<!-- Debug Modals -->
+{% if test_case_map %}
+{% for tc_id, item in test_case_map.items() %}
+    {% for attempt_data in item.attempts %}
+    <div class="modal" id="debugModal-{{ attempt_data.execution_id }}">
+        <div class="modal-content" style="max-width: 1200px; width: 95%;">
+            <div class="modal-header">
+                <h3><i class="fas fa-bug"></i> Debug Information - {{ item.case_name or 'Test Case' }}</h3>
+                <span class="close" data-modal-id="debugModal-{{ attempt_data.execution_id }}">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div>
+                        <div class="debug-section">
+                            <h6 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                                <i class="fas fa-arrow-up"></i> Request Details
+                            </h6>
+                            <div class="debug-details">
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Method:</strong> 
+                                    <code style="color: var(--accent-color);">{{ attempt_data.request_method or 'Not recorded' }}</code>
+                                </div>
+                                
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>URL:</strong> 
+                                    <code style="word-break: break-all;">{{ attempt_data.request_url or 'Not recorded' }}</code>
+                                </div>
+                                
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Request Headers:</strong>
+                                    {% if attempt_data.request_headers %}
+                                        <pre class="debug-json">{{ attempt_data.request_headers | tojson(indent=2) }}</pre>
+                                    {% else %}
+                                        <p style="color: var(--text-muted-color, #888); font-style: italic;">No headers recorded</p>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if attempt_data.processed_prompt %}
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Processed Prompt:</strong>
+                                    <pre class="debug-json">{{ attempt_data.processed_prompt }}</pre>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Request Payload:</strong>
+                                    {% if attempt_data.request_payload %}
+                                        <pre class="debug-json">{{ attempt_data.request_payload | tojson(indent=2) }}</pre>
+                                    {% else %}
+                                        <p style="color: var(--text-muted-color, #888); font-style: italic;">No payload recorded</p>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if attempt_data.request_duration_ms %}
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Request Duration:</strong> 
+                                    <span style="background: var(--accent-color); color: var(--background-color); padding: 0.25rem 0.5rem; border-radius: 4px;">{{ attempt_data.request_duration_ms }}ms</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if attempt_data.started_at %}
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Started At:</strong> 
+                                    <code>{{ attempt_data.started_at.strftime('%Y-%m-%d %H:%M:%S UTC') if attempt_data.started_at else 'Not recorded' }}</code>
+                                </div>
+                                {% endif %}
+                                
+                                {% if attempt_data.finished_at %}
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Finished At:</strong> 
+                                    <code>{{ attempt_data.finished_at.strftime('%Y-%m-%d %H:%M:%S UTC') if attempt_data.finished_at else 'Not recorded' }}</code>
+                                </div>
+                                {% endif %}
+                                
+                                {% if attempt_data.error_details and attempt_data.error_details.get('cookies_sent') %}
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Cookies Sent:</strong>
+                                    <pre class="debug-json">{{ attempt_data.error_details.get('cookies_sent') | tojson(indent=2) }}</pre>
+                                    {% if attempt_data.error_details.get('cookie_processing_success') == false %}
+                                    <div style="background: rgba(255, 193, 7, 0.1); border: 1px solid var(--warning-color, #ffc107); color: var(--warning-color, #ffc107); padding: 0.5rem; margin-top: 0.5rem; border-radius: 4px;">
+                                        <i class="fas fa-exclamation-triangle"></i> Cookie header was present but no cookies were extracted
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                
+                                {% if attempt_data.error_details and attempt_data.error_details.get('headers_with_cookies') %}
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Complete Request (Headers + Cookies):</strong>
+                                    <pre class="debug-json">{{ attempt_data.error_details.get('headers_with_cookies') | tojson(indent=2) }}</pre>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="debug-section">
+                            <h6 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                                <i class="fas fa-arrow-down"></i> Response Details
+                            </h6>
+                            <div class="debug-details">
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Status Code:</strong> 
+                                    {% if attempt_data.status_code %}
+                                        {% if attempt_data.status_code >= 200 and attempt_data.status_code < 300 %}
+                                            <span style="background: var(--success-color, #28a745); color: white; padding: 0.25rem 0.5rem; border-radius: 4px;">{{ attempt_data.status_code }}</span>
+                                        {% elif attempt_data.status_code >= 400 %}
+                                            <span style="background: var(--danger-color, #dc3545); color: white; padding: 0.25rem 0.5rem; border-radius: 4px;">{{ attempt_data.status_code }}</span>
+                                        {% else %}
+                                            <span style="background: var(--warning-color, #ffc107); color: black; padding: 0.25rem 0.5rem; border-radius: 4px;">{{ attempt_data.status_code }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span style="color: var(--text-muted-color, #888); font-style: italic;">Not recorded</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Test Status:</strong> 
+                                    {% if attempt_data.status == 'passed' %}
+                                        <span style="background: var(--success-color, #28a745); color: white; padding: 0.25rem 0.5rem; border-radius: 4px;">{{ attempt_data.status.title() }}</span>
+                                    {% elif attempt_data.status == 'failed' %}
+                                        <span style="background: var(--danger-color, #dc3545); color: white; padding: 0.25rem 0.5rem; border-radius: 4px;">{{ attempt_data.status.title() }}</span>
+                                    {% elif attempt_data.status == 'pending_review' %}
+                                        <span style="background: var(--warning-color, #ffc107); color: black; padding: 0.25rem 0.5rem; border-radius: 4px;">Pending Review</span>
+                                    {% else %}
+                                        <span style="background: var(--secondary-color, #6c757d); color: white; padding: 0.25rem 0.5rem; border-radius: 4px;">{{ attempt_data.status.title() }}</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Response Headers:</strong>
+                                    {% if attempt_data.response_headers %}
+                                        <pre class="debug-json">{{ attempt_data.response_headers | tojson(indent=2) }}</pre>
+                                    {% else %}
+                                        <p style="color: var(--text-muted-color, #888); font-style: italic;">No response headers recorded</p>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Response Data:</strong>
+                                    {% if attempt_data.response_data %}
+                                        <pre class="debug-json">{{ attempt_data.response_data }}</pre>
+                                    {% elif attempt_data.response %}
+                                        <pre class="debug-json">{{ attempt_data.response | tojson(indent=2) }}</pre>
+                                    {% else %}
+                                        <p style="color: var(--text-muted-color, #888); font-style: italic;">No response data recorded</p>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if attempt_data.error_message %}
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Error Message:</strong>
+                                    <div style="background: rgba(220, 53, 69, 0.1); border: 1px solid var(--danger-color, #dc3545); color: var(--danger-color, #dc3545); padding: 0.5rem; border-radius: 4px;">{{ attempt_data.error_message }}</div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if attempt_data.error_details %}
+                                <div class="debug-item" style="margin-bottom: 1rem;">
+                                    <strong>Error Details:</strong>
+                                    <pre class="debug-json">{{ attempt_data.error_details | tojson(indent=2) }}</pre>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% endfor %}
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
@@ -726,40 +784,63 @@
         }
     });
 
-    // Debug panel toggle functionality
+    // Debug modal functionality
     document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.debug-toggle').forEach(button => {
-            button.addEventListener('click', function() {
-                const targetId = this.getAttribute('data-target');
-                const panel = document.getElementById(targetId);
-                
-                if (panel) {
-                    const isVisible = panel.style.display !== 'none';
-                    panel.style.display = isVisible ? 'none' : 'block';
-                    
-                    // Update button text and icon
-                    const icon = this.querySelector('i');
-                    const text = this.childNodes[1]; // Text node after icon
-                    
-                    if (isVisible) {
-                        icon.className = 'fas fa-bug';
-                        this.innerHTML = '<i class="fas fa-bug"></i> Debug Info';
-                    } else {
-                        icon.className = 'fas fa-eye-slash';
-                        this.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Debug';
-                    }
+        // Modal open/close functionality
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('modal-visible');
+                document.body.style.overflow = 'hidden'; // Prevent scrolling
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('modal-visible');
+                document.body.style.overflow = ''; // Restore scrolling
+            }
+        }
+
+        // Handle debug modal button clicks
+        document.querySelectorAll('.debug-modal-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const modalTarget = button.getAttribute('data-modal-target');
+                if (modalTarget) {
+                    openModal(modalTarget);
                 }
             });
         });
-        
-        // Auto-expand debug panels for failed tests
-        document.querySelectorAll('tr[data-status="failed"], tr[data-status="error"]').forEach(row => {
-            const debugButton = row.querySelector('.debug-toggle');
-            if (debugButton) {
-                // Auto-click to show debug info for failed tests
-                debugButton.click();
+
+        // Handle close button clicks
+        document.querySelectorAll('.close[data-modal-id]').forEach(closeBtn => {
+            closeBtn.addEventListener('click', () => {
+                const modalId = closeBtn.getAttribute('data-modal-id');
+                closeModal(modalId);
+            });
+        });
+
+        // Close modal when clicking outside of modal content
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal(modal.id);
+                }
+            });
+        });
+
+        // Close modal on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.modal-visible').forEach(modal => {
+                    closeModal(modal.id);
+                });
             }
         });
+
+        // Note: Auto-open for failed tests disabled for modals to prevent overwhelming UI
+        // Users can click individual Debug Info buttons to inspect failed tests
     });
 </script>
 {% endblock %}

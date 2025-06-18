@@ -84,17 +84,34 @@ textarea:not([rows]) {
     min-height: 120px;
 }
 
-/* Small textareas (3-4 rows) should respect their rows attribute */
+/* Respect textarea rows attribute for all row counts */
 textarea[rows="3"] {
-    height: calc(1.5em * 3 + 1rem); /* 3 rows + padding */
+    height: calc(1.5em * 3 + 1.2rem) !important; /* 3 rows + padding */
+    min-height: calc(1.5em * 3 + 1.2rem) !important;
 }
 
 textarea[rows="4"] {
-    height: calc(1.5em * 4 + 1rem); /* 4 rows + padding */
+    height: calc(1.5em * 4 + 1.2rem) !important; /* 4 rows + padding */
+    min-height: calc(1.5em * 4 + 1.2rem) !important;
 }
 
-/* Larger textareas can have a minimum height */
-textarea[rows]:not([rows="3"]):not([rows="4"]) {
+textarea[rows="5"] {
+    height: calc(1.5em * 5 + 1.2rem) !important; /* 5 rows + padding */
+    min-height: calc(1.5em * 5 + 1.2rem) !important;
+}
+
+textarea[rows="10"] {
+    height: calc(1.5em * 10 + 1.2rem) !important; /* 10 rows + padding */
+    min-height: calc(1.5em * 10 + 1.2rem) !important;
+}
+
+/* General rule for any textarea with rows attribute */
+textarea[rows] {
+    height: auto !important;
+}
+
+/* Larger textareas without rows can have a minimum height */
+textarea:not([rows]) {
     min-height: 120px;
 }
 

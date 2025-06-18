@@ -8,6 +8,35 @@
   {# Link to the stylesheets for our themed forms and layouts #}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/endpoints.css') }}">
+  <style>
+    .payload-section {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      border: 1px solid var(--border-color, rgba(0, 255, 65, 0.3));
+      border-radius: var(--border-radius-sm, 4px);
+      background-color: rgba(var(--surface-color-rgb, 26, 26, 26), 0.5);
+    }
+    
+    .payload-section h4 {
+      margin-top: 0;
+      color: var(--accent-color);
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    /* Style radio buttons */
+    input[type="radio"] {
+      margin-right: 0.5rem;
+    }
+    
+    .form-group input[type="radio"] + label {
+      margin-left: 0.25rem;
+      margin-right: 1rem;
+      display: inline;
+      font-weight: normal;
+      text-transform: none;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
@@ -37,7 +66,23 @@
                 {{ render_field(form.base_url) }}
                 {{ render_field(form.path) }}
                 {{ render_field(form.method) }}
+            </div>
+        </fieldset>
+
+        <fieldset class="form-section full-width">
+            <legend>Payload Template</legend>
+            {{ render_field(form.payload_option) }}
+            
+            <div id="existing-template-section" class="payload-section" style="display: none;">
                 {{ render_field(form.payload_template) }}
+            </div>
+            
+            <div id="new-template-section" class="payload-section" style="display: none;">
+                <div class="two-column-grid">
+                    {{ render_field(form.new_template_name) }}
+                    {{ render_field(form.new_template_description) }}
+                </div>
+                {{ render_field(form.new_template_content, class="payload-textarea") }}
             </div>
         </fieldset>
 
@@ -87,6 +132,11 @@ const csrfToken = "{{ csrf_token() }}";
 document.addEventListener('DOMContentLoaded', function() {
     const authMethodSelect = document.getElementById('auth_method');
     const credentialsWrapper = document.getElementById('credentials-wrapper');
+    
+    // Payload template option handling
+    const payloadOptions = document.querySelectorAll('input[name="payload_option"]');
+    const existingTemplateSection = document.getElementById('existing-template-section');
+    const newTemplateSection = document.getElementById('new-template-section');
 
     function toggleCredentialsField() {
         if (authMethodSelect.value === 'none') {
@@ -96,11 +146,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function togglePayloadSections() {
+        const selectedOption = document.querySelector('input[name="payload_option"]:checked')?.value;
+        
+        // Hide all sections first
+        existingTemplateSection.style.display = 'none';
+        newTemplateSection.style.display = 'none';
+        
+        // Show relevant section
+        if (selectedOption === 'existing') {
+            existingTemplateSection.style.display = 'block';
+        } else if (selectedOption === 'new') {
+            newTemplateSection.style.display = 'block';
+        }
+    }
+
     // Run on page load
     toggleCredentialsField();
+    togglePayloadSections();
 
     // Run whenever the selection changes
     authMethodSelect.addEventListener('change', toggleCredentialsField);
+    
+    // Add event listeners to payload option radio buttons
+    payloadOptions.forEach(option => {
+        option.addEventListener('change', togglePayloadSections);
+    });
 });
 </script>
 <script src="{{ url_for('static', filename='js/endpoints/headers.js') }}"></script>

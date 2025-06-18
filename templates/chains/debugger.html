@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/animations.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/modals.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/chains.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 {% endblock %}
@@ -40,6 +41,12 @@
                 <span class="step-name-debugger">{{ step.name or step.endpoint.name }}</span>
                 <span class="http-method-debugger http-{{ step.endpoint.method.lower() }}">{{ step.endpoint.method
                     }}</span>
+                <button type="button" class="btn btn-sm btn-outline-info ms-2 step-debug-btn" 
+                        data-modal-target="stepDebugModal-{{ step.id }}"
+                        title="View Step Debug Details"
+                        style="display: none;">
+                    <i class="fas fa-bug"></i>
+                </button>
                 <i class="fas fa-check-circle step-status-icon success-icon"></i>
                 <i class="fas fa-times-circle step-status-icon error-icon"></i>
                 <i class="fas fa-spinner fa-spin step-status-icon active-icon"></i>
@@ -89,6 +96,166 @@
     </div>
 </div>
 
+<!-- Step Debug Modals -->
+{% for step in chain.steps|sort(attribute='step_order') %}
+<div class="modal" id="stepDebugModal-{{ step.id }}">
+    <div class="modal-content" style="max-width: 1200px; width: 95%;">
+        <div class="modal-header">
+            <h3><i class="fas fa-bug"></i> Step Debug Details - {{ step.name or step.endpoint.name }}</h3>
+            <span class="close" data-modal-id="stepDebugModal-{{ step.id }}">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <div>
+                    <div class="debug-section">
+                        <h6 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                            <i class="fas fa-info-circle"></i> Step Information
+                        </h6>
+                        <div class="debug-details" style="margin-bottom: 2rem;">
+                            <div class="debug-item" style="margin-bottom: 1rem;">
+                                <strong>Step Order:</strong> <span style="background: var(--accent-color); color: var(--background-color); padding: 0.25rem 0.5rem; border-radius: 4px;">{{ step.step_order }}</span>
+                            </div>
+                            <div class="debug-item" style="margin-bottom: 1rem;">
+                                <strong>Endpoint:</strong> <code style="color: var(--accent-color);">{{ step.endpoint.name }}</code>
+                            </div>
+                            <div class="debug-item" style="margin-bottom: 1rem;">
+                                <strong>Method:</strong> <span style="background: var(--secondary-color, #3a86ff); color: white; padding: 0.25rem 0.5rem; border-radius: 4px;">{{ step.endpoint.method }}</span>
+                            </div>
+                            <div class="debug-item" style="margin-bottom: 1rem;">
+                                <strong>URL:</strong> <code style="word-break: break-all;">{{ step.endpoint.base_url }}{{ step.endpoint.path }}</code>
+                            </div>
+                            {% if step.endpoint.payload_template %}
+                            <div class="debug-item" style="margin-bottom: 1rem;">
+                                <strong>Payload Template:</strong>
+                                <pre class="debug-json">{{ step.endpoint.payload_template.template }}</pre>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="debug-section">
+                        <h6 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                            <i class="fas fa-arrow-up"></i> Request Details
+                        </h6>
+                        <div class="debug-details" id="step-{{ step.id }}-request-details">
+                            <p style="color: var(--text-muted-color, #888);">Execute this step to see request details</p>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="debug-section">
+                        <h6 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                            <i class="fas fa-arrow-down"></i> Response Details
+                        </h6>
+                        <div class="debug-details" id="step-{{ step.id }}-response-details">
+                            <p style="color: var(--text-muted-color, #888);">Execute this step to see response details</p>
+                        </div>
+                    </div>
+                    <div class="debug-section">
+                        <h6 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                            <i class="fas fa-cogs"></i> Context Variables
+                        </h6>
+                        <div class="debug-details" id="step-{{ step.id }}-context-details">
+                            <p style="color: var(--text-muted-color, #888);">Execute this step to see context variables</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
 {# The existing debugger.js will work with this new HTML #}
 <script src="{{ url_for('static', filename='js/chains/debugger.js') }}"></script>
+
+<style>
+/* Debug Modal Styling for chains */
+.debug-json {
+    font-family: var(--mono-font, 'Monaco', 'Consolas', monospace);
+    font-size: 0.85rem;
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.75rem;
+    color: var(--text-color);
+    margin: 0.5rem 0;
+}
+
+.step-debug-btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Force hide modals by default */
+.modal {
+    display: none !important;
+}
+
+.modal.modal-visible {
+    display: block !important;
+}
+</style>
+
+<script>
+// Modal functionality for chain debugger
+document.addEventListener('DOMContentLoaded', function() {
+    // Modal open/close functionality
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('modal-visible');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('modal-visible');
+            document.body.style.overflow = '';
+        }
+    }
+
+    // Handle debug modal button clicks
+    document.querySelectorAll('.step-debug-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const modalTarget = button.getAttribute('data-modal-target');
+            if (modalTarget) {
+                openModal(modalTarget);
+            }
+        });
+    });
+
+    // Handle close button clicks
+    document.querySelectorAll('.close[data-modal-id]').forEach(closeBtn => {
+        closeBtn.addEventListener('click', () => {
+            const modalId = closeBtn.getAttribute('data-modal-id');
+            closeModal(modalId);
+        });
+    });
+
+    // Close modal when clicking outside of modal content
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal(modal.id);
+            }
+        });
+    });
+
+    // Close modal on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal.modal-visible').forEach(modal => {
+                closeModal(modal.id);
+            });
+        }
+    });
+});
+</script>
+
 {% endblock %}
