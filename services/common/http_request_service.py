@@ -29,6 +29,13 @@ def _execute_request(
     """
 
     logger.debug(f"Core executor: Making {method} request to {url}")
+    print(f"CORE_EXECUTOR DEBUG: About to make {method.upper()} request")
+    print(f"CORE_EXECUTOR DEBUG: URL: {url}")
+    print(f"CORE_EXECUTOR DEBUG: Headers passed to requests: {headers}")
+    print(f"CORE_EXECUTOR DEBUG: Cookies passed to requests: {cookies}")
+    print(f"CORE_EXECUTOR DEBUG: JSON payload: {payload_json}")
+    print(f"CORE_EXECUTOR DEBUG: Data payload: {payload_data}")
+    
     try:
         resp = requests.request(
             method=method.upper(),
@@ -101,7 +108,11 @@ def execute_api_request(
         logger.info(
             f"Container networking: Updated hostname to {hostname_url}")
 
-    final_url = f"{hostname_url.rstrip('/')}/{endpoint_path.lstrip('/')}"
+    # Construct final URL - handle cases where endpoint_path might be empty
+    if endpoint_path and endpoint_path.strip():
+        final_url = f"{hostname_url.rstrip('/')}/{endpoint_path.lstrip('/')}"
+    else:
+        final_url = hostname_url.rstrip('/')
 
     # --- Preparation Step 3: Payload ---
     payload_json = None
@@ -119,9 +130,13 @@ def execute_api_request(
     # --- Logging Step ---
     logger.info(f"Preparing to send {method.upper()} request to {final_url}")
     logger.info(f"Headers: {json.dumps(final_headers, indent=2)}")
+    print(f"HTTP_SERVICE DEBUG: Method={method.upper()}, URL={final_url}")
+    print(f"HTTP_SERVICE DEBUG: Final headers dict: {final_headers}")
+    print(f"HTTP_SERVICE DEBUG: Cookies dict: {cookies}")
     if http_payload_as_string:
         logger.info(
             f"Payload Body (first 500 chars): {http_payload_as_string[:500]}")
+        print(f"HTTP_SERVICE DEBUG: Payload length: {len(http_payload_as_string)}")
 
     # --- Execution Step ---
     # Call the core executor with the cleanly prepared arguments

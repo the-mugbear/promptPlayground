@@ -75,13 +75,20 @@ def test_endpoint(endpoint_id=None):
     }
 
     raw_headers = form_data['raw_headers']
-    if raw_headers is not None:
+    
+    # Debug logging to help identify header issues
+    print(f"DEBUG: Testing endpoint {endpoint_id}")
+    print(f"DEBUG: raw_headers received: {repr(raw_headers)}")
+    
+    if raw_headers is not None and raw_headers.strip():
         effective_headers_dict = parse_raw_headers(raw_headers)
+        print(f"DEBUG: parsed headers: {effective_headers_dict}")
     elif endpoint and endpoint.headers:
-        effective_headers_dict = headers_from_apiheader_list(
-            endpoint.headers)
+        effective_headers_dict = headers_from_apiheader_list(endpoint.headers)
+        print(f"DEBUG: using endpoint stored headers: {effective_headers_dict}")
     else:
         effective_headers_dict = {}
+        print(f"DEBUG: no headers found, using empty dict")
 
     is_ajax_request = request.headers.get(
         'X-Requested-With') == 'XMLHttpRequest'
@@ -98,36 +105,58 @@ def test_endpoint(endpoint_id=None):
             template = 'endpoints/view_endpoint.html' if endpoint_id else 'endpoints/create_endpoint.html'
             return render_template(template, endpoint=endpoint, **form_data)
 
-    if not all([form_data['hostname'], form_data['endpoint'], form_data['http_payload']]):
-        return handle_validation_error("Base URL, Endpoint Path, and Payload are required for testing.")
+    # Validate required fields - payload is only required for non-GET methods
+    if not all([form_data['hostname'], form_data['endpoint']]):
+        return handle_validation_error("Base URL and Endpoint Path are required for testing.")
+    
+    # For non-GET methods, payload is required
+    if form_data['method'].upper() != 'GET' and not form_data['http_payload']:
+        return handle_validation_error("Payload is required for non-GET requests.")
 
     # --- Payload Rendering ---
-    try:
-        render_context = {
-            "INJECT_PROMPT": "This is a test prompt to validate the template.",
-            "model": "test-model"  # Provide a dummy model for templates that need it
-        }
-        # Use the new function name
-        actual_payload_sent = render_template_string(
-            form_data['http_payload'], render_context)
-        
-        # Validate that the rendered payload is valid JSON
-        json.loads(actual_payload_sent)
+    actual_payload_sent = None
+    if form_data['http_payload']:  # Only process payload if it exists
+        try:
+            render_context = {
+                "INJECT_PROMPT": "This is a test prompt to validate the template.",
+                "model": "test-model"  # Provide a dummy model for templates that need it
+            }
+            # Use the new function name
+            actual_payload_sent = render_template_string(
+                form_data['http_payload'], render_context)
+            
+            # Validate that the rendered payload is valid JSON (only for non-empty payloads)
+            if actual_payload_sent.strip():
+                json.loads(actual_payload_sent)
 
-    # Catch specific JSON error or a generic one for other template issues
-    except json.JSONDecodeError as e:
-        return handle_validation_error(f"Rendered payload is not valid JSON: {e}")
-    except Exception as e:
-        return handle_validation_error(f"Error in payload template: {e}")
+        # Catch specific JSON error or a generic one for other template issues
+        except json.JSONDecodeError as e:
+            return handle_validation_error(f"Rendered payload is not valid JSON: {e}")
+        except Exception as e:
+            return handle_validation_error(f"Error in payload template: {e}")
 
     # --- Execute the Test HTTP Request ---
-    result = execute_api_request(
-        method=form_data['method'].upper(),
-        hostname_url=form_data['hostname'],
-        endpoint_path=form_data['endpoint'],
-        raw_headers_or_dict=effective_headers_dict,
-        http_payload_as_string=actual_payload_sent
-    )
+    print(f"DEBUG: About to execute request with method: {form_data['method'].upper()}")
+    print(f"DEBUG: URL: {form_data['hostname']}{form_data['endpoint']}")
+    print(f"DEBUG: Headers being sent: {effective_headers_dict}")
+    print(f"DEBUG: Payload: {actual_payload_sent[:100] if actual_payload_sent else 'None'}")
+    
+    try:
+        result = execute_api_request(
+            method=form_data['method'].upper(),
+            hostname_url=form_data['hostname'],
+            endpoint_path=form_data['endpoint'],
+            raw_headers_or_dict=effective_headers_dict,
+            http_payload_as_string=actual_payload_sent
+        )
+        
+        print(f"DEBUG: Request completed with status: {result.get('status_code')}")
+        print(f"DEBUG: Headers that were actually sent: {result.get('request_headers_sent', {})}")
+    except Exception as e:
+        print(f"DEBUG: Exception during HTTP request execution: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return handle_validation_error(f"Error executing HTTP request: {str(e)}")
 
     # --- Prepare Final Result Data ---
     test_result_data = {
@@ -136,10 +165,14 @@ def test_endpoint(endpoint_id=None):
         'request_headers_sent': result.get("request_headers_sent", {}),
         'error_message': result.get("error_message")
     }
-    try:
-        test_result_data['payload_sent'] = json.loads(actual_payload_sent)
-    except json.JSONDecodeError:
-        test_result_data['payload_sent'] = actual_payload_sent
+    # Handle payload for response - could be None for GET requests
+    if actual_payload_sent:
+        try:
+            test_result_data['payload_sent'] = json.loads(actual_payload_sent)
+        except (json.JSONDecodeError, TypeError):
+            test_result_data['payload_sent'] = actual_payload_sent
+    else:
+        test_result_data['payload_sent'] = None
 
     # --- Return Response (AJAX or Rendered Template) ---
     if is_ajax_request:

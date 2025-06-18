@@ -136,11 +136,16 @@ def execute_single_test_case(
         
         # Prepare headers directly as a dictionary. No need to convert to a raw string.
         headers_dict = {h.key: h.value for h in (endpoint_obj.headers or [])}
+        print(f"TASK DEBUG: Original endpoint headers: {headers_dict}")
+        print(f"TASK DEBUG: Test run header overrides: {run.header_overrides}")
         
         # Apply any run-specific header overrides (e.g., updated Authorization tokens)
         if run.header_overrides:
             logger.debug(f"Task {task_id}: Applying header overrides: {run.header_overrides}")
             headers_dict.update(run.header_overrides)
+            print(f"TASK DEBUG: Final merged headers: {headers_dict}")
+        else:
+            print(f"TASK DEBUG: No header overrides found, using original endpoint headers")
         logger.info(f"HTTP payload being sent: {http_payload_str_for_request}")
 
         # --- Debug Logging for Test Case Execution ---

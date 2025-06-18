@@ -251,9 +251,14 @@ def create_test_run():
     override_values = request.form.getlist('override_value')
     header_overrides = {}
     
+    print(f"DEBUG: Raw override keys from form: {override_keys}")
+    print(f"DEBUG: Raw override values from form: {override_values}")
+    
     for key, value in zip(override_keys, override_values):
         if key.strip() and value.strip():  # Only include non-empty key-value pairs
             header_overrides[key.strip()] = value.strip()
+    
+    print(f"DEBUG: Processed header overrides: {header_overrides}")
 
     # 2) Parse the ordered list of transformation names from our hidden field
     ordered_json = request.form.get('ordered_transformations', '[]')
@@ -378,6 +383,9 @@ def create_test_run():
             delay_between_requests=delay_between_requests,
             run_serially=run_serially
         )
+        
+        print(f"DEBUG: Created test run with header_overrides: {new_run.header_overrides}")
+        
         db.session.add(new_run)
 
         # Associate selected test suites
