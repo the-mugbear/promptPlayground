@@ -80,6 +80,32 @@ def delete_test_case(case_id):
     return jsonify({"message": "Test case deleted"}), 200
 
 
+@test_cases_bp.route('/<int:case_id>/delete', methods=['POST'])
+def delete_test_case_post(case_id):
+    """
+    POST /test_cases/<id>/delete -> Delete a specific test case (form-compatible)
+    """
+    from flask_login import login_required, current_user
+    
+    # Apply login_required check manually since we can't use decorator here
+    if not current_user.is_authenticated:
+        return jsonify({"error": "Authentication required"}), 401
+    
+    test_case = TestCase.query.get_or_404(case_id)
+    
+    # Check ownership
+    if hasattr(test_case, 'user_id') and test_case.user_id != current_user.id and not current_user.is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    try:
+        db.session.delete(test_case)
+        db.session.commit()
+        return jsonify({"message": "Test case deleted successfully"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
 # Now for a form-based approach:
 @test_cases_bp.route('/create', methods=['GET'])
 def create_test_case_form():

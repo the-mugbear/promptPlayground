@@ -103,8 +103,10 @@ def execute_single_test_case(
             try:
                 # 1. Define the context for rendering the Jinja2 template.
                 #    This context will contain all variables your templates might need.
+                #    We provide both raw and JSON-escaped versions for flexibility
                 render_context = {
                     "INJECT_PROMPT": final_prompt,
+                    "INJECT_PROMPT_JSON": json.dumps(final_prompt)[1:-1],  # JSON-escaped without quotes
                     "MODEL_NAME": "gemma-3-12b-it" # USED FOR LOCAL TESTING ONLY
                 }
 
@@ -121,7 +123,10 @@ def execute_single_test_case(
 
             except json.JSONDecodeError as e:
                 # Catch JSON errors specifically if the template renders invalid JSON
-                logger.error(f"Task {task_id}: Rendered payload is not valid JSON. Error: {e}. Template: '{endpoint_obj.payload_template.template if endpoint_obj.payload_template else 'No template'}'", exc_info=True)
+                logger.error(f"Task {task_id}: Rendered payload is not valid JSON. Error: {e}")
+                logger.error(f"Task {task_id}: Template: '{endpoint_obj.payload_template.template if endpoint_obj.payload_template else 'No template'}'")
+                logger.error(f"Task {task_id}: Rendered content: '{http_payload_str_for_request}'")
+                logger.error(f"Task {task_id}: INJECT_PROMPT content: '{final_prompt[:200]}...'")
                 raise # Re-raise to be caught by the main exception handler
             except Exception as e:
                 # Catch any other errors during template rendering
@@ -451,6 +456,7 @@ def execute_single_test_case_chain(
             # Create initial context for chain execution with the test case prompt
             initial_context = {
                 "INJECT_PROMPT": final_prompt,
+                "INJECT_PROMPT_JSON": json.dumps(final_prompt)[1:-1],  # JSON-escaped without quotes
                 "TEST_CASE_ID": test_case_id,
                 "ITERATION": iteration_num
             }

@@ -78,36 +78,50 @@ def delete_test_suite(suite_id):
 
     return redirect(url_for('test_suites_bp.list_test_suites'))
 
-@test_suites_bp.route('/<int:suite_id>/update', methods=['PUT'])
+@test_suites_bp.route('/<int:suite_id>/update', methods=['POST'])
 @login_required 
 def update_test_suite(suite_id):
-    """PUT /test_suites/<suite_id>/update -> Update a test suite's details"""
+    """POST /test_suites/<suite_id>/update -> Update a test suite's details"""
     suite = TestSuite.query.get_or_404(suite_id)
+    
+    # Check ownership
+    if suite.user_id != current_user.id and not current_user.is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     data = request.get_json(force=True)
     updated_fields = []
 
-    if "description" in data:
-        suite.description = data["description"]
-        updated_fields.append("description")
-
-    if "behavior" in data:
-        suite.behavior = data["behavior"]
-        updated_fields.append("behavior")
-
-    if "objective" in data:
-        suite.objective = data["objective"]
-        updated_fields.append("objective")
+    if "field" in data and "value" in data:
+        field = data["field"]
+        value = data["value"].strip()
+        
+        if field == "description":
+            suite.description = value
+            updated_fields.append("description")
+        elif field == "behavior":
+            suite.behavior = value
+            updated_fields.append("behavior")
+        elif field == "objective":
+            suite.objective = value
+            updated_fields.append("objective")
 
     if updated_fields:
-        db.session.commit()
-        return jsonify({
-            "message": f"Updated fields: {', '.join(updated_fields)}",
-            "suite": {
-                "id": suite.id,
-                "description": suite.description,
-                "behavior": suite.behavior,
-                "objective": suite.objective
-            }
-        })
+        try:
+            db.session.commit()
+            return jsonify({
+                "message": f"Updated {', '.join(updated_fields)}",
+                "suite": {
+                    "id": suite.id,
+                    "description": suite.description,
+                    "behavior": suite.behavior,
+                    "objective": suite.objective
+                }
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
     else:
-        return jsonify({"message": "No fields were updated"}), 400 
+        return jsonify({"error": "No valid fields provided"}), 400
+
+
+ 

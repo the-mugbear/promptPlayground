@@ -75,7 +75,7 @@ services:
     build: . # Use the same image as the web service
     container_name: fuzzy_prompts_worker
     # Override the default CMD from the Dockerfile
-    command: celery -A celery_app:celery worker -P eventlet --loglevel=debug --concurrency=50
+    command: celery -A celery_app:celery worker -P eventlet --loglevel=info --concurrency=10 --max-tasks-per-child=100
     # command: sleep infinity
     volumes:
       - .:/app # Mount code for development consistency
@@ -156,7 +156,7 @@ services:
       - "15672:15672" # Management UI port
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq/ # Persist RabbitMQ data (optional for dev)
-      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro # Mount modern config file
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro # Mount minimal config file
     deploy:
       resources:
         limits:

@@ -1,233 +1,887 @@
 {% extends "base.html" %}
 
-{% block title %}Test Suite Details{% endblock %}
+{% block title %}{{ test_suite.description }} - Test Suite Details{% endblock %}
 
 {% block head %}
-  {{ super() }}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
-  <style>
-    /* Test suite specific styling */
-    .test-suite-details .editable {
-      background: transparent;
-      border: 1px dashed transparent;
-      padding: 0.25rem;
-      border-radius: var(--border-radius-sm);
-      transition: var(--transition-fast);
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/cards.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/tables.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/modals.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+/* Test Suite Details Styling */
+.suite-details-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.suite-header {
+    background: linear-gradient(135deg, var(--surface-color), var(--accent-color-bg));
+    border: 1px solid var(--accent-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.suite-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(0, 255, 65, 0.1) 50%, transparent 70%);
+    animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.suite-header-content {
+    position: relative;
+    z-index: 1;
+}
+
+.suite-title {
+    font-size: 2.5rem;
+    margin: 0 0 1rem 0;
+    color: var(--accent-color);
+    text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.suite-icon {
+    font-size: 2rem;
+    color: var(--accent-color);
+}
+
+.suite-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.meta-label {
+    font-size: 0.85rem;
+    color: var(--text-muted-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+.meta-value {
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.editable {
+    background: transparent;
+    border: 1px dashed transparent;
+    padding: 0.5rem;
+    border-radius: var(--border-radius-sm);
+    transition: all 0.3s ease;
+    cursor: text;
+}
+
+.editable:hover {
+    border-color: var(--accent-color);
+    background: rgba(0, 255, 65, 0.1);
+}
+
+.editable:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    background: var(--surface-color);
+    box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.3);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    border-color: var(--accent-color);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 255, 65, 0.2);
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--accent-color);
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--text-muted-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.content-section {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.section-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.section-title {
+    color: var(--accent-color);
+    margin: 0;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.test-cases-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.test-case-card {
+    background: var(--surface-color-light);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.test-case-card:hover {
+    border-color: var(--accent-color);
+    box-shadow: 0 5px 15px rgba(0, 255, 65, 0.2);
+}
+
+.test-case-header {
+    padding: 1rem 1.5rem;
+    background: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.test-case-header:hover {
+    background: var(--accent-color-bg);
+}
+
+.test-case-preview {
+    font-family: var(--font-mono);
+    color: var(--text-color);
+    font-size: 0.9rem;
+    margin: 0;
+    max-width: 70%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.test-case-index {
+    background: var(--accent-color);
+    color: var(--background-color);
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    min-width: 2rem;
+    text-align: center;
+}
+
+.test-case-content {
+    padding: 1.5rem;
+    display: none;
+}
+
+.test-case-content.expanded {
+    display: block;
+}
+
+.prompt-display {
+    background: var(--code-bg);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--accent-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin: 1rem 0;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.case-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.detail-label {
+    font-size: 0.8rem;
+    color: var(--text-muted-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+.detail-value {
+    color: var(--text-color);
+    font-weight: 400;
+}
+
+.transformations-list {
+    background: var(--surface-color-light);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.transformation-item {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: 0.5rem 1rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.transformation-item:last-child {
+    margin-bottom: 0;
+}
+
+.transformation-type {
+    background: var(--accent-color);
+    color: var(--background-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.case-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.search-section {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.search-input {
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.75rem 1rem;
+    color: var(--text-color);
+    width: 100%;
+    font-size: 1rem;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.3);
+}
+
+.add-case-section {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.add-case-form {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.form-group {
+    flex: 1;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.form-textarea {
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.75rem;
+    color: var(--text-color);
+    width: 100%;
+    resize: vertical;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.3);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--text-muted-color);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.expand-toggle {
+    background: none;
+    border: none;
+    color: var(--accent-color);
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+
+.expand-toggle.expanded {
+    transform: rotate(180deg);
+}
+
+/* Filter highlights */
+.highlight {
+    background: rgba(255, 255, 0, 0.3);
+    padding: 0.1rem 0.2rem;
+    border-radius: 0.2rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .suite-meta {
+        grid-template-columns: 1fr;
     }
     
-    .test-suite-details .editable:hover {
-      border-color: var(--accent-color);
-      background: var(--surface-color-light);
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
     
-    .test-suite-details .editable:focus {
-      outline: none;
-      border-color: var(--accent-color);
-      background: var(--surface-color);
-      box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.2);
+    .add-case-form {
+        flex-direction: column;
     }
     
-    .card {
-      background: var(--surface-color);
-      border: 1px solid var(--border-color);
-      border-radius: var(--border-radius);
+    .header-actions {
+        flex-direction: column;
+        align-items: stretch;
     }
-    
-    .card-header {
-      background: var(--surface-color-light);
-      border-bottom: 1px solid var(--border-color);
-      cursor: pointer;
-      transition: var(--transition-fast);
-    }
-    
-    .card-header:hover {
-      background: var(--surface-color-lighter);
-    }
-    
-    .card-body {
-      background: var(--surface-color);
-    }
-    
-    .original-prompt {
-      font-family: var(--font-mono);
-      background: var(--code-bg);
-      padding: 1rem;
-      border-radius: var(--border-radius-sm);
-      border-left: 3px solid var(--accent-color);
-    }
-    
-    .action-buttons {
-      display: flex;
-      gap: 0.5rem;
-    }
-  </style>
+}
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-  <div class="test-suite-details" data-suite-id="{{ test_suite.id }}">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h1>
-        Test Suite: 
-        <span class="editable" contenteditable="true" data-field="description">
-          {{ test_suite.description }}
-        </span>
-      </h1>
-      <div class="action-buttons">
-        <a 
-          href="{{ url_for('test_suites_bp.export_test_suite', suite_id=test_suite.id) }}" 
-          class="btn btn-secondary"
-        >
-          Export Suite
-        </a>
-      </div>
-    </div>
-    <p>
-      <strong>Behavior:</strong>
-      <span class="editable" contenteditable="true" data-field="behavior">
-        {{ test_suite.behavior or "N/A" }}
-      </span>
-    </p>
-    <p>
-      <strong>Objective:</strong>
-      <span class="editable" contenteditable="true" data-field="objective">
-        {{ test_suite.objective or "N/A" }}
-      </span>
-    </p>
-    <p>
-      <strong>Created By:</strong>
-      {% if test_suite.user %}
-        {{ test_suite.user.username }}
-      {% else %}
-        N/A
-      {% endif %}
-    </p>
-    <p>
-      <strong>Created At:</strong>
-      {% if test_suite.created_at %}
-        {{ test_suite.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
-      {% else %}
-        N/A
-      {% endif %}
-    </p>
-  </div>
-
-  <!-- Filter Input -->
-  <div class="form-group mt-4">
-    <input type="text" id="promptFilter" class="form-control" placeholder="Filter test cases by Original Prompt">
-  </div>
-
-  <div class="card mb-4">
-    <div class="card-body">
-      <h5>Add New Test Case</h5>
-      <form id="add-test-case-form" class="form-inline">
-        <div class="form-group mr-2 flex-grow-1">
-          <textarea
-            id="new-prompt"
-            class="form-control w-100"
-            rows="2"
-            placeholder="Enter the new prompt…"></textarea>
-        </div>
-        <button type="submit" class="btn btn-success">Add</button>
-      </form>
-    </div>
-  </div>  
-
-  <h2 class="mt-4">Associated Test Cases</h2>
-  {% if test_suite.test_cases and test_suite.test_cases|length > 0 %}
-    <div id="accordion">
-      {% for case in test_suite.test_cases %}
-        <div class="card mb-2" id="test-case-{{ case.id }}">
-          <div class="card-header" id="heading-{{ case.id }}" data-toggle="collapse" data-target="#collapse-{{ case.id }}" aria-expanded="false" aria-controls="collapse-{{ case.id }}">
-            <h5 class="mb-0">
-              {{ loop.index }}. {{ case.prompt | truncate(50) }}
-            </h5>
-          </div>
-          <div id="collapse-{{ case.id }}" class="collapse" aria-labelledby="heading-{{ case.id }}" data-parent="#accordion">
-            <div class="card-body">
-              <!-- Wrap the original prompt with a class for filtering -->
-              <p class="original-prompt"><strong>Original Prompt:</strong> {{ case.prompt }}</p>
-              <p><strong>Source:</strong> {{ case.source or "N/A" }}</p>
-              <p><strong>Attack Type:</strong> {{ case.attack_type or "N/A" }}</p>
-              <p><strong>Data Type:</strong> {{ case.data_type or "N/A" }}</p>
-              <p><strong>NIST Risk:</strong> {{ case.nist_risk or "N/A" }}</p>
-              <p><strong>Reviewed:</strong> {{ case.reviewed if case.reviewed is not none else "N/A" }}</p>
-              <p>
-                <strong>Created At:</strong>
-                {% if case.created_at %}
-                  {{ case.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </p>
-              {% if case.transformations %}
-                <p><strong>Transformations:</strong></p>
-                <ul>
-                  {% for trans in case.transformations %}
-                    <li>
-                      {% if trans is mapping %}
-                        {{ trans['type'] }}
-                        {% if trans['value'] %}
-                          - Parameter: {{ trans['value'] }}
-                        {% endif %}
-                      {% else %}
-                        {{ trans }}
-                      {% endif %}
-                    </li>
-                  {% endfor %}
-                </ul>
-              {% else %}
-                <p><strong>Transformations:</strong> None</p>
-              {% endif %}
-              <div class="mt-2">
-                <!-- Action Buttons -->
-                <button class="action-btn btn btn-warning btn-sm remove-btn" data-case-id="{{ case.id }}">Remove from Suite</button>
-                <button class="action-btn btn btn-danger btn-sm delete-btn" data-case-id="{{ case.id }}">Delete Test Case</button>
-              </div>
+<div class="suite-details-container">
+    <!-- Suite Header -->
+    <div class="suite-header">
+        <div class="suite-header-content">
+            <h1 class="suite-title">
+                <i class="fas fa-layer-group suite-icon"></i>
+                <span class="editable" contenteditable="true" data-field="description">{{ test_suite.description }}</span>
+            </h1>
+            
+            <div class="suite-meta">
+                <div class="meta-item">
+                    <span class="meta-label">Behavior</span>
+                    <span class="meta-value editable" contenteditable="true" data-field="behavior">
+                        {{ test_suite.behavior or "Not specified" }}
+                    </span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Created By</span>
+                    <span class="meta-value">{{ test_suite.user.username if test_suite.user else "Unknown" }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Created At</span>
+                    <span class="meta-value">{{ test_suite.created_at.strftime('%Y-%m-%d %H:%M') if test_suite.created_at else "Unknown" }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Actions</span>
+                    <div class="header-actions">
+                        <a href="{{ url_for('test_suites_bp.export_test_suite', suite_id=test_suite.id) }}" class="btn btn-secondary">
+                            <i class="fas fa-download"></i> Export
+                        </a>
+                        <a href="{{ url_for('test_suites_bp.list_test_suites') }}" class="btn btn-ghost">
+                            <i class="fas fa-arrow-left"></i> Back to List
+                        </a>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-      {% endfor %}
     </div>
-  {% else %}
-    <p>No test cases are associated with this test suite.</p>
-  {% endif %}
+
+    <!-- Objective Section -->
+    {% if test_suite.objective %}
+    <div class="content-section">
+        <div class="section-header">
+            <h2 class="section-title">
+                <i class="fas fa-bullseye"></i>
+                Objective
+            </h2>
+        </div>
+        <div class="editable" contenteditable="true" data-field="objective" style="line-height: 1.6;">
+            {{ test_suite.objective }}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Statistics -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-number">{{ test_suite.test_cases|length }}</span>
+            <span class="stat-label">Test Cases</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ test_suite.test_runs|length }}</span>
+            <span class="stat-label">Used in Test Runs</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">
+                {% set unique_types = test_suite.test_cases|map(attribute='attack_type')|reject('none')|unique|list %}
+                {{ unique_types|length }}
+            </span>
+            <span class="stat-label">Attack Types</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">
+                {% set reviewed_count = test_suite.test_cases|selectattr('reviewed', 'equalto', true)|list|length %}
+                {{ reviewed_count }}
+            </span>
+            <span class="stat-label">Reviewed Cases</span>
+        </div>
+    </div>
+
+    <!-- Search/Filter Section -->
+    <div class="search-section">
+        <label for="promptFilter" class="form-label">
+            <i class="fas fa-search"></i> Filter Test Cases
+        </label>
+        <input type="text" id="promptFilter" class="search-input" placeholder="Search by prompt content, attack type, source...">
+    </div>
+
+    <!-- Add New Test Case -->
+    <div class="add-case-section">
+        <div class="section-header">
+            <h3 class="section-title">
+                <i class="fas fa-plus"></i>
+                Add New Test Case
+            </h3>
+        </div>
+        <form id="add-test-case-form" class="add-case-form">
+            <div class="form-group">
+                <label for="new-prompt" class="form-label">Prompt</label>
+                <textarea id="new-prompt" class="form-textarea" rows="3" placeholder="Enter the test case prompt..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add Test Case
+            </button>
+        </form>
+    </div>
+
+    <!-- Test Cases Section -->
+    <div class="content-section">
+        <div class="section-header">
+            <h2 class="section-title">
+                <i class="fas fa-vial"></i>
+                Test Cases ({{ test_suite.test_cases|length }})
+            </h2>
+            {% if test_suite.test_cases|length > 0 %}
+            <div style="display: flex; gap: 0.5rem;">
+                <button id="expandAll" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-expand-alt"></i> Expand All
+                </button>
+                <button id="collapseAll" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-compress-alt"></i> Collapse All
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if test_suite.test_cases|length > 0 %}
+        <div class="test-cases-grid" id="testCasesContainer">
+            {% for case in test_suite.test_cases %}
+            <div class="test-case-card" data-case-id="{{ case.id }}">
+                <div class="test-case-header" onclick="toggleTestCase({{ case.id }})">
+                    <div class="test-case-preview">
+                        {{ case.prompt|truncate(100) }}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="test-case-index">{{ loop.index }}</span>
+                        <button class="expand-toggle" id="toggle-{{ case.id }}">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="test-case-content" id="content-{{ case.id }}">
+                    <div class="prompt-display">{{ case.prompt }}</div>
+                    
+                    <div class="case-details-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Source</span>
+                            <span class="detail-value">{{ case.source or "Not specified" }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Attack Type</span>
+                            <span class="detail-value">{{ case.attack_type or "Not specified" }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Data Type</span>
+                            <span class="detail-value">{{ case.data_type or "Not specified" }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">NIST Risk</span>
+                            <span class="detail-value">{{ case.nist_risk or "Not specified" }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Reviewed</span>
+                            <span class="detail-value">
+                                {% if case.reviewed %}
+                                <span style="color: var(--success-color)"><i class="fas fa-check"></i> Yes</span>
+                                {% else %}
+                                <span style="color: var(--warning-color)"><i class="fas fa-clock"></i> Pending</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Created</span>
+                            <span class="detail-value">{{ case.created_at.strftime('%Y-%m-%d') if case.created_at else "Unknown" }}</span>
+                        </div>
+                    </div>
+
+                    {% if case.transformations %}
+                    <div class="detail-item">
+                        <span class="detail-label">Transformations</span>
+                        <div class="transformations-list">
+                            {% for trans in case.transformations %}
+                            <div class="transformation-item">
+                                <span class="transformation-type">
+                                    {% if trans is mapping %}
+                                        {{ trans['type'] }}
+                                    {% else %}
+                                        {{ trans }}
+                                    {% endif %}
+                                </span>
+                                {% if trans is mapping and trans['value'] %}
+                                <span>{{ trans['value'] }}</span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="case-actions">
+                        <button class="btn btn-sm btn-warning remove-btn" data-case-id="{{ case.id }}">
+                            <i class="fas fa-unlink"></i> Remove from Suite
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-btn" data-case-id="{{ case.id }}">
+                            <i class="fas fa-trash"></i> Delete Test Case
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-vial"></i>
+            <h3>No Test Cases</h3>
+            <p>This test suite doesn't have any test cases yet.</p>
+            <p>Use the form above to add your first test case.</p>
+        </div>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-  {{ super() }}
-  <script src="{{ url_for('static', filename='js/testSuites/test_suite_details.js') }}"></script>
-  <script>
-    // Replace Bootstrap collapse functionality with vanilla JS
-    document.addEventListener('DOMContentLoaded', function() {
-      const collapseTriggers = document.querySelectorAll('[data-toggle="collapse"]');
-      
-      collapseTriggers.forEach(trigger => {
-        trigger.addEventListener('click', function(e) {
-          e.preventDefault();
-          const targetSelector = this.getAttribute('data-target');
-          const target = document.querySelector(targetSelector);
-          
-          if (target) {
-            const isExpanded = this.getAttribute('aria-expanded') === 'true';
-            
-            // Toggle the collapse
-            if (isExpanded) {
-              target.style.display = 'none';
-              this.setAttribute('aria-expanded', 'false');
-              target.classList.remove('show');
-            } else {
-              target.style.display = 'block';
-              this.setAttribute('aria-expanded', 'true');
-              target.classList.add('show');
-            }
-          }
+<script>
+// Suite details functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const suiteId = {{ test_suite.id }};
+    
+    // Test case toggle functionality
+    window.toggleTestCase = function(caseId) {
+        const content = document.getElementById(`content-${caseId}`);
+        const toggle = document.getElementById(`toggle-${caseId}`);
+        
+        if (content.classList.contains('expanded')) {
+            content.classList.remove('expanded');
+            toggle.classList.remove('expanded');
+        } else {
+            content.classList.add('expanded');
+            toggle.classList.add('expanded');
+        }
+    };
+    
+    // Expand/Collapse all functionality
+    document.getElementById('expandAll')?.addEventListener('click', function() {
+        document.querySelectorAll('.test-case-content').forEach(content => {
+            content.classList.add('expanded');
         });
-      });
+        document.querySelectorAll('.expand-toggle').forEach(toggle => {
+            toggle.classList.add('expanded');
+        });
     });
-  </script>
+    
+    document.getElementById('collapseAll')?.addEventListener('click', function() {
+        document.querySelectorAll('.test-case-content').forEach(content => {
+            content.classList.remove('expanded');
+        });
+        document.querySelectorAll('.expand-toggle').forEach(toggle => {
+            toggle.classList.remove('expanded');
+        });
+    });
+    
+    // Search/Filter functionality
+    const searchInput = document.getElementById('promptFilter');
+    const testCases = document.querySelectorAll('.test-case-card');
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        testCases.forEach(card => {
+            const content = card.textContent.toLowerCase();
+            const shouldShow = content.includes(searchTerm);
+            
+            card.style.display = shouldShow ? 'block' : 'none';
+            
+            // Highlight matches
+            if (searchTerm && shouldShow) {
+                highlightText(card, searchTerm);
+            } else {
+                removeHighlights(card);
+            }
+        });
+    });
+    
+    // Inline editing functionality
+    document.querySelectorAll('.editable').forEach(element => {
+        element.addEventListener('blur', function() {
+            const field = this.dataset.field;
+            const value = this.textContent.trim();
+            
+            // Save changes via AJAX
+            fetch(`/test_suites/${suiteId}/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    field: field,
+                    value: value
+                })
+            }).then(response => {
+                if (response.ok) {
+                    this.style.borderColor = 'var(--success-color)';
+                    setTimeout(() => {
+                        this.style.borderColor = '';
+                    }, 2000);
+                } else {
+                    this.style.borderColor = 'var(--danger-color)';
+                    console.error('Failed to save changes');
+                }
+            }).catch(error => {
+                this.style.borderColor = 'var(--danger-color)';
+                console.error('Error saving changes:', error);
+            });
+        });
+    });
+    
+    // Add new test case
+    document.getElementById('add-test-case-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const promptInput = document.getElementById('new-prompt');
+        const prompt = promptInput.value.trim();
+        
+        if (!prompt) {
+            alert('Please enter a prompt for the test case.');
+            return;
+        }
+        
+        fetch(`/test_suites/${suiteId}/add_case`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                prompt: prompt
+            })
+        }).then(response => {
+            if (response.ok) {
+                location.reload(); // Refresh to show the new test case
+            } else {
+                alert('Failed to add test case. Please try again.');
+            }
+        }).catch(error => {
+            console.error('Error adding test case:', error);
+            alert('Error adding test case. Please try again.');
+        });
+    });
+    
+    // Remove/Delete functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-btn')) {
+            const caseId = e.target.closest('.remove-btn').dataset.caseId;
+            
+            if (confirm('Remove this test case from the suite?')) {
+                fetch(`/test_suites/${suiteId}/remove_case/${caseId}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Failed to remove test case.');
+                    }
+                });
+            }
+        }
+        
+        if (e.target.closest('.delete-btn')) {
+            const caseId = e.target.closest('.delete-btn').dataset.caseId;
+            
+            if (confirm('Permanently delete this test case? This cannot be undone.')) {
+                fetch(`/test_cases/${caseId}/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Failed to delete test case.');
+                    }
+                });
+            }
+        }
+    });
+    
+    // Helper functions
+    function highlightText(element, searchTerm) {
+        // Simple highlighting implementation
+        const textNodes = getTextNodes(element);
+        textNodes.forEach(node => {
+            const text = node.textContent;
+            const regex = new RegExp(`(${escapeRegex(searchTerm)})`, 'gi');
+            if (regex.test(text)) {
+                const span = document.createElement('span');
+                span.innerHTML = text.replace(regex, '<span class="highlight">$1</span>');
+                node.parentNode.replaceChild(span, node);
+            }
+        });
+    }
+    
+    function removeHighlights(element) {
+        element.querySelectorAll('.highlight').forEach(highlight => {
+            const parent = highlight.parentNode;
+            parent.replaceChild(document.createTextNode(highlight.textContent), highlight);
+            parent.normalize();
+        });
+    }
+    
+    function getTextNodes(element) {
+        const textNodes = [];
+        const walker = document.createTreeWalker(
+            element,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        
+        let node;
+        while (node = walker.nextNode()) {
+            textNodes.push(node);
+        }
+        return textNodes;
+    }
+    
+    function escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+});
+</script>
 {% endblock %}

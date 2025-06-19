@@ -9,6 +9,7 @@ from extensions import db
 from models.model_TestRun import TestRun
 from models.model_TestSuite import TestSuite
 from models.model_TestCase import TestCase
+from models.model_ExecutionSession import ExecutionSession
 from services.transformers.registry import apply_multiple_transformations, TRANSFORM_PARAM_CONFIG
 from . import test_runs_bp
 
@@ -241,3 +242,39 @@ def delete_test_run_api(run_id):
         db.session.rollback()
         logger.error(f"Error deleting test run {run_id}: {e}", exc_info=True)
         return jsonify({'error': 'Failed to delete test run'}), 500
+
+
+@test_runs_bp.route('/api/test-runs/<int:run_id>/status', methods=['GET'])
+@login_required
+def get_test_run_status_api(run_id):
+    """API endpoint to get test run status and current execution session"""
+    test_run = TestRun.query.filter_by(id=run_id, user_id=current_user.id).first()
+    if not test_run:
+        return jsonify({'error': 'Test run not found or unauthorized'}), 404
+    
+    try:
+        # Get current execution session
+        current_session = test_run.current_execution_session
+        
+        response_data = {
+            'run_id': test_run.id,
+            'status': test_run.status,
+            'current_session': None
+        }
+        
+        if current_session:
+            response_data['current_session'] = {
+                'id': current_session.id,
+                'state': current_session.state,
+                'strategy_name': current_session.strategy_name,
+                'progress_percentage': current_session.progress_percentage,
+                'total_test_cases': current_session.total_test_cases,
+                'completed_test_cases': current_session.completed_test_cases,
+                'health_status': current_session.health_status
+            }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logger.error(f"Error getting test run status {run_id}: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to get test run status'}), 500

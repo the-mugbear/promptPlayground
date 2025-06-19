@@ -25,10 +25,31 @@ celery.conf.update(
     result_serializer='json',
     timezone=os.environ.get('CELERY_TIMEZONE', 'UTC'),
     enable_utc=True,
-    task_time_limit=300,
-    task_soft_time_limit=50,
+    task_time_limit=600,  # 10 minutes hard limit
+    task_soft_time_limit=300,  # 5 minutes soft limit
     task_compression='gzip',
     accept_content=['json', 'application/x-gzip'],
+    
+    # RabbitMQ/broker configuration
+    broker_connection_retry_on_startup=True,
+    broker_connection_retry=True,
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+    
+    # Message acknowledgment and timeout settings
+    worker_prefetch_multiplier=1,  # Process one task at a time to avoid overload
+    task_track_started=True,
+    
+    # Connection pool settings
+    broker_pool_limit=10,
+    broker_connection_max_retries=5,
+    
+    # Broker transport options for long-running tasks
+    broker_transport_options={
+        'visibility_timeout': 3600,  # 1 hour visibility timeout
+        'fanout_prefix': True,
+        'fanout_patterns': True,
+    },
 )
 
 class ContextTask(Task):

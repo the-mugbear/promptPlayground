@@ -240,10 +240,14 @@ def create_test_run():
         db.session.flush()  # Get the ID
 
         # Associate test suites
+        print(f"DEBUG: test_suite_ids from form: {test_suite_ids}")
         for suite_id in test_suite_ids:
             suite = TestSuite.query.get(int(suite_id))
             if suite and suite.user_id == current_user.id:
+                print(f"DEBUG: Adding suite {suite.id} ({suite.description}) with {len(suite.test_cases)} test cases")
                 test_run.test_suites.append(suite)
+            else:
+                print(f"DEBUG: Skipping suite {suite_id} - either not found or not owned by user")
 
         # Validate configuration
         validation_errors = test_run.validate_configuration()

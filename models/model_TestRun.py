@@ -176,17 +176,47 @@ class TestRun(db.Model):
         return 'No target configured'
 
     def get_test_case_count(self):
-        """Get total number of test cases from all suites (modern SQLAlchemy)"""
+        """Get total number of test cases from all suites (avoiding duplicates)"""
         if not self.test_suites:
             return 0
         
-        # Use scalar query to avoid count() issues
-        total = 0
+        suite_ids = [suite.id for suite in self.test_suites]
+        print(f"DEBUG TestRun {self.id}: Counting test cases for suites: {suite_ids}")
+        
+        # Debug: count per suite using the relationship
+        total_from_relationships = 0
         for suite in self.test_suites:
-            count = db.session.query(func.count(TestCase.id)).filter(
-                TestCase.test_suites.any(TestSuite.id == suite.id)
-            ).scalar()
-            total += count
+            count = len(suite.test_cases)
+            total_from_relationships += count
+            print(f"DEBUG TestRun {self.id}: Suite {suite.id} ({suite.description}) has {count} test cases")
+        
+        print(f"DEBUG TestRun {self.id}: Total from relationships (with potential duplicates): {total_from_relationships}")
+        
+        # Use a simpler approach: collect unique test case IDs from the loaded relationships
+        unique_test_case_ids = set()
+        for suite in self.test_suites:
+            for test_case in suite.test_cases:
+                unique_test_case_ids.add(test_case.id)
+        
+        unique_count = len(unique_test_case_ids)
+        print(f"DEBUG TestRun {self.id}: Unique test case IDs: {sorted(unique_test_case_ids)}")
+        print(f"DEBUG TestRun {self.id}: Unique test case count: {unique_count}")
+        
+        return unique_count
+    
+    def get_total_execution_count(self):
+        """Get total number of executions (test cases × iterations)"""
+        base_count = self.get_test_case_count()
+        if base_count == 0:
+            return 0
+            
+        # Multiply by iterations from execution config
+        exec_config = self.get_execution_config()
+        iterations = exec_config.get('iterations', 1)
+        
+        total = base_count * iterations
+        print(f"DEBUG TestRun {self.id}: {base_count} test cases × {iterations} iterations = {total} total executions")
+        
         return total
 
     # Status management
@@ -292,6 +322,7 @@ class TestRun(db.Model):
             'target_name': self.get_target_name(),
             'target_description': self.get_target_description(),
             'test_case_count': self.get_test_case_count(),
+            'total_execution_count': self.get_total_execution_count(),
             'progress_percentage': self.progress_percentage,
             'is_active': self.is_active,
             'execution_count': self.execution_count,

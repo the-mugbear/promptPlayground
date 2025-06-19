@@ -277,7 +277,12 @@
                 </div>
                 <div class="meta-item">
                     <span class="meta-label">Test Cases</span>
-                    <span class="meta-value">{{ run.get_test_case_count() }}</span>
+                    <span class="meta-value">
+                        {{ run.get_test_case_count() }} cases
+                        {% if run.get_total_execution_count() != run.get_test_case_count() %}
+                        ({{ run.get_total_execution_count() }} executions)
+                        {% endif %}
+                    </span>
                 </div>
                 <div class="meta-item">
                     <span class="meta-label">Created</span>
@@ -374,48 +379,104 @@
 
 <script>
 function pauseTestRun(runId) {
-    // Get the latest session for this run (this would need to be passed or fetched)
-    fetch(`/test_runs/${runId}`, { method: 'GET' })
-    .then(response => response.json())
+    console.log('=== PAUSE FROM LIST PAGE ===');
+    console.log('Run ID:', runId);
+    
+    // Get the current execution session for this run via API
+    fetch(`/api/test-runs/${runId}/status`)
+    .then(response => {
+        console.log('Status API response:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(data => {
-        if (data.latest_session) {
-            return fetch(`{{ url_for('test_runs_bp.control_execution_session', session_id=0) }}`.replace('0', data.latest_session.id), {
+        console.log('Status data:', data);
+        if (data.current_session && data.current_session.id) {
+            const sessionId = data.current_session.id;
+            console.log('Making pause request for session:', sessionId);
+            
+            return fetch(`{{ url_for('test_runs_bp.control_execution_session', session_id=0) }}`.replace('0', sessionId), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=pause'
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `action=pause&csrf_token={{ csrf_token() }}`
             });
+        } else {
+            throw new Error('No active execution session found');
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Pause response:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('Pause result:', data);
         if (data.success) {
             location.reload();
         } else {
             alert('Failed to pause: ' + data.error);
         }
+    })
+    .catch(error => {
+        console.error('Error pausing test run:', error);
+        alert('Failed to pause test run: ' + error.message);
     });
 }
 
 function resumeTestRun(runId) {
-    // Similar to pauseTestRun but with 'resume' action
-    fetch(`/test_runs/${runId}`, { method: 'GET' })
-    .then(response => response.json())
+    console.log('=== RESUME FROM LIST PAGE ===');
+    console.log('Run ID:', runId);
+    
+    // Get the current execution session for this run via API
+    fetch(`/api/test-runs/${runId}/status`)
+    .then(response => {
+        console.log('Status API response:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(data => {
-        if (data.latest_session) {
-            return fetch(`{{ url_for('test_runs_bp.control_execution_session', session_id=0) }}`.replace('0', data.latest_session.id), {
+        console.log('Status data:', data);
+        if (data.current_session && data.current_session.id) {
+            const sessionId = data.current_session.id;
+            console.log('Making resume request for session:', sessionId);
+            
+            return fetch(`{{ url_for('test_runs_bp.control_execution_session', session_id=0) }}`.replace('0', sessionId), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=resume'
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `action=resume&csrf_token={{ csrf_token() }}`
             });
+        } else {
+            throw new Error('No active execution session found');
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Resume response:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('Resume result:', data);
         if (data.success) {
             location.reload();
         } else {
             alert('Failed to resume: ' + data.error);
         }
+    })
+    .catch(error => {
+        console.error('Error resuming test run:', error);
+        alert('Failed to resume test run: ' + error.message);
     });
 }
 

@@ -4,6 +4,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models.model_TestCase import TestCase
 from models.model_TestSuite import TestSuite
+from services.transformers.registry import apply_transformations_to_lines
 
 from . import test_suites_bp
 
@@ -116,27 +117,38 @@ def preview_transform():
 
     return jsonify({"transformed_lines": transformed_lines})
 
-@test_suites_bp.route('/<int:suite_id>/remove_test_case/<int:case_id>', methods=['POST'])
+@test_suites_bp.route('/<int:suite_id>/remove_case/<int:case_id>', methods=['POST'])
 @login_required 
 def remove_test_case_from_suite(suite_id, case_id):
-    """POST /test_suites/<suite_id>/remove_test_case/<case_id> -> Remove a test case from a suite"""
+    """POST /test_suites/<suite_id>/remove_case/<case_id> -> Remove a test case from a suite"""
     suite = TestSuite.query.get_or_404(suite_id)
     test_case = TestCase.query.get_or_404(case_id)
     
-    if test_case in suite.test_cases:
-        suite.test_cases.remove(test_case)
-        db.session.commit()
-        flash(f"Test case {case_id} removed from suite {suite_id}", "success")
-    else:
-        flash(f"Test case {case_id} is not in suite {suite_id}", "error")
+    # Check ownership
+    if suite.user_id != current_user.id and not current_user.is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
     
-    return redirect(url_for('test_suites_bp.test_suite_details', suite_id=suite_id))
+    try:
+        if test_case in suite.test_cases:
+            suite.test_cases.remove(test_case)
+            db.session.commit()
+            return jsonify({"message": "Test case removed from suite"})
+        else:
+            return jsonify({"error": "Test case not found in this suite"}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
-@test_suites_bp.route('/<int:suite_id>/add_test_case', methods=['POST'])
+@test_suites_bp.route('/<int:suite_id>/add_case', methods=['POST'])
 @login_required 
 def add_test_case_to_suite(suite_id):
-    """POST /test_suites/<suite_id>/add_test_case -> Add a test case to a suite"""
+    """POST /test_suites/<suite_id>/add_case -> Add a test case to a suite"""
     suite = TestSuite.query.get_or_404(suite_id)
+    
+    # Check ownership
+    if suite.user_id != current_user.id and not current_user.is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     data = request.get_json()
     
     if not data or 'prompt' not in data:
@@ -146,23 +158,31 @@ def add_test_case_to_suite(suite_id):
     if not prompt:
         return jsonify({"error": "Empty prompt"}), 400
     
-    # Create new test case
-    test_case = TestCase(
-        prompt=prompt,
-        transformations=data.get('transformations', [])
-    )
-    db.session.add(test_case)
-    db.session.flush()
-    
-    # Add to suite
-    suite.test_cases.append(test_case)
-    db.session.commit()
-    
-    return jsonify({
-        "message": "Test case added successfully",
-        "test_case": {
-            "id": test_case.id,
-            "prompt": test_case.prompt,
-            "transformations": test_case.transformations
-        }
-    }) 
+    try:
+        # Create new test case
+        test_case = TestCase(
+            prompt=prompt,
+            user_id=current_user.id,
+            source='manual_input',
+            reviewed=False,
+            transformations=data.get('transformations', [])
+        )
+        db.session.add(test_case)
+        db.session.flush()
+        
+        # Add to suite
+        suite.test_cases.append(test_case)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Test case added successfully",
+            "test_case": {
+                "id": test_case.id,
+                "prompt": test_case.prompt,
+                "source": test_case.source,
+                "transformations": test_case.transformations
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500 
