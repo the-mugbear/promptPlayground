@@ -56,7 +56,7 @@ def index():
             'tests_passed': TestExecution.query.join(TestRunAttempt).join(TestRun).filter(
                 TestRun.user_id == current_user.id,
                 TestExecution.status == 'pass'
-            ).count() if TestExecution.query.count() > 0 else 0
+            ).count()
         }
         
         # Generate recent activity

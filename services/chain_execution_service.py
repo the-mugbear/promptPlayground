@@ -61,11 +61,33 @@ class APIChainExecutor:
 
                 # Render all necessary components using the current state of the chain_context
                 # The headers for an endpoint are now a single JSON string template
-                rendered_headers = json.loads(render_template_string(step.headers or '{}', chain_context))
-                rendered_payload_str = render_template_string(step.payload or '{}', chain_context)
+                
+                # Enhanced debugging for header templating
+                logger.info(f"Step {step.step_order} - Current chain context: {chain_context}")
+                logger.info(f"Step {step.step_order} - Headers template: {step.headers or '{}'}")
+                logger.info(f"Step {step.step_order} - Payload template: {step.payload or '{}'}")
+                
+                try:
+                    rendered_headers_str = render_template_string(step.headers or '{}', chain_context)
+                    logger.info(f"Step {step.step_order} - Rendered headers string: {rendered_headers_str}")
+                    rendered_headers = json.loads(rendered_headers_str)
+                    logger.info(f"Step {step.step_order} - Parsed headers dict: {rendered_headers}")
+                except Exception as header_error:
+                    logger.error(f"Step {step.step_order} - Header templating/parsing error: {header_error}")
+                    raise ChainExecutionError(f"Header templating failed: {header_error}") from header_error
+                
+                try:
+                    rendered_payload_str = render_template_string(step.payload or '{}', chain_context)
+                    logger.info(f"Step {step.step_order} - Rendered payload: {rendered_payload_str}")
+                except Exception as payload_error:
+                    logger.error(f"Step {step.step_order} - Payload templating error: {payload_error}")
+                    raise ChainExecutionError(f"Payload templating failed: {payload_error}") from payload_error
 
                 logger.info(
                     f"Executing Step {step.step_order}: '{current_endpoint_config.name}' with method {current_endpoint_config.method}")
+                logger.info(f"Step {step.step_order} - Target URL: {current_endpoint_config.base_url}{current_endpoint_config.path}")
+                logger.info(f"Step {step.step_order} - Final headers: {rendered_headers}")
+                logger.info(f"Step {step.step_order} - Final payload: {rendered_payload_str}")
                 
                 # --- Phase 2: EXECUTE ---
                 api_response_data = execute_api_request(
@@ -89,8 +111,25 @@ class APIChainExecutor:
                     api_response_data.get("status_code") or 0) < 300
 
                 if not is_successful_call:
-                    err_msg = api_response_data.get(
-                        "error_message") or f"API call returned error status: {api_response_data.get('status_code')}"
+                    # Enhanced error reporting
+                    status_code = api_response_data.get('status_code')
+                    error_message = api_response_data.get("error_message")
+                    response_body = api_response_data.get("response_body", "")
+                    request_headers = api_response_data.get("request_headers_sent", {})
+                    
+                    err_msg = f"API call failed with status {status_code}"
+                    if error_message:
+                        err_msg += f" - {error_message}"
+                    
+                    # Log detailed error information
+                    logger.error(f"Step {step.step_order} - API call failed:")
+                    logger.error(f"  Status Code: {status_code}")
+                    logger.error(f"  Error Message: {error_message}")
+                    logger.error(f"  Response Body: {response_body[:500]}{'...' if len(response_body) > 500 else ''}")
+                    logger.error(f"  Request Headers: {request_headers}")
+                    logger.error(f"  Target URL: {current_endpoint_config.base_url}{current_endpoint_config.path}")
+                    logger.error(f"  HTTP Method: {current_endpoint_config.method}")
+                    
                     raise ChainExecutionError(f"API call failed: {err_msg}")
 
                 step_result["status"] = "success"
