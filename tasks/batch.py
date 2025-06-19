@@ -6,6 +6,7 @@ from celery_app import celery
 from tasks.base import ContextTask
 from extensions import db
 from models.model_TestRun import TestRun
+from models.model_ExecutionSession import ExecutionSession
 from .helpers import emit_run_update, with_session
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 def handle_batch_completion(self, results, test_run_id, num_cases_in_batch):
     """
     Celery callback that runs after each parallel batch completes,
-    increments the TestRun.progress_current by the batch size,
+    updates the execution session progress,
     and emits a progress_update event.
     """
     logger.info(f"BatchCallback {self.request.id}: TR:{test_run_id}. "
@@ -33,45 +34,51 @@ def handle_batch_completion(self, results, test_run_id, num_cases_in_batch):
         return {'status': 'FAILED', 'reason': 'TestRun not found'}
 
     try:
-        # Atomically increment progress_current
+        # Get the latest execution session for this test run
+        latest_session = test_run.latest_execution_session
+        if not latest_session:
+            logger.warning(f"BatchCallback {self.request.id}: No execution session found for TR:{test_run_id}.")
+            return {'status': 'FAILED', 'reason': 'No execution session found'}
+
+        # Atomically increment progress_current in the execution session
         updated_count = (
             db.session
-            .query(TestRun)
-            .filter_by(id=test_run_id)
+            .query(ExecutionSession)
+            .filter_by(id=latest_session.id)
             .update(
-                {TestRun.progress_current: TestRun.progress_current + num_cases_in_batch},
+                {ExecutionSession.progress_current: ExecutionSession.progress_current + num_cases_in_batch},
                 synchronize_session=False
             )
         )
         if updated_count == 0:
             logger.warning(
-                f"BatchCallback {self.request.id}: No rows updated for TR:{test_run_id}."
+                f"BatchCallback {self.request.id}: No rows updated for session {latest_session.id}."
             )
 
-        # Refresh to get the latest values into session‐bound test_run
-        db.session.refresh(test_run)
+        # Refresh to get the latest values
+        db.session.refresh(latest_session)
 
         # Cap at total if we overshot
-        if test_run.progress_current > test_run.progress_total:
+        if latest_session.progress_current > latest_session.progress_total:
             logger.warning(
-                f"BatchCallback {self.request.id}: Capping over-increment for TR:{test_run_id}. "
-                f"From {test_run.progress_current} to {test_run.progress_total}"
+                f"BatchCallback {self.request.id}: Capping over-increment for session {latest_session.id}. "
+                f"From {latest_session.progress_current} to {latest_session.progress_total}"
             )
             (
                 db.session
-                .query(TestRun)
-                .filter_by(id=test_run_id)
+                .query(ExecutionSession)
+                .filter_by(id=latest_session.id)
                 .update(
-                    {TestRun.progress_current: test_run.progress_total},
+                    {ExecutionSession.progress_current: latest_session.progress_total},
                     synchronize_session=False
                 )
             )
-            # Refresh again into session
-            db.session.refresh(test_run)
+            # Refresh again
+            db.session.refresh(latest_session)
 
         logger.info(
-            f"BatchCallback {self.request.id}: Updated TR:{test_run_id} to "
-            f"{test_run.progress_current}/{test_run.progress_total}."
+            f"BatchCallback {self.request.id}: Updated session {latest_session.id} to "
+            f"{latest_session.progress_current}/{latest_session.progress_total}."
         )
 
         # Emit a WebSocket update now that test_run is session‐bound
@@ -84,7 +91,8 @@ def handle_batch_completion(self, results, test_run_id, num_cases_in_batch):
         # Return success
         return {
             'status': 'SUCCESS',
-            'updated_progress': test_run.progress_current
+            'updated_progress': latest_session.progress_current,
+            'session_id': latest_session.id
         }
 
     except Exception as e:

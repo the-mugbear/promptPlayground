@@ -7,7 +7,12 @@
       "Bash(find:*)",
       "Bash(podman-compose:*)",
       "Bash(curl:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(cp:*)",
+      "Bash(rm:*)",
+      "Bash(flask db:*)",
+      "Bash(mv:*)",
+      "Bash(true)"
     ],
     "deny": []
   }

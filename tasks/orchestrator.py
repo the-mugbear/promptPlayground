@@ -11,7 +11,7 @@ from celery import group, chord, chain
 
 from extensions import db
 from models.model_TestRun import TestRun
-from models.model_TestRunAttempt import TestRunAttempt
+from models.model_ExecutionSession import ExecutionSession
 from models.model_TestSuite import TestSuite
 from tasks.base import ContextTask
 from tasks.helpers import with_session, emit_run_update
@@ -39,7 +39,6 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
     run: TestRun = (
         db.session.query(TestRun)
         .options(
-            selectinload(TestRun.filters), # For the new helper function access later
             selectinload(TestRun.test_suites).selectinload(TestSuite.test_cases),
             selectinload(TestRun.endpoint), # Eagerly load endpoint if target_type is 'endpoint'
             selectinload(TestRun.chain) # Eagerly load chain if target_type is 'chain'
@@ -63,11 +62,8 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
         logger.error(f"Orchestrator TR_ID:{run_id}: TestRun has unknown target_type '{run.target_type}'. Aborting.")
         return {'status': 'ERROR', 'message': f'Unknown target_type: {run.target_type}'}
 
-    # 2) Initialize/Update run metadata (as in your existing orchestrator.py)
-    run.celery_task_id = self.request.id
-    run.start_time = datetime.utcnow()
-    run.status = 'running'
-    run.progress_current = 0
+    # 2) Initialize/Update run metadata (fresh model approach)
+    run.start_execution()
     
     # 3) Gather cases and multiply by iterations
     suite_list = list(run.test_suites)
@@ -77,15 +73,19 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
         for tc in suite.test_cases
     ]
     
+    # Get execution configuration with iterations
+    exec_config = run.get_execution_config()
+    iterations = exec_config.get('iterations', 1)
+    
     # Multiply cases by iterations to create multiple executions per case
     cases_to_process: List[Tuple[int, str, int]] = [  # (case_id, original_prompt, iteration_number)
         (case_id, prompt, iteration)
         for case_id, prompt in base_cases
-        for iteration in range(1, run.iterations + 1)
+        for iteration in range(1, iterations + 1)
     ]
-    run.progress_total = len(cases_to_process)
+    total_cases = len(cases_to_process)
     
-    if run.progress_total == 0:
+    if total_cases == 0:
         logger.warning(f"Orchestrator TR_ID:{run_id}: No test cases found.")
         # Finalize appropriately
         return {'status': 'SUCCESS', 'message': 'No test cases to execute.'}
@@ -93,9 +93,9 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
     # 4) Emit initial progress update (as in your existing orchestrator.py)
     emit_run_update(run_id, 'progress_update', run.get_status_data())
 
-    # 5) Create TestRunAttempt (as in your existing orchestrator.py)
-    attempt_id = _create_attempt(run_id, db.session) 
-    logger.info(f"Orchestrator TR_ID:{run_id}: Created TestRunAttempt ID={attempt_id}.")
+    # 5) Create ExecutionSession for fresh execution engine
+    session_id = _create_execution_session(run_id, db.session, total_cases) 
+    logger.info(f"Orchestrator TR_ID:{run_id}: Created ExecutionSession ID={session_id}.")
 
     # --- Build lightweight signatures ---
     all_sigs = []
@@ -110,7 +110,7 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
 
         logger.debug(
             f"Orchestrator TR_ID:{run_id}: Creating signature for TC_ID:{case_id}, Seq:{seq}, "
-            f"Iteration:{iteration} with AttemptID:{attempt_id}."
+            f"Iteration:{iteration} with SessionID:{session_id}."
         )
 
         # Create signature based on target type
@@ -121,7 +121,7 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
                 return {'status': 'ERROR', 'message': 'No endpoint'}
 
             sig = execute_single_test_case.s(
-                test_run_attempt_id=attempt_id,
+                execution_session_id=session_id,
                 test_case_id=case_id,
                 endpoint_id=endpoint_obj.id,   
                 test_run_id=run_id,            
@@ -135,7 +135,7 @@ def orchestrate(self, run_id: int) -> Dict[str, str]:
                 return {'status': 'ERROR', 'message': 'No chain'}
 
             sig = execute_single_test_case_chain.s(
-                test_run_attempt_id=attempt_id,
+                execution_session_id=session_id,
                 test_case_id=case_id,
                 chain_id=chain_obj.id,   
                 test_run_id=run_id,            
@@ -213,15 +213,9 @@ def finalize_run(self, results_from_group, run_id: int, final_status: str): # Ad
     run.status = final_status
     run.completed_at = datetime.utcnow() # Use completed_at as per your model
     
-    # Ensure progress_current is capped at progress_total, especially if some tasks failed
-    # but the group is considered "complete" for the callback to run.
-    # If individual tasks update progress, this might just be a final check.
-    if final_status == 'completed' and run.progress_total > 0:
-        # You could query the actual number of successful TestExecution records
-        # to set progress_current accurately, or assume all were attempted.
-        # For now, setting to total if 'completed'.
-        run.progress_current = run.progress_total
-        logger.info(f"FinalizeRunTask TR_ID:{run_id}: Progress set to {run.progress_current}/{run.progress_total}.")
+    # Progress tracking is handled by ExecutionSession in fresh implementation
+    # The execution session automatically tracks progress through completed_test_cases
+    logger.info(f"FinalizeRunTask TR_ID:{run_id}: TestRun status updated to '{final_status}'")
 
 
     # @with_session handles commit
@@ -240,46 +234,26 @@ def _count_cases(run: TestRun) -> int:
     if run.test_suites:
         for suite in run.test_suites:
             if suite.test_cases:
-                count += len(suite.test_cases)
+                count += suite.test_cases.count()
     return count
 
-def _serialize_filters(filters_list: List) -> List[Dict]: # Type hint for clarity
-    # 'filters_list' now directly contains PromptFilter ORM objects
-    if not filters_list:
-        return []
-    return [
-        {
-            'type': pf.name, # Assuming PromptFilter model has a 'name'
-            'config': { # Assuming config structure matches your needs
-                'invalid_characters': pf.invalid_characters,
-                'words_to_replace': pf.words_to_replace # This should be a dict if JSONB
-            }
-        }
-        for pf in filters_list 
-    ]
 
-def _create_attempt(run_id: int, session) -> int: 
-    # Find the maximum existing attempt_number for this run_id
-    latest_attempt_num_tuple = (
-        session.query(func.max(TestRunAttempt.attempt_number))
-        .filter_by(test_run_id=run_id)
-        .one_or_none() # Returns (max_val,) or (None,)
-    )
-    
-    next_attempt_num = 1
-    if latest_attempt_num_tuple and latest_attempt_num_tuple[0] is not None:
-        next_attempt_num = latest_attempt_num_tuple[0] + 1
-    
-    new_attempt = TestRunAttempt(
+def _create_execution_session(run_id: int, session, total_test_cases: int = 0) -> int: 
+    """Create a new execution session for the fresh execution engine."""
+    new_session = ExecutionSession(
         test_run_id=run_id,
-        attempt_number=next_attempt_num,
-        status='running', # Initial status for the attempt
-        started_at=datetime.utcnow()
+        execution_id=f"exec_{run_id}_{int(datetime.utcnow().timestamp())}",
+        strategy_name='adaptive',
+        state='pending',
+        total_test_cases=total_test_cases,
+        completed_test_cases=0,
+        successful_test_cases=0,
+        failed_test_cases=0
     )
-    session.add(new_attempt)
-    session.flush() # Flush to get the ID for the new_attempt if needed before commit
+    session.add(new_session)
+    session.flush() # Flush to get the ID for the new_session if needed before commit
     # Commit is handled by @with_session for the orchestrate task
-    return new_attempt.id 
+    return new_session.id 
 
 def _finalize_run_status(run_id: int, final_status: str, session, message: str = None):
     # This is a simplified version if finalize_run task handles the main logic.
@@ -290,19 +264,18 @@ def _finalize_run_status(run_id: int, final_status: str, session, message: str =
         logger.error(f"Orchestrator TR_ID:{run_id}: Cannot finalize. TestRun {run_id} not found.")
         return
 
-    run.status = final_status
-    run.end_time = datetime.utcnow()
-    if message:
-        run.notes = f"{(run.notes + '; ' if run.notes else '')}Orchestrator: {message}"
-
-    if final_status == 'completed_with_no_cases':
-        run.progress_current = 0
-        run.progress_total = 0
-        emit_event_name = 'run_completed' # Or a specific 'run_empty' event
-    elif final_status == 'failed_to_submit' or final_status == 'error':
+    # Use fresh model approach to complete execution
+    run.complete_execution(final_status)
+    
+    # Determine event name for WebSocket emission
+    if final_status == 'completed_with_no_cases' or final_status == 'completed':
+        emit_event_name = 'run_completed'
+    elif final_status == 'failed_to_submit' or final_status == 'error' or final_status == 'failed':
         emit_event_name = 'run_failed'
-    else: # e.g. 'cancelled'
+    elif final_status == 'cancelled':
         emit_event_name = 'run_cancelled'
+    else:
+        emit_event_name = 'run_updated'
     
     # The @with_session decorator on 'orchestrate' will commit this.
     emit_run_update(run_id, emit_event_name, run.get_status_data())

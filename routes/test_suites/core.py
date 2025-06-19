@@ -64,7 +64,7 @@ def delete_test_suite(suite_id):
         
         # Delete the test cases that are only associated with this suite
         for case in test_cases:
-            if len(case.test_suites) == 0:  # If the case is not associated with any other suite
+            if case.test_suites.count() == 0:  # If the case is not associated with any other suite
                 db.session.delete(case)
         
         # Delete the suite

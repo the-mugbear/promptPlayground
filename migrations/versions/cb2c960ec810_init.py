@@ -1,8 +1,8 @@
-"""init
+"""Init
 
-Revision ID: 3ebd187aa0a6
+Revision ID: cb2c960ec810
 Revises: 
-Create Date: 2025-06-16 01:11:37.457270
+Create Date: 2025-06-19 16:53:03.878714
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects import sqlite
 
 # revision identifiers, used by Alembic.
-revision = '3ebd187aa0a6'
+revision = 'cb2c960ec810'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -129,7 +129,6 @@ def upgrade():
     sa.Column('retry_attempts', sa.Integer(), nullable=False),
     sa.Column('retry_initial_delay_seconds', sa.Integer(), nullable=False),
     sa.Column('retry_backoff_factor', sa.Float(), nullable=False),
-    sa.Column('purpose', sa.String(length=30), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['payload_template_id'], ['payload_templates.id'], ),
@@ -179,45 +178,57 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('started_at', sa.DateTime(), nullable=True),
-    sa.Column('completed_at', sa.DateTime(), nullable=True),
-    sa.Column('run_serially', sa.Boolean(), nullable=False),
-    sa.Column('iterations', sa.Integer(), nullable=False),
-    sa.Column('delay_between_requests', sa.Float(), nullable=False),
-    sa.Column('run_transformations', sa.JSON(), nullable=True),
-    sa.Column('status', sa.String(length=50), nullable=False),
-    sa.Column('progress_current', sa.Integer(), nullable=False),
-    sa.Column('progress_total', sa.Integer(), nullable=False),
-    sa.Column('celery_task_id', sa.String(length=255), nullable=True),
+    sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('target_type', sa.String(length=20), nullable=False),
     sa.Column('endpoint_id', sa.Integer(), nullable=True),
     sa.Column('chain_id', sa.Integer(), nullable=True),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('notes', sa.Text(), nullable=True),
-    sa.ForeignKeyConstraint(['chain_id'], ['api_chains.id'], ondelete='SET NULL'),
-    sa.ForeignKeyConstraint(['endpoint_id'], ['endpoints.id'], ondelete='SET NULL'),
+    sa.Column('execution_config', sa.JSON(), nullable=True),
+    sa.Column('status', sa.String(length=50), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.Column('started_at', sa.DateTime(), nullable=True),
+    sa.Column('completed_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['chain_id'], ['api_chains.id'], ),
+    sa.ForeignKeyConstraint(['endpoint_id'], ['endpoints.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('test_run', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_test_run_chain_id'), ['chain_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_test_run_endpoint_id'), ['endpoint_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_test_run_target_type'), ['target_type'], unique=False)
 
-    op.create_table('test_run_attempts',
+    op.create_table('execution_sessions',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('test_run_id', sa.Integer(), nullable=False),
-    sa.Column('attempt_number', sa.Integer(), nullable=False),
-    sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('finished_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('status', sa.String(length=50), nullable=True),
-    sa.Column('current_sequence', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['test_run_id'], ['test_run.id'], name='fk_test_run_attempt_test_run_id', ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
+    sa.Column('execution_id', sa.String(length=255), nullable=False),
+    sa.Column('strategy_name', sa.String(length=100), nullable=False),
+    sa.Column('state', sa.String(length=50), nullable=False),
+    sa.Column('total_test_cases', sa.Integer(), nullable=False),
+    sa.Column('completed_test_cases', sa.Integer(), nullable=False),
+    sa.Column('successful_test_cases', sa.Integer(), nullable=False),
+    sa.Column('failed_test_cases', sa.Integer(), nullable=False),
+    sa.Column('avg_response_time_ms', sa.Integer(), nullable=True),
+    sa.Column('current_error_rate', sa.Float(), nullable=True),
+    sa.Column('requests_per_second', sa.Float(), nullable=True),
+    sa.Column('peak_requests_per_second', sa.Float(), nullable=True),
+    sa.Column('initial_config', sa.JSON(), nullable=True),
+    sa.Column('current_config', sa.JSON(), nullable=True),
+    sa.Column('total_adjustments', sa.Integer(), nullable=True),
+    sa.Column('batch_count', sa.Integer(), nullable=True),
+    sa.Column('last_adjustment_at', sa.DateTime(), nullable=True),
+    sa.Column('health_status', sa.String(length=20), nullable=True),
+    sa.Column('started_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.Column('completed_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['test_run_id'], ['test_run.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('execution_id')
     )
-    with op.batch_alter_table('test_run_attempts', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_test_run_attempts_test_run_id'), ['test_run_id'], unique=False)
+    with op.batch_alter_table('execution_sessions', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_execution_sessions_started_at'), ['started_at'], unique=False)
+        batch_op.create_index(batch_op.f('ix_execution_sessions_state'), ['state'], unique=False)
+        batch_op.create_index(batch_op.f('ix_execution_sessions_test_run_id'), ['test_run_id'], unique=False)
 
     op.create_table('test_run_filters',
     sa.Column('test_run_id', sa.Integer(), nullable=False),
@@ -233,26 +244,32 @@ def upgrade():
     sa.ForeignKeyConstraint(['test_suite_id'], ['test_suites.id'], ),
     sa.PrimaryKeyConstraint('test_run_id', 'test_suite_id', name='pk_test_run_suites')
     )
-    op.create_table('test_executions',
+    op.create_table('execution_results',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('test_run_attempt_id', sa.Integer(), nullable=False),
-    sa.Column('test_case_id', sa.Integer(), nullable=False),
-    sa.Column('sequence', sa.Integer(), nullable=False),
-    sa.Column('iteration', sa.Integer(), nullable=True),
-    sa.Column('processed_prompt', sa.Text(), nullable=True),
-    sa.Column('request_payload', sa.JSON(), nullable=True),
-    sa.Column('response_data', sa.Text(), nullable=True),
+    sa.Column('session_id', sa.Integer(), nullable=False),
+    sa.Column('test_case_id', sa.Integer(), nullable=True),
+    sa.Column('sequence_number', sa.Integer(), nullable=False),
+    sa.Column('iteration_number', sa.Integer(), nullable=True),
+    sa.Column('batch_id', sa.String(length=255), nullable=True),
+    sa.Column('success', sa.Boolean(), nullable=False),
     sa.Column('status_code', sa.Integer(), nullable=True),
+    sa.Column('response_time_ms', sa.Integer(), nullable=True),
     sa.Column('error_message', sa.Text(), nullable=True),
-    sa.Column('status', sa.String(length=50), nullable=True),
-    sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('finished_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['test_case_id'], ['test_cases.id'], ondelete='SET NULL'),
-    sa.ForeignKeyConstraint(['test_run_attempt_id'], ['test_run_attempts.id'], name='fk_test_execution_run_attempt_id', ondelete='CASCADE'),
+    sa.Column('request_data', sa.JSON(), nullable=True),
+    sa.Column('response_data', sa.JSON(), nullable=True),
+    sa.Column('started_at', sa.DateTime(), nullable=True),
+    sa.Column('executed_at', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['session_id'], ['execution_sessions.id'], ),
+    sa.ForeignKeyConstraint(['test_case_id'], ['test_cases.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    with op.batch_alter_table('test_executions', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_test_executions_test_run_attempt_id'), ['test_run_attempt_id'], unique=False)
+    with op.batch_alter_table('execution_results', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_execution_results_batch_id'), ['batch_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_execution_results_executed_at'), ['executed_at'], unique=False)
+        batch_op.create_index(batch_op.f('ix_execution_results_sequence_number'), ['sequence_number'], unique=False)
+        batch_op.create_index(batch_op.f('ix_execution_results_session_id'), ['session_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_execution_results_success'), ['success'], unique=False)
+        batch_op.create_index(batch_op.f('ix_execution_results_test_case_id'), ['test_case_id'], unique=False)
 
     op.drop_table('celery_taskmeta')
     op.drop_table('celery_tasksetmeta')
@@ -285,17 +302,25 @@ def downgrade():
     sa.PrimaryKeyConstraint('id', name='celery_taskmeta_pkey'),
     sa.UniqueConstraint('task_id', name='celery_taskmeta_task_id_key')
     )
-    with op.batch_alter_table('test_executions', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_test_executions_test_run_attempt_id'))
+    with op.batch_alter_table('execution_results', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_execution_results_test_case_id'))
+        batch_op.drop_index(batch_op.f('ix_execution_results_success'))
+        batch_op.drop_index(batch_op.f('ix_execution_results_session_id'))
+        batch_op.drop_index(batch_op.f('ix_execution_results_sequence_number'))
+        batch_op.drop_index(batch_op.f('ix_execution_results_executed_at'))
+        batch_op.drop_index(batch_op.f('ix_execution_results_batch_id'))
 
-    op.drop_table('test_executions')
+    op.drop_table('execution_results')
     op.drop_table('test_run_suites')
     op.drop_table('test_run_filters')
-    with op.batch_alter_table('test_run_attempts', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_test_run_attempts_test_run_id'))
+    with op.batch_alter_table('execution_sessions', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_execution_sessions_test_run_id'))
+        batch_op.drop_index(batch_op.f('ix_execution_sessions_state'))
+        batch_op.drop_index(batch_op.f('ix_execution_sessions_started_at'))
 
-    op.drop_table('test_run_attempts')
+    op.drop_table('execution_sessions')
     with op.batch_alter_table('test_run', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_test_run_target_type'))
         batch_op.drop_index(batch_op.f('ix_test_run_endpoint_id'))
         batch_op.drop_index(batch_op.f('ix_test_run_chain_id'))
 

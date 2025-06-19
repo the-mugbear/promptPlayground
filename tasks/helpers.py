@@ -68,25 +68,25 @@ def emit_run_update(run_id: int, event_name: str, data: Dict[str, Any]) -> None:
         logger.error(f"EmitHelper: Failed to emit '{event_name}' for run {run_id}: {e}", exc_info=True)
 
 
-def emit_execution_update(attempt, record) -> None:
+def emit_execution_update(session, record) -> None:
     """
     Emit a detailed execution_result_update event after a single test-case execution.
     """
     data = {
-        "test_run_id": attempt.test_run_id,
+        "test_run_id": session.test_run_id,
         "test_case_id": record.test_case_id,
-        "attempt_number": attempt.attempt_number,
+        "session_id": session.id,
         "execution_id": record.id,
         "response_data": record.response_data,
-        "status": record.status,
+        "success": record.success,
         "status_code": record.status_code,
         "error_message": record.error_message,
-        "iteration": getattr(record, 'iteration', 1)
+        "sequence_number": record.sequence_number
     }
-    emit_run_update(attempt.test_run_id, "execution_result_update", data)
+    emit_run_update(session.test_run_id, "execution_result_update", data)
     
     # Also emit status code statistics update
-    emit_status_code_update(attempt.test_run_id)
+    emit_status_code_update(session.test_run_id)
 
 def emit_status_code_update(run_id: int) -> None:
     """
@@ -95,20 +95,19 @@ def emit_status_code_update(run_id: int) -> None:
     try:
         from sqlalchemy import func
         from models.model_TestRun import TestRun
-        from models.model_TestExecution import TestExecution
-        from models.model_TestRunAttempt import TestRunAttempt
+        from models.model_ExecutionSession import ExecutionSession, ExecutionResult
         
         # Get status code counts for the current run
         status_counts = db.session.query(
-            TestExecution.status_code,
-            func.count(TestExecution.id).label('count')
+            ExecutionResult.status_code,
+            func.count(ExecutionResult.id).label('count')
         ).join(
-            TestRunAttempt, TestExecution.test_run_attempt_id == TestRunAttempt.id
+            ExecutionSession, ExecutionResult.session_id == ExecutionSession.id
         ).filter(
-            TestRunAttempt.test_run_id == run_id,
-            TestExecution.status_code.isnot(None)
+            ExecutionSession.test_run_id == run_id,
+            ExecutionResult.status_code.isnot(None)
         ).group_by(
-            TestExecution.status_code
+            ExecutionResult.status_code
         ).all()
         
         # Format into status code groups

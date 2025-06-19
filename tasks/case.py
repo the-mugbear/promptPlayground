@@ -10,9 +10,8 @@ from celery_app import celery
 from tasks.base import ContextTask 
 from extensions import db 
 
-from models.model_TestRunAttempt import TestRunAttempt
+from models.model_ExecutionSession import ExecutionSession, ExecutionResult
 from models.model_TestCase import TestCase
-from models.model_TestExecution import TestExecution 
 from models.model_TestRun import TestRun 
 from models.model_Endpoints import Endpoint
 from models.model_APIChain import APIChain
@@ -35,16 +34,16 @@ logger = logging.getLogger(__name__) # Module-level logger
 )
 @with_session 
 def execute_single_test_case(
-    self,                     # The Celery task instance itself
-    test_run_attempt_id: int, # ID of the parent TestRunAttempt
-    test_case_id: int,        # ID of the TestCase to execute
-    endpoint_id: int,         # ID of the Endpoint to target (passed by orchestrator)
-    test_run_id: int,         # ID of the parent TestRun (passed by orchestrator)
-    sequence_num: int,        # Sequence number of this test case in the run
-    iteration_num: int = 1    # Iteration number for this execution
+    self,
+    execution_session_id: int,  # ID of the parent ExecutionSession
+    test_case_id: int,          # ID of the TestCase to execute
+    endpoint_id: int,           # ID of the Endpoint to target (passed by orchestrator)
+    test_run_id: int,           # ID of the parent TestRun (passed by orchestrator)
+    sequence_num: int,          # Sequence number of this test case in the run
+    iteration_num: int = 1      # Iteration number for this execution
 ):
     task_id = self.request.id
-    logger.info(f"Task {task_id} - TC_ID:{test_case_id}, Seq:{sequence_num}, Iter:{iteration_num}, AttID:{test_run_attempt_id}: Starting.")
+    logger.info(f"Task {task_id} - TC_ID:{test_case_id}, Seq:{sequence_num}, Iter:{iteration_num}, SessionID:{execution_session_id}: Starting.")
     
     payload_info_for_record = {"error": "Payload not generated due to an early task error."}
     execution_record = None
@@ -52,9 +51,8 @@ def execute_single_test_case(
 
     try:
         # --- Initial Data Fetching --- 
-        attempt = db.session.get(TestRunAttempt, test_run_attempt_id)
+        attempt = db.session.get(ExecutionSession, execution_session_id)
         run = db.session.query(TestRun).options(
-            selectinload(TestRun.filters),
             selectinload(TestRun.endpoint)
         ).get(test_run_id)
         case_obj = db.session.get(TestCase, test_case_id)
@@ -69,7 +67,7 @@ def execute_single_test_case(
         # Ensure all necessary ORM objects were successfully fetched before proceeding.
         if not all([attempt, run, case_obj, endpoint_obj]):
             missing = []
-            if not attempt: missing.append(f"AttemptID {test_run_attempt_id}")
+            if not attempt: missing.append(f"AttemptID {execution_session_id}")
             if not run: missing.append(f"RunID {test_run_id}")
             if not case_obj: missing.append(f"CaseID {test_case_id}")
             if not endpoint_obj: 
@@ -79,8 +77,8 @@ def execute_single_test_case(
             logger.error(f"Task {task_id}: {err_msg}")
             
             execution_record = create_error_record( 
-                 test_run_attempt_id, test_case_id, sequence_num, iteration_num, ValueError(err_msg), 
-                 payload_info_for_record, task_id
+                 execution_session_id, test_case_id, sequence_num, iteration_num, ValueError(err_msg), 
+                 payload_info_for_record
             )
             # This exception will be caught by the outer `except Exception as task_e` block,
             # which will then add the record to the session and proceed to finally.
@@ -89,11 +87,15 @@ def execute_single_test_case(
         # --- 1) Build the final prompt (only once) ---
         original_prompt = case_obj.prompt
 
-        # Call the helper function from tasks.helpers to apply filters and transformations.
+        # Get execution configuration and transformations
+        exec_config = run.get_execution_config()
+        transformations = exec_config.get('transformations', [])
+        
+        # Call the helper function from tasks.helpers to apply transformations.
         final_prompt = process_prompt_for_case(
             original_prompt,
-            list(run.filters),             # Pass the list of PromptFilter ORM objects
-            run.run_transformations or []  # Pass the list of transformation config dicts (or empty list)
+            [],                           # No filters in fresh implementation  
+            transformations               # Pass the list of transformation config dicts
         )
 
         http_payload_str_for_request = "{}" # Default to empty JSON object string
@@ -137,12 +139,14 @@ def execute_single_test_case(
         # Prepare headers directly as a dictionary. No need to convert to a raw string.
         headers_dict = {h.key: h.value for h in (endpoint_obj.headers or [])}
         print(f"TASK DEBUG: Original endpoint headers: {headers_dict}")
-        print(f"TASK DEBUG: Test run header overrides: {run.header_overrides}")
         
-        # Apply any run-specific header overrides (e.g., updated Authorization tokens)
-        if run.header_overrides:
-            logger.debug(f"Task {task_id}: Applying header overrides: {run.header_overrides}")
-            headers_dict.update(run.header_overrides)
+        # Apply any run-specific header overrides from execution config
+        header_overrides = exec_config.get('header_overrides', {})
+        print(f"TASK DEBUG: Test run header overrides: {header_overrides}")
+        
+        if header_overrides:
+            logger.debug(f"Task {task_id}: Applying header overrides: {header_overrides}")
+            headers_dict.update(header_overrides)
             print(f"TASK DEBUG: Final merged headers: {headers_dict}")
         else:
             print(f"TASK DEBUG: No header overrides found, using original endpoint headers")
@@ -204,7 +208,7 @@ def execute_single_test_case(
             elif cookie_header:
                 logger.warning(f"Task {task_id}: Cookie header was present but no cookies were extracted: {cookie_header}")
 
-            # Determine error message for the TestExecution record based on HTTP outcome.
+            # Determine error message for the ExecutionResult record based on HTTP outcome.
             if error_msg_http and status_code is None: # E.g. connection error, ReadTimeout
                  error_msg_for_record = error_msg_http
                  request_details['error_type'] = 'connection_error'
@@ -216,7 +220,7 @@ def execute_single_test_case(
             else: # HTTP success or no specific error to log beyond body/status_code
                  error_msg_for_record = None 
             
-            # Determine disposition (pass/fail/error) for the TestExecution.
+            # Determine disposition (pass/fail/error) for the ExecutionResult.
             disposition = (
                 "pass" if status_code and 200 <= status_code < 300 else
                 "fail" if status_code else # Includes non-2xx codes
@@ -226,7 +230,7 @@ def execute_single_test_case(
                 error_msg_for_record = "Request failed, no status code or specific connection error."
                 request_details['error_type'] = 'unknown_error'
 
-            # --- 3) Create TestExecution record for successful or failed HTTP call ---
+            # --- 3) Create ExecutionResult record for successful or failed HTTP call ---
             # Uses your create_execution_record helper.
             # Pass payload_info_for_record (the DICT) for request_payload (JSONB).
             execution_record = create_execution_record(
@@ -242,7 +246,7 @@ def execute_single_test_case(
             logger.error(f"Task {task_id}: HTTP call or response processing failed for TC_ID:{case_obj.id if 'case_obj' in locals() else test_case_id}: {http_e}", exc_info=True)
             # payload_info_for_record will contain the actual payload if generated, or the default error dict.
             execution_record = create_error_record(
-                test_run_attempt_id, test_case_id, sequence_num, iteration_num, http_e, 
+                execution_session_id, test_case_id, sequence_num, iteration_num, http_e, 
                 payload_info_for_record
             )
             # create_error_record helper sets its own started_at/finished_at timestamps.
@@ -251,7 +255,7 @@ def execute_single_test_case(
         logger.error(f"Task {task_id}: Broader error for TC_ID:{test_case_id}: {task_e}", exc_info=True)
         # payload_info_for_record will be the default error payload if task_e occurred very early.
         execution_record = create_error_record(
-            test_run_attempt_id, test_case_id, sequence_num, iteration_num, task_e,
+            execution_session_id, test_case_id, sequence_num, iteration_num, task_e,
             payload_info_for_record
         )
 
@@ -264,19 +268,21 @@ def execute_single_test_case(
             logger.info(f"Task {task_id}: Type of test_run_id before update: {type(test_run_id)}")
             # --- End Debugging ---
 
-            # --- 4) Atomically increment TestRun.progress_current by 1 ---
+            # --- 4) Update ExecutionSession progress ---
             if isinstance(test_run_id, int): # Safety check for test_run_id type
-                db.session.query(TestRun).filter_by(id=test_run_id).update(
-                    {TestRun.progress_current: TestRun.progress_current + 1},
+                # Update progress on the execution session instead of TestRun directly
+                db.session.query(ExecutionSession).filter_by(id=execution_session_id).update(
+                    {ExecutionSession.completed_test_cases: ExecutionSession.completed_test_cases + 1},
                     synchronize_session=False # Important for concurrent updates by multiple tasks
                 )
+                logger.info(f"Task {task_id}: Updated ExecutionSession {execution_session_id} progress")
             else:
                 logger.error(f"Task {task_id}: Invalid type for test_run_id: {type(test_run_id)}. Skipping progress update.")
             
             # Re-fetch 'run' and 'attempt' to ensure they have the latest data for emits,
             # especially after the progress update and if an early error might have affected their state in this scope.
             run_for_emit = db.session.get(TestRun, test_run_id) 
-            attempt_for_emit = db.session.get(TestRunAttempt, test_run_attempt_id)
+            attempt_for_emit = db.session.get(ExecutionSession, execution_session_id)
 
             if attempt_for_emit and run_for_emit and execution_record: # Ensure all are present for emitting
                 # --- 5a) Emit execution_result_update ---
@@ -306,20 +312,19 @@ def create_execution_record(attempt, case, seq, iteration_num, payload_dict, sta
     if started_at_time:
         duration_ms = int((datetime.utcnow() - started_at_time).total_seconds() * 1000)
     
-    execution = TestExecution(
-        test_run_attempt_id=attempt.id,
+    execution = ExecutionResult(
+        session_id=attempt.id,
         test_case_id=case.id,
-        sequence=seq,
-        iteration=iteration_num or 1,  # Default to 1 if None
-        request_payload=payload_dict, # Store the Python dictionary directly (SQLAlchemy handles for JSONB)
+        sequence_number=seq,
+        iteration_number=iteration_num or 1,  # Default to 1 if None
+        request_data=payload_dict, # Store the Python dictionary directly (SQLAlchemy handles for JSONB)
         response_data=str(body) if body is not None else None, # Ensure body is stored as string
         status_code=status_code,
         error_message=error_msg,
-        status=disposition,
+        success=(disposition == "pass"),
         started_at=started_at_time,  # Use the accurately captured start time
-        finished_at=datetime.utcnow(),
-        processed_prompt=processed_prompt_str,
-        request_duration_ms=duration_ms
+        executed_at=datetime.utcnow(),
+        response_time_ms=duration_ms
     )
     
     # Add enhanced debugging information if provided
@@ -358,19 +363,18 @@ def create_error_record(attempt_id, case_id, sequence_num, iteration_num, error_
         f"Exception {type(error_exception).__name__}: {error_exception}\n"
         f"Traceback:\n{traceback.format_exc()}"
     )
-    return TestExecution(
-        test_run_attempt_id=attempt_id,
+    return ExecutionResult(
+        session_id=attempt_id,
         test_case_id=case_id,
-        sequence=sequence_num,
-        iteration=iteration_num or 1,  # Default to 1 if None
-        request_payload=payload_dict, # Store the Python dictionary (original payload or default error dict)
+        sequence_number=sequence_num,
+        iteration_number=iteration_num or 1,  # Default to 1 if None
+        request_data=payload_dict, # Store the Python dictionary (original payload or default error dict)
         response_data=None, # No response data in case of such errors
         status_code=None,   # No status code
         error_message=err_detail, # Store the detailed error and traceback
-        status="error", # Explicitly mark status as 'error'
-        processed_prompt=processed_prompt_str, 
+        success=False, # Mark as failed
         started_at=datetime.utcnow(), # Timestamp when this error record is created
-        finished_at=datetime.utcnow()
+        executed_at=datetime.utcnow()
     )
 
 
@@ -384,7 +388,7 @@ def create_error_record(attempt_id, case_id, sequence_num, iteration_num, error_
 @with_session
 def execute_single_test_case_chain(
     self,
-    test_run_attempt_id: int,
+    execution_session_id: int,
     test_case_id: int,
     chain_id: int,
     test_run_id: int,
@@ -396,7 +400,7 @@ def execute_single_test_case_chain(
     This injects the test case prompt into the chain execution and records results.
     """
     task_id = self.request.id
-    logger.info(f"Chain Task {task_id} - TC_ID:{test_case_id}, Seq:{sequence_num}, Iter:{iteration_num}, AttID:{test_run_attempt_id}: Starting chain execution.")
+    logger.info(f"Chain Task {task_id} - TC_ID:{test_case_id}, Seq:{sequence_num}, Iter:{iteration_num}, AttID:{execution_session_id}: Starting chain execution.")
     
     payload_info_for_record = {"error": "Chain execution not started due to early task error."}
     execution_record = None
@@ -404,9 +408,8 @@ def execute_single_test_case_chain(
 
     try:
         # --- Initial Data Fetching ---
-        attempt = db.session.get(TestRunAttempt, test_run_attempt_id)
+        attempt = db.session.get(ExecutionSession, execution_session_id)
         run = db.session.query(TestRun).options(
-            selectinload(TestRun.filters),
             selectinload(TestRun.chain)
         ).get(test_run_id)
         case_obj = db.session.get(TestCase, test_case_id)
@@ -415,7 +418,7 @@ def execute_single_test_case_chain(
         # --- Critical Object Validation ---
         if not all([attempt, run, case_obj, chain_obj]):
             missing = []
-            if not attempt: missing.append(f"AttemptID {test_run_attempt_id}")
+            if not attempt: missing.append(f"AttemptID {execution_session_id}")
             if not run: missing.append(f"RunID {test_run_id}")
             if not case_obj: missing.append(f"CaseID {test_case_id}")
             if not chain_obj: 
@@ -425,17 +428,22 @@ def execute_single_test_case_chain(
             logger.error(f"Chain Task {task_id}: {err_msg}")
             
             execution_record = create_error_record( 
-                 test_run_attempt_id, test_case_id, sequence_num, iteration_num, ValueError(err_msg), 
-                 payload_info_for_record, task_id
+                 execution_session_id, test_case_id, sequence_num, iteration_num, ValueError(err_msg), 
+                 payload_info_for_record
             )
             raise ValueError(err_msg)
 
-        # --- Process the prompt with filters and transformations ---
+        # --- Process the prompt with transformations ---
         original_prompt = case_obj.prompt
+        
+        # Get execution configuration and transformations  
+        exec_config = run.get_execution_config()
+        transformations = exec_config.get('transformations', [])
+        
         final_prompt = process_prompt_for_case(
             original_prompt,
-            list(run.filters),
-            run.run_transformations or []
+            [],                           # No filters in fresh implementation
+            transformations               # Pass the list of transformation config dicts
         )
 
         # --- Execute Chain with Test Case Context ---
@@ -465,10 +473,11 @@ def execute_single_test_case_chain(
             # Execute the chain using the chain execution service
             logger.info(f"Chain Task {task_id}: Executing chain '{chain_obj.name}' (ID: {chain_obj.id}) with initial context: {initial_context}")
             
-            # Apply any run-specific header overrides to the chain context
-            if run.header_overrides:
-                logger.debug(f"Chain Task {task_id}: Applying header overrides to chain context: {run.header_overrides}")
-                initial_context.update(run.header_overrides)
+            # Apply any run-specific header overrides to the chain context from execution config
+            header_overrides = exec_config.get('header_overrides', {})
+            if header_overrides:
+                logger.debug(f"Chain Task {task_id}: Applying header overrides to chain context: {header_overrides}")
+                initial_context.update(header_overrides)
             
             executor = APIChainExecutor()
             chain_result = executor.execute_chain(chain_obj.id, initial_context=initial_context)
@@ -545,20 +554,20 @@ def execute_single_test_case_chain(
         except ChainExecutionError as chain_e:
             logger.error(f"Chain Task {task_id}: Chain execution failed for TC_ID:{case_obj.id}: {chain_e}", exc_info=True)
             execution_record = create_error_record(
-                test_run_attempt_id, test_case_id, sequence_num, iteration_num, chain_e,
+                execution_session_id, test_case_id, sequence_num, iteration_num, chain_e,
                 payload_info_for_record, final_prompt
             )
         except Exception as chain_e:
             logger.error(f"Chain Task {task_id}: Unexpected error during chain execution for TC_ID:{case_obj.id}: {chain_e}", exc_info=True)
             execution_record = create_error_record(
-                test_run_attempt_id, test_case_id, sequence_num, iteration_num, chain_e,
+                execution_session_id, test_case_id, sequence_num, iteration_num, chain_e,
                 payload_info_for_record, final_prompt
             )
 
     except Exception as task_e:
         logger.error(f"Chain Task {task_id}: Broader error for TC_ID:{test_case_id}: {task_e}", exc_info=True)
         execution_record = create_error_record(
-            test_run_attempt_id, test_case_id, sequence_num, iteration_num, task_e,
+            execution_session_id, test_case_id, sequence_num, iteration_num, task_e,
             payload_info_for_record
         )
 
@@ -568,18 +577,19 @@ def execute_single_test_case_chain(
 
             logger.info(f"Chain Task {task_id}: Attempting to update progress for TestRun ID: {test_run_id}")
             
-            # Atomically increment TestRun.progress_current by 1
+            # Update ExecutionSession progress instead of TestRun directly 
             if isinstance(test_run_id, int):
-                db.session.query(TestRun).filter_by(id=test_run_id).update(
-                    {TestRun.progress_current: TestRun.progress_current + 1},
+                db.session.query(ExecutionSession).filter_by(id=execution_session_id).update(
+                    {ExecutionSession.completed_test_cases: ExecutionSession.completed_test_cases + 1},
                     synchronize_session=False
                 )
+                logger.info(f"Chain Task {task_id}: Updated ExecutionSession {execution_session_id} progress")
             else:
                 logger.error(f"Chain Task {task_id}: Invalid type for test_run_id: {type(test_run_id)}. Skipping progress update.")
             
             # Re-fetch objects for emits
             run_for_emit = db.session.get(TestRun, test_run_id)
-            attempt_for_emit = db.session.get(TestRunAttempt, test_run_attempt_id)
+            attempt_for_emit = db.session.get(ExecutionSession, execution_session_id)
 
             if attempt_for_emit and run_for_emit and execution_record:
                 emit_execution_update(attempt_for_emit, execution_record)

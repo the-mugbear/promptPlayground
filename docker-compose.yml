@@ -43,21 +43,50 @@ services:
       # Keep Celery Result Backend if needed
       - CELERY_RESULT_BACKEND=db+postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
 
+      # Execution engine configuration
+      - EXECUTION_ENGINE_ENABLED=true
+      - EXECUTION_ENGINE_MAX_CONCURRENT_SESSIONS=10
+      - EXECUTION_ENGINE_MONITOR_INTERVAL=5
+      - SOCKETIO_PING_TIMEOUT=60
+      - SOCKETIO_PING_INTERVAL=25
+
     depends_on:
       - db       # Wait for db service to be healthy (basic check)
       - broker   # Wait for broker service to be healthy (basic check)
     env_file:
       - .env     # Load variables from .env file
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-f", "https://localhost:8000/"] 
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
 
   # Celery Worker Service
   worker:
     build: . # Use the same image as the web service
     container_name: fuzzy_prompts_worker
     # Override the default CMD from the Dockerfile
-    command: celery -A celery_app:celery worker -P eventlet --loglevel=debug
+    command: celery -A celery_app:celery worker -P eventlet --loglevel=debug --concurrency=50
     # command: sleep infinity
     volumes:
       - .:/app # Mount code for development consistency
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
     environment:
       - PYTHONPATH=/app
       # Pass same environment variables as web service
@@ -73,6 +102,11 @@ services:
       # Add SECRET_KEY if celery tasks indirectly need it
       - SECRET_KEY=${SECRET_KEY}
       - PYTHONUNBUFFERED=1
+
+      # Execution engine configuration for workers
+      - EXECUTION_ENGINE_ENABLED=true
+      - WORKER_EXECUTION_POOL_SIZE=50
+      - WORKER_BATCH_SIZE_LIMIT=100
     depends_on:
       - db
       - broker
@@ -90,6 +124,21 @@ services:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_NAME}
+
+      # Performance tuning for execution session tracking
+      - POSTGRES_SHARED_BUFFERS=256MB
+      - POSTGRES_EFFECTIVE_CACHE_SIZE=1GB
+      - POSTGRES_WORK_MEM=4MB
+      - POSTGRES_MAINTENANCE_WORK_MEM=64MB
+      - POSTGRES_MAX_CONNECTIONS=200
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
     ports:
       - "5432:5432" # Optional: Map host port if you need direct DB access from host
     healthcheck: # Optional: basic healthcheck
@@ -105,14 +154,17 @@ services:
     ports:
       - "5672:5672"   # AMQP port
       - "15672:15672" # Management UI port
-    environment:
-      # Set default user/pass (optional, can use defaults 'guest'/'guest')
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
-
-      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit loopback_users "[]"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq/ # Persist RabbitMQ data (optional for dev)
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro # Mount modern config file
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
 
 # Define named volumes for persistent data
 volumes:

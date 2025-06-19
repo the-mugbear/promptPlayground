@@ -1,224 +1,598 @@
-# reports.py
-from flask import Blueprint, render_template, jsonify, request, abort # Added request, abort
-from collections import Counter, defaultdict # Added defaultdict
-from sqlalchemy.orm import selectinload, joinedload # Added selectinload, joinedload
+# routes/reports_new.py
+from flask import Blueprint, render_template, jsonify, request
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta
+from sqlalchemy import func, desc, and_, or_
+from sqlalchemy.orm import selectinload, joinedload
 
-# --- Import ALL necessary models ---
-from models.model_Endpoints import Endpoint  
-from models.model_TestRun import TestRun     
-from models.model_TestExecution import TestExecution 
-from models.model_TestRunAttempt import TestRunAttempt # Needed for joining
-from models.model_TestCase import TestCase     
-from models.model_TestSuite import TestSuite # Assuming you have this model
-from models.model_Dialogue import Dialogue
-# Import db instance if not already imported
+# Import models
+from models.model_Endpoints import Endpoint
+from models.model_TestRun import TestRun
+from models.model_ExecutionSession import ExecutionSession, ExecutionResult
+from models.model_TestCase import TestCase
+from models.model_APIChain import APIChain, APIChainStep
 from extensions import db
+
 report_bp = Blueprint('report_bp', __name__, url_prefix='/reports')
 
-# ********************************
-# ROUTES
-# ********************************
-@report_bp.route('/report', methods=['GET'])
-def report():
-    """
-    Renders a page with a dropdown of endpoints.
-    """
-    endpoints = Endpoint.query.all()
-    return render_template('reports/report.html', endpoints=endpoints)
+@report_bp.route('/dashboard')
+def dashboard():
+    """Main dashboard view"""
+    return render_template('reports/dashboard.html')
 
-# ********************************
-# SERVICES
-# ********************************
-@report_bp.route('/report_ajax/<int:endpoint_id>', methods=['GET'])
-def report_ajax(endpoint_id):
+@report_bp.route('/endpoint/<int:endpoint_id>')
+def endpoint_report(endpoint_id):
+    """Endpoint-specific report view"""
     endpoint = Endpoint.query.get_or_404(endpoint_id)
-    # Query test runs associated with the endpoint
-    test_runs = TestRun.query.filter_by(endpoint_id=endpoint_id).order_by(TestRun.created_at.desc()).all()
+    return render_template('reports/endpoint_report.html', endpoint=endpoint)
 
-    # --- Calculate Overall Metrics ---
-    overall_total_executions = 0
-    overall_passed_count = 0
-    overall_failed_count = 0
-    overall_skipped_count = 0
-    overall_pending_review_count = 0
-    overall_transformation_counter = Counter()
-
-    runs_data = [] # To store data for each run, including its metrics
-
-    for run in test_runs:
-        # --- Calculate Per-Run Metrics ---
-        run_total_executions = 0
-        run_passed_count = 0
-        run_failed_count = 0
-        run_skipped_count = 0
-        run_pending_review_count = 0
-        # We could track per-run transformations if needed, but let's start simple
+@report_bp.route('/api/overview')
+def api_overview():
+    """Get high-level dashboard metrics"""
+    time_range = request.args.get('time_range', '30')  # days
+    target_type = request.args.get('target_type', 'all')  # all, endpoint, chain
+    
+    # Base query with time filter
+    if time_range != 'all':
+        cutoff_date = datetime.utcnow() - timedelta(days=int(time_range))
+        query = ExecutionResult.query.filter(ExecutionResult.started_at >= cutoff_date)
+    else:
+        query = ExecutionResult.query
+    
+    # Filter by target type
+    if target_type == 'endpoint':
+        query = query.filter(ExecutionResult.request_method != 'CHAIN')
+    elif target_type == 'chain':
+        query = query.filter(ExecutionResult.request_method == 'CHAIN')
+    
+    # Get all executions
+    executions = query.all()
+    
+    # Calculate metrics
+    total_tests = len(executions)
+    passed_tests = len([e for e in executions if e.success])
+    failed_tests = len([e for e in executions if not e.success])
+    
+    success_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
+    
+    # Average duration
+    durations = [e.response_time_ms for e in executions if e.response_time_ms]
+    avg_duration = sum(durations) / len(durations) if durations else 0
+    
+    # Active endpoints/chains count
+    if target_type == 'chain':
+        active_count = len(set(e.request_payload.get('chain_id') for e in executions 
+                              if e.request_payload and e.request_payload.get('chain_id')))
+    elif target_type == 'endpoint':
+        active_count = len(set(e.session.test_run.endpoint_id for e in executions 
+                              if e.session and e.session.test_run and e.session.test_run.endpoint_id))
+    else:
+        endpoint_count = len(set(e.session.test_run.endpoint_id for e in executions 
+                                if e.session and e.session.test_run and e.session.test_run.endpoint_id))
+        chain_count = len(set(e.request_payload.get('chain_id') for e in executions 
+                             if e.request_payload and e.request_payload.get('chain_id')))
+        active_count = endpoint_count + chain_count
+    
+    # Calculate period comparison (previous period)
+    if time_range != 'all':
+        prev_cutoff = cutoff_date - timedelta(days=int(time_range))
+        prev_query = ExecutionResult.query.filter(
+            and_(ExecutionResult.started_at >= prev_cutoff, ExecutionResult.started_at < cutoff_date)
+        )
         
-        for attempt in run.attempts:
-            # Use joinedload or selectinload if performance becomes an issue here
-            # Eager load executions and their test cases if needed for transformation counting
-            executions = TestExecution.query.filter_by(test_run_attempt_id=attempt.id).options(
-                # Add selectinload(TestExecution.test_case) if accessing transformations
-            ).all()
-
-            for execution in executions:
-                # Increment overall counts
-                overall_total_executions += 1
-                # Increment per-run counts
-                run_total_executions += 1
-
-                status = execution.status.lower() if execution.status else ""
-                
-                # Update both overall and per-run metrics based on status
-                if status == 'passed':
-                    overall_passed_count += 1
-                    run_passed_count += 1
-                elif status == 'failed':
-                    overall_failed_count += 1
-                    run_failed_count += 1
-                    # Count overall failed transformations
-                    test_case = execution.test_case # Assumes test_case relationship is loaded if needed
-                    if test_case and test_case.transformations:
-                        for transformation in test_case.transformations:
-                             t_type = transformation.get('type')
-                             if t_type:
-                                 overall_transformation_counter[t_type] += 1
-                elif status == 'skipped':
-                    overall_skipped_count += 1
-                    run_skipped_count += 1
-                elif status == 'pending_review':
-                    overall_pending_review_count += 1
-                    run_pending_review_count += 1
-                # Add other status conditions if necessary
-
-        # --- Store Per-Run Data ---
-        runs_data.append({
-            "id": run.id,
-            "name": run.name,
-            "status": run.status,
-            "created_at": run.created_at.isoformat() if run.created_at else "",
-            "metrics": { # Add the calculated per-run metrics here
-                "total": run_total_executions,
-                "passed": run_passed_count,
-                "failed": run_failed_count,
-                "skipped": run_skipped_count,
-                "pending_review": run_pending_review_count
-            }
-        })
-
-    # --- Prepare Overall Metrics ---
-    overall_metrics = {
-        "total_executions": overall_total_executions,
-        "passed": overall_passed_count,
-        "failed": overall_failed_count,
-        "skipped": overall_skipped_count,
-        "pending_review": overall_pending_review_count,
-        "failed_transformations": dict(overall_transformation_counter)
-    }
-
-    # --- Query Dialogues --- (Existing logic)
-    dialogues = Dialogue.query.filter_by(endpoint_id=endpoint.id).all()
-    dialogues_list = [{
-            "id": d.id, "source": d.source,
-            "created_at": d.created_at.isoformat() if d.created_at else "",
-            "conversation": d.conversation
-        } for d in dialogues]
-
-    # --- Return Combined JSON ---
+        if target_type == 'endpoint':
+            prev_query = prev_query.filter(ExecutionResult.request_method != 'CHAIN')
+        elif target_type == 'chain':
+            prev_query = prev_query.filter(ExecutionResult.request_method == 'CHAIN')
+            
+        prev_executions = prev_query.all()
+        prev_total = len(prev_executions)
+        prev_passed = len([e for e in prev_executions if e.success])
+        prev_success_rate = (prev_passed / prev_total * 100) if prev_total > 0 else 0
+        
+        # Calculate changes
+        tests_change = ((total_tests - prev_total) / prev_total * 100) if prev_total > 0 else 0
+        success_rate_change = success_rate - prev_success_rate
+    else:
+        tests_change = 0
+        success_rate_change = 0
+    
     return jsonify({
-        "endpoint": {
-            "id": endpoint.id, "name": endpoint.name,
-            "base_url": endpoint.base_url, "path": endpoint.path
-        },
-        "overall_metrics": overall_metrics, # Renamed for clarity
-        "test_runs": runs_data, # Now includes per-run metrics
-        "dialogues": dialogues_list
+        'total_tests': total_tests,
+        'success_rate': round(success_rate, 1),
+        'avg_duration': round(avg_duration, 0),
+        'active_endpoints': active_count,
+        'changes': {
+            'tests': round(tests_change, 1),
+            'success_rate': round(success_rate_change, 1),
+            'duration': 0,  # TODO: Calculate duration change
+            'endpoints': 0  # TODO: Calculate endpoint change
+        }
     })
 
-
-@report_bp.route('/disposition_view/<context_type>/<int:context_id>/<status>')
-def disposition_view(context_type, context_id, status):
-    """
-    Displays TestExecutions filtered by context (endpoint/run) and status,
-    grouped by TestSuite, allowing for disposition updates.
-    """
-    # Validate context_type
-    if context_type not in ['endpoint', 'test_run']:
-        abort(404, description="Invalid context type specified.")
-
-    # --- Base Query ---
-    query = TestExecution.query.filter(TestExecution.status == status)
-
-    # --- Eager Loading ---
-    # Load test_case -> test_suites relationship efficiently
-    query = query.options(
-        selectinload(TestExecution.test_case).selectinload(TestCase.test_suites),
-        selectinload(TestExecution.attempt) # Load attempt data if needed later
-    )
-
-    # --- Context Filtering ---
-    context_name = ""
-    if context_type == 'test_run':
-        run = TestRun.query.get_or_404(context_id)
-        context_name = f"Test Run '{run.name}' (ID: {run.id})"
-        # Filter by Test Run ID via the attempt relationship
-        query = query.join(TestExecution.attempt).filter(TestRunAttempt.test_run_id == context_id)
-        
-    elif context_type == 'endpoint':
-        endpoint = Endpoint.query.get_or_404(context_id)
-        context_name = f"Endpoint '{endpoint.name}' (ID: {endpoint.id})"
-         # Filter by Endpoint ID via joins: TestExecution -> TestRunAttempt -> TestRun
-        query = query.join(TestExecution.attempt).join(TestRunAttempt.test_run).filter(TestRun.endpoint_id == context_id)
-
-    # --- Optional: Transformation Filtering ---
-    # Example: Handle transformation filter passed from the bar chart click
-    transformation_type = request.args.get('transformation_type')
-    if transformation_type:
-        # This requires filtering based on JSON content, which can be tricky & DB specific.
-        # Simple Python filtering after fetch (less efficient for large datasets):
-        # executions_all = query.all()
-        # executions_filtered = []
-        # for ex in executions_all:
-        #     if ex.test_case and isinstance(ex.test_case.transformations, list):
-        #         for t in ex.test_case.transformations:
-        #              if isinstance(t, dict) and t.get('type') == transformation_type:
-        #                  executions_filtered.append(ex)
-        #                  break # Found the type, add execution and move to next one
-        # executions = executions_filtered # Use the python-filtered list
-        
-        # Or use database-specific JSON functions if available (e.g., PostgreSQL jsonb_array_elements)
-        # For simplicity, we'll skip DB-level JSON filtering for now.
-        # Add a note that this filter might need refinement.
-        context_name += f" using transformation '{transformation_type}'" # Add to title
-        # Implement filtering logic here if needed (Python or DB specific)
-        executions = query.all() # Fetch all matching status/context first
-        # Re-assign `executions` after python filtering if implemented above
-    else:
-       executions = query.all()
-
-    # --- Grouping Logic ---
-    # Group executions by TestSuite using a dictionary
-    # Key: TestSuite object, Value: List of TestExecution objects
-    grouped_executions = defaultdict(list) 
+@report_bp.route('/api/distribution')
+def api_distribution():
+    """Get test type and status distribution data"""
+    time_range = request.args.get('time_range', '30')
     
-    for ex in executions:
-        if ex.test_case and ex.test_case.test_suites:
-            # Associate execution with ALL suites its test case belongs to
-            for suite in ex.test_case.test_suites:
-                 # Check if this specific execution is already added under this suite 
-                 # (to prevent duplicates if relationship loading somehow caused extras, though unlikely here)
-                 if ex not in grouped_executions[suite]:
-                      grouped_executions[suite].append(ex)
+    if time_range != 'all':
+        cutoff_date = datetime.utcnow() - timedelta(days=int(time_range))
+        executions = ExecutionResult.query.filter(ExecutionResult.started_at >= cutoff_date).all()
+    else:
+        executions = ExecutionResult.query.all()
+    
+    # Separate endpoint vs chain executions
+    endpoint_executions = [e for e in executions if e.request_method != 'CHAIN']
+    chain_executions = [e for e in executions if e.request_method == 'CHAIN']
+    
+    # Count by status for each type
+    def count_by_status(exec_list):
+        return {
+            'passed': len([e for e in exec_list if e.success]),
+            'failed': len([e for e in exec_list if not e.success]),
+            'skipped': len([e for e in exec_list if e.status == 'skipped']),
+            'pending_review': len([e for e in exec_list if e.status == 'pending_review'])
+        }
+    
+    return jsonify({
+        'endpoint_tests': count_by_status(endpoint_executions),
+        'chain_tests': count_by_status(chain_executions),
+        'total_endpoints': len(endpoint_executions),
+        'total_chains': len(chain_executions)
+    })
+
+@report_bp.route('/api/timeline')
+def api_timeline():
+    """Get success rate timeline data"""
+    time_range = request.args.get('time_range', '30')
+    
+    if time_range != 'all':
+        days = int(time_range)
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+    else:
+        days = 90  # Default for all-time view
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+    
+    # Group executions by date
+    timeline_data = []
+    
+    for i in range(days):
+        date = cutoff_date + timedelta(days=i)
+        start_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date + timedelta(days=1)
+        
+        day_executions = ExecutionResult.query.filter(
+            and_(ExecutionResult.started_at >= start_date, ExecutionResult.started_at < end_date)
+        ).all()
+        
+        endpoint_executions = [e for e in day_executions if e.request_method != 'CHAIN']
+        chain_executions = [e for e in day_executions if e.request_method == 'CHAIN']
+        
+        def calc_success_rate(exec_list):
+            if not exec_list:
+                return 0
+            passed = len([e for e in exec_list if e.success])
+            return (passed / len(exec_list)) * 100
+        
+        timeline_data.append({
+            'date': start_date.isoformat(),
+            'endpoint_success_rate': calc_success_rate(endpoint_executions),
+            'chain_success_rate': calc_success_rate(chain_executions),
+            'endpoint_count': len(endpoint_executions),
+            'chain_count': len(chain_executions)
+        })
+    
+    return jsonify(timeline_data)
+
+@report_bp.route('/api/top_performers')
+def api_top_performers():
+    """Get top performing endpoints/chains"""
+    metric = request.args.get('metric', 'success_rate')
+    time_range = request.args.get('time_range', '30')
+    target_type = request.args.get('target_type', 'all')
+    
+    if time_range != 'all':
+        cutoff_date = datetime.utcnow() - timedelta(days=int(time_range))
+        executions = ExecutionResult.query.filter(ExecutionResult.started_at >= cutoff_date).all()
+    else:
+        executions = ExecutionResult.query.all()
+    
+    # Group by endpoint or chain
+    grouped_data = defaultdict(list)
+    
+    for execution in executions:
+        if execution.request_method == 'CHAIN':
+            if target_type in ['all', 'chain']:
+                chain_id = execution.request_payload.get('chain_id') if execution.request_payload else None
+                if chain_id:
+                    grouped_data[f'chain_{chain_id}'].append(execution)
         else:
-             # Handle executions whose test case might not have suites (optional)
-             if None not in grouped_executions: grouped_executions[None] = []
-             if ex not in grouped_executions[None]: grouped_executions[None].append(ex)
+            if target_type in ['all', 'endpoint']:
+                endpoint_id = execution.attempt.test_run.endpoint_id if execution.attempt and execution.attempt.test_run else None
+                if endpoint_id:
+                    grouped_data[f'endpoint_{endpoint_id}'].append(execution)
+    
+    # Calculate metrics for each group
+    results = []
+    for key, exec_list in grouped_data.items():
+        if len(exec_list) < 5:  # Skip items with too few tests
+            continue
+            
+        total = len(exec_list)
+        passed = len([e for e in exec_list if e.success])
+        success_rate = (passed / total) * 100
+        
+        durations = [e.response_time_ms for e in exec_list if e.response_time_ms]
+        avg_duration = sum(durations) / len(durations) if durations else 0
+        
+        # Get name
+        if key.startswith('chain_'):
+            chain_id = int(key.split('_')[1])
+            chain = APIChain.query.get(chain_id)
+            name = chain.name if chain else f'Chain {chain_id}'
+            type_label = 'Chain'
+        else:
+            endpoint_id = int(key.split('_')[1])
+            endpoint = Endpoint.query.get(endpoint_id)
+            name = endpoint.name if endpoint else f'Endpoint {endpoint_id}'
+            type_label = 'Endpoint'
+        
+        results.append({
+            'id': key,
+            'name': name,
+            'type': type_label,
+            'success_rate': success_rate,
+            'execution_count': total,
+            'avg_duration': avg_duration
+        })
+    
+    # Sort by requested metric
+    if metric == 'success_rate':
+        results.sort(key=lambda x: x['success_rate'], reverse=True)
+    elif metric == 'execution_count':
+        results.sort(key=lambda x: x['execution_count'], reverse=True)
+    elif metric == 'avg_duration':
+        results.sort(key=lambda x: x['avg_duration'])
+    
+    return jsonify(results[:10])  # Top 10
 
+@report_bp.route('/api/problem_areas')
+def api_problem_areas():
+    """Get problem areas (worst performing endpoints/chains)"""
+    metric = request.args.get('metric', 'failure_rate')
+    time_range = request.args.get('time_range', '30')
+    
+    if time_range != 'all':
+        cutoff_date = datetime.utcnow() - timedelta(days=int(time_range))
+        executions = ExecutionResult.query.filter(ExecutionResult.started_at >= cutoff_date).all()
+    else:
+        executions = ExecutionResult.query.all()
+    
+    # Group by endpoint or chain
+    grouped_data = defaultdict(list)
+    
+    for execution in executions:
+        if execution.request_method == 'CHAIN':
+            chain_id = execution.request_payload.get('chain_id') if execution.request_payload else None
+            if chain_id:
+                grouped_data[f'chain_{chain_id}'].append(execution)
+        else:
+            endpoint_id = execution.attempt.test_run.endpoint_id if execution.attempt and execution.attempt.test_run else None
+            if endpoint_id:
+                grouped_data[f'endpoint_{endpoint_id}'].append(execution)
+    
+    # Calculate problem metrics
+    results = []
+    for key, exec_list in grouped_data.items():
+        if len(exec_list) < 3:  # Skip items with too few tests
+            continue
+            
+        total = len(exec_list)
+        failed = len([e for e in exec_list if not e.success])
+        errors = len([e for e in exec_list if e.error_message])
+        timeouts = len([e for e in exec_list if 'timeout' in (e.error_message or '').lower()])
+        
+        failure_rate = (failed / total) * 100
+        error_frequency = (errors / total) * 100
+        timeout_rate = (timeouts / total) * 100
+        
+        # Get name
+        if key.startswith('chain_'):
+            chain_id = int(key.split('_')[1])
+            chain = APIChain.query.get(chain_id)
+            name = chain.name if chain else f'Chain {chain_id}'
+            type_label = 'Chain'
+        else:
+            endpoint_id = int(key.split('_')[1])
+            endpoint = Endpoint.query.get(endpoint_id)
+            name = endpoint.name if endpoint else f'Endpoint {endpoint_id}'
+            type_label = 'Endpoint'
+        
+        results.append({
+            'id': key,
+            'name': name,
+            'type': type_label,
+            'failure_rate': failure_rate,
+            'error_frequency': error_frequency,
+            'timeout_rate': timeout_rate,
+            'total_executions': total
+        })
+    
+    # Sort by requested metric
+    if metric == 'failure_rate':
+        results.sort(key=lambda x: x['failure_rate'], reverse=True)
+    elif metric == 'error_frequency':
+        results.sort(key=lambda x: x['error_frequency'], reverse=True)
+    elif metric == 'timeout_rate':
+        results.sort(key=lambda x: x['timeout_rate'], reverse=True)
+    
+    return jsonify(results[:10])  # Top 10 problems
 
-    return render_template(
-        'reports/disposition_view.html',
-        grouped_executions=grouped_executions,
-        context_name=context_name,
-        status_filter=status, # Pass the status for display
-        transformation_filter=transformation_type # Pass filter for display
-    )
+@report_bp.route('/api/status_codes')
+def api_status_codes():
+    """Get status code distribution"""
+    time_range = request.args.get('time_range', '30')
+    
+    if time_range != 'all':
+        cutoff_date = datetime.utcnow() - timedelta(days=int(time_range))
+        executions = ExecutionResult.query.filter(ExecutionResult.started_at >= cutoff_date).all()
+    else:
+        executions = ExecutionResult.query.all()
+    
+    # Count status codes
+    status_counts = Counter()
+    for execution in executions:
+        if execution.status_code:
+            # Group status codes into ranges
+            code = execution.status_code
+            if 200 <= code < 300:
+                status_counts['2xx Success'] += 1
+            elif 300 <= code < 400:
+                status_counts['3xx Redirect'] += 1
+            elif 400 <= code < 500:
+                status_counts['4xx Client Error'] += 1
+            elif 500 <= code < 600:
+                status_counts['5xx Server Error'] += 1
+            else:
+                status_counts['Other'] += 1
+    
+    return jsonify(dict(status_counts))
+
+@report_bp.route('/api/recent_activity')
+def api_recent_activity():
+    """Get recent test activity"""
+    limit = request.args.get('limit', 20)
+    
+    recent_executions = ExecutionResult.query.order_by(
+        desc(ExecutionResult.started_at)
+    ).limit(int(limit)).all()
+    
+    activity = []
+    for execution in recent_executions:
+        if execution.request_method == 'CHAIN':
+            title = f"Chain execution: {execution.request_payload.get('chain_name', 'Unknown')}"
+            icon_class = 'fas fa-sitemap'
+        else:
+            endpoint_name = 'Unknown'
+            if execution.attempt and execution.attempt.test_run and execution.attempt.test_run.endpoint:
+                endpoint_name = execution.attempt.test_run.endpoint.name
+            title = f"Endpoint test: {endpoint_name}"
+            icon_class = 'fas fa-plug'
+        
+        activity.append({
+            'title': title,
+            'status': execution.status,
+            'created_at': execution.started_at.isoformat() if execution.started_at else '',
+            'duration': execution.request_duration_ms,
+            'icon_class': icon_class
+        })
+    
+    return jsonify(activity)
+
+@report_bp.route('/api/chains/analysis')
+def api_chain_analysis():
+    """Get detailed chain analysis"""
+    chain_id = request.args.get('chain_id')
+    time_range = request.args.get('time_range', '30')
+    
+    if time_range != 'all':
+        cutoff_date = datetime.utcnow() - timedelta(days=int(time_range))
+        query = ExecutionResult.query.filter(
+            and_(ExecutionResult.started_at >= cutoff_date, ExecutionResult.request_method == 'CHAIN')
+        )
+    else:
+        query = ExecutionResult.query.filter(ExecutionResult.request_method == 'CHAIN')
+    
+    if chain_id and chain_id != 'all':
+        # Filter by specific chain
+        executions = [e for e in query.all() 
+                     if e.request_payload and e.request_payload.get('chain_id') == int(chain_id)]
+    else:
+        executions = query.all()
+    
+    # Analyze chain step performance
+    step_analysis = defaultdict(lambda: {'success': 0, 'failure': 0, 'total': 0})
+    
+    for execution in executions:
+        if execution.request_payload and execution.request_payload.get('step_results'):
+            for step_result in execution.request_payload['step_results']:
+                step_order = step_result.get('step_order', 0)
+                step_name = step_result.get('step_name', f'Step {step_order}')
+                step_success = step_result.get('success', False)
+                
+                step_analysis[step_name]['total'] += 1
+                if step_success:
+                    step_analysis[step_name]['success'] += 1
+                else:
+                    step_analysis[step_name]['failure'] += 1
+    
+    # Convert to list format for charting
+    step_data = []
+    for step_name, data in step_analysis.items():
+        success_rate = (data['success'] / data['total'] * 100) if data['total'] > 0 else 0
+        step_data.append({
+            'step_name': step_name,
+            'success_rate': success_rate,
+            'total_executions': data['total'],
+            'success_count': data['success'],
+            'failure_count': data['failure']
+        })
+    
+    # Sort by step order if possible
+    step_data.sort(key=lambda x: x['step_name'])
+    
+    return jsonify({
+        'step_analysis': step_data,
+        'total_chain_executions': len(executions),
+        'overall_success_rate': (len([e for e in executions if e.success]) / len(executions) * 100) if executions else 0
+    })
+
+@report_bp.route('/api/endpoint/<int:endpoint_id>/overview')
+def api_endpoint_overview(endpoint_id):
+    """Get endpoint-specific overview metrics"""
+    time_range = request.args.get('time_range', '30')
+    
+    # Get executions for this endpoint (both direct and via chains)
+    if time_range != 'all':
+        cutoff_date = datetime.utcnow() - timedelta(days=int(time_range))
+        direct_executions = ExecutionResult.query.join(ExecutionSession).join(TestRun).filter(
+            and_(TestRun.endpoint_id == endpoint_id, ExecutionResult.started_at >= cutoff_date, ExecutionResult.request_method != 'CHAIN')
+        ).all()
+        
+        # Chain executions that use this endpoint
+        chain_executions = ExecutionResult.query.filter(
+            and_(ExecutionResult.started_at >= cutoff_date, ExecutionResult.request_method == 'CHAIN')
+        ).all()
+    else:
+        direct_executions = ExecutionResult.query.join(ExecutionSession).join(TestRun).filter(
+            and_(TestRun.endpoint_id == endpoint_id, ExecutionResult.request_method != 'CHAIN')
+        ).all()
+        
+        # Chain executions that use this endpoint
+        chain_executions = ExecutionResult.query.filter(ExecutionResult.request_method == 'CHAIN').all()
+    
+    # Filter chain executions that used this endpoint
+    endpoint_chain_executions = []
+    for execution in chain_executions:
+        if execution.request_payload and execution.request_payload.get('step_results'):
+            for step in execution.request_payload['step_results']:
+                if step.get('endpoint_id') == endpoint_id:
+                    endpoint_chain_executions.append(execution)
+                    break
+    
+    all_executions = direct_executions + endpoint_chain_executions
+    
+    # Calculate metrics
+    total_tests = len(all_executions)
+    passed_tests = len([e for e in all_executions if e.success])
+    success_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
+    
+    # Average duration
+    durations = [e.response_time_ms for e in all_executions if e.response_time_ms]
+    avg_duration = sum(durations) / len(durations) if durations else 0
+    
+    # Test runs count
+    test_runs = set()
+    for execution in direct_executions:
+        if execution.attempt and execution.attempt.test_run:
+            test_runs.add(execution.attempt.test_run.id)
+    
+    return jsonify({
+        'total_tests': total_tests,
+        'direct_tests': len(direct_executions),
+        'chain_tests': len(endpoint_chain_executions),
+        'success_rate': round(success_rate, 1),
+        'avg_duration': round(avg_duration, 0),
+        'test_runs': len(test_runs)
+    })
+
+@report_bp.route('/api/endpoint/<int:endpoint_id>/timeline')
+def api_endpoint_timeline(endpoint_id):
+    """Get endpoint-specific timeline data"""
+    time_range = request.args.get('time_range', '30')
+    
+    if time_range != 'all':
+        days = int(time_range)
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+    else:
+        days = 90
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+    
+    timeline_data = []
+    
+    for i in range(days):
+        date = cutoff_date + timedelta(days=i)
+        start_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date + timedelta(days=1)
+        
+        # Direct endpoint executions
+        direct_executions = ExecutionResult.query.join(ExecutionSession).join(TestRun).filter(
+            and_(
+                TestRun.endpoint_id == endpoint_id,
+                ExecutionResult.started_at >= start_date,
+                ExecutionResult.started_at < end_date,
+                ExecutionResult.request_method != 'CHAIN'
+            )
+        ).all()
+        
+        # Calculate success rate and average duration
+        def calc_metrics(exec_list):
+            if not exec_list:
+                return {'success_rate': 0, 'avg_duration': 0, 'count': 0}
+            
+            passed = len([e for e in exec_list if e.success])
+            success_rate = (passed / len(exec_list)) * 100
+            
+            durations = [e.response_time_ms for e in exec_list if e.response_time_ms]
+            avg_duration = sum(durations) / len(durations) if durations else 0
+            
+            return {
+                'success_rate': success_rate,
+                'avg_duration': avg_duration,
+                'count': len(exec_list)
+            }
+        
+        metrics = calc_metrics(direct_executions)
+        
+        timeline_data.append({
+            'date': start_date.isoformat(),
+            'success_rate': metrics['success_rate'],
+            'avg_duration': metrics['avg_duration'],
+            'test_count': metrics['count']
+        })
+    
+    return jsonify(timeline_data)
+
+@report_bp.route('/api/endpoint/<int:endpoint_id>/recent_runs')
+def api_endpoint_recent_runs(endpoint_id):
+    """Get recent test runs for an endpoint"""
+    limit = request.args.get('limit', 10)
+    
+    recent_runs = TestRun.query.filter_by(endpoint_id=endpoint_id).order_by(
+        desc(TestRun.created_at)
+    ).limit(int(limit)).all()
+    
+    runs_data = []
+    for run in recent_runs:
+        # Calculate run metrics
+        total_executions = 0
+        passed_executions = 0
+        
+        for attempt in run.attempts:
+            executions = ExecutionResult.query.filter_by(test_run_attempt_id=attempt.id).all()
+            total_executions += len(executions)
+            passed_executions += len([e for e in executions if e.success])
+        
+        success_rate = (passed_executions / total_executions * 100) if total_executions > 0 else 0
+        
+        runs_data.append({
+            'id': run.id,
+            'name': run.name,
+            'status': run.status,
+            'created_at': run.created_at.isoformat() if run.created_at else '',
+            'total_tests': total_executions,
+            'passed_tests': passed_executions,
+            'success_rate': round(success_rate, 1)
+        })
+    
+    return jsonify(runs_data)

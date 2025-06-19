@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* Dashboard Layout */
+    /* Enhanced Dashboard Styles for Execution Engine */
     .dashboard-container {
       max-width: 1400px;
       margin: 0 auto;
@@ -58,10 +58,10 @@
       margin: 0;
     }
 
-    /* Stats Grid */
+    /* Enhanced Stats Grid */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 1rem;
       margin-bottom: 2rem;
     }
@@ -81,6 +81,10 @@
       border-color: var(--accent-color);
       transform: translateY(-2px);
       box-shadow: 0 10px 25px rgba(0, 255, 65, 0.2);
+    }
+
+    .stat-card.execution-stat {
+      background: linear-gradient(135deg, var(--surface-color), rgba(0, 255, 65, 0.05));
     }
 
     .stat-icon {
@@ -103,6 +107,249 @@
       color: var(--text-muted-color);
       text-transform: uppercase;
       letter-spacing: 0.5px;
+    }
+
+    .stat-sublabel {
+      font-size: 0.75rem;
+      color: var(--text-muted-color);
+      margin-top: 0.25rem;
+    }
+
+    /* Execution Overview */
+    .execution-overview {
+      margin-bottom: 2rem;
+    }
+
+    .execution-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .execution-card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .execution-card h3 {
+      color: var(--accent-color);
+      margin: 0 0 1rem 0;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Active Execution Items */
+    .active-execution-item {
+      background: rgba(0, 255, 65, 0.1);
+      border: 1px solid rgba(0, 255, 65, 0.3);
+      border-radius: var(--border-radius-sm);
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .execution-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .execution-name {
+      font-weight: 500;
+      color: var(--text-color);
+    }
+
+    .strategy-badge {
+      background: rgba(0, 255, 65, 0.2);
+      color: var(--accent-color);
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .execution-metrics {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.8rem;
+      color: var(--text-muted-color);
+    }
+
+    .metric-item {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    /* Health Status Indicators */
+    .health-indicator {
+      display: inline-block;
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+    }
+
+    .health-excellent { background-color: #32cd32; }
+    .health-good { background-color: #00bfff; }
+    .health-warning { background-color: #ffa500; }
+    .health-critical { background-color: #ff4500; }
+    .health-unknown { background-color: #888; }
+
+    /* Enhanced Progress Bars */
+    .progress-container {
+      background: var(--border-color);
+      border-radius: 4px;
+      height: 6px;
+      margin-top: 0.5rem;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-color), #32cd32);
+      transition: width 0.3s ease;
+      position: relative;
+    }
+
+    .progress-bar.animated {
+      animation: progress-glow 2s infinite;
+    }
+
+    @keyframes progress-glow {
+      0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 65, 0.5); }
+      50% { box-shadow: 0 0 15px rgba(0, 255, 65, 0.8); }
+    }
+
+    /* Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .dashboard-card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .dashboard-card h2 {
+      color: var(--accent-color);
+      margin: 0 0 1.5rem 0;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Test Run Items */
+    .test-run-item {
+      padding: 1rem;
+      border: 1px solid var(--border-color-light);
+      border-radius: var(--border-radius-sm);
+      margin-bottom: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .test-run-item:hover {
+      border-color: var(--accent-color);
+      background: var(--accent-color-bg);
+    }
+
+    .test-run-item.execution-enabled {
+      border-left: 4px solid var(--accent-color);
+    }
+
+    .test-run-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .test-run-name {
+      color: var(--text-color);
+      text-decoration: none;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .test-run-name:hover {
+      color: var(--accent-color);
+      text-decoration: none;
+    }
+
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-not_started { background: rgba(128, 128, 128, 0.2); color: #888; }
+    .status-pending { background: rgba(255, 215, 0, 0.2); color: #ffd700; }
+    .status-running { 
+      background: rgba(0, 191, 255, 0.2); 
+      color: #00bfff;
+      animation: pulse 2s infinite;
+    }
+    .status-paused {
+      background: rgba(255, 165, 0, 0.2);
+      color: #ffa500;
+    }
+    .status-completed { background: rgba(50, 205, 50, 0.2); color: #32cd32; }
+    .status-failed { background: rgba(255, 69, 0, 0.2); color: #ff4500; }
+    .status-cancelled { background: rgba(128, 128, 128, 0.2); color: #888; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .test-run-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted-color);
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .execution-info {
+      color: var(--accent-color);
+      font-weight: 500;
+    }
+
+    /* Real-time Updates */
+    .real-time-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #32cd32;
+      border-radius: 50%;
+      animation: blink 1s infinite;
+      margin-right: 0.5rem;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0.3; }
     }
 
     /* Quick Actions */
@@ -155,39 +402,30 @@
       color: var(--text-muted-color);
     }
 
-    /* Dashboard Grid */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2rem;
-      margin-bottom: 2rem;
+    /* Empty States */
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted-color);
     }
 
-    @media (max-width: 768px) {
-      .dashboard-grid {
-        grid-template-columns: 1fr;
-      }
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
     }
 
-    .dashboard-card {
-      background: var(--surface-color);
-      border: 1px solid var(--border-color);
-      border-radius: var(--border-radius);
-      padding: 1.5rem;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    .empty-state p {
+      margin: 0.5rem 0;
     }
 
-    .dashboard-card h2 {
+    .empty-state a {
       color: var(--accent-color);
-      margin: 0 0 1.5rem 0;
-      font-size: 1.3rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      text-decoration: none;
     }
 
-    .dashboard-card h2 i {
-      font-size: 1.2rem;
+    .empty-state a:hover {
+      text-decoration: underline;
     }
 
     /* Activity Feed */
@@ -234,142 +472,22 @@
       font-size: 0.8rem;
     }
 
-    /* Test Run Cards */
-    .test-run-item {
-      padding: 1rem;
-      border: 1px solid var(--border-color-light);
-      border-radius: var(--border-radius-sm);
-      margin-bottom: 1rem;
-      transition: all 0.3s ease;
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .execution-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
-    .test-run-item:hover {
-      border-color: var(--accent-color);
-      background: var(--accent-color-bg);
-    }
-
-    .test-run-header {
-      display: flex;
-      justify-content: between;
-      align-items: center;
-      margin-bottom: 0.5rem;
-    }
-
-    .test-run-name {
-      color: var(--text-color);
-      text-decoration: none;
-      font-weight: 500;
-      flex: 1;
-    }
-
-    .test-run-name:hover {
-      color: var(--accent-color);
-      text-decoration: none;
-    }
-
-    .status-badge {
-      padding: 0.25rem 0.75rem;
-      border-radius: 1rem;
-      font-size: 0.75rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .status-not_started { background: rgba(128, 128, 128, 0.2); color: #888; }
-    .status-pending { background: rgba(255, 215, 0, 0.2); color: #ffd700; }
-    .status-running { 
-      background: rgba(0, 191, 255, 0.2); 
-      color: #00bfff;
-      animation: pulse 2s infinite;
-    }
-    .status-completed { background: rgba(50, 205, 50, 0.2); color: #32cd32; }
-    .status-failed { background: rgba(255, 69, 0, 0.2); color: #ff4500; }
-    .status-cancelled { background: rgba(128, 128, 128, 0.2); color: #888; }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
-
-    .test-run-meta {
-      font-size: 0.8rem;
-      color: var(--text-muted-color);
-      display: flex;
-      gap: 1rem;
-    }
-
-    .progress-mini {
-      width: 100%;
-      height: 4px;
-      background: var(--border-color);
-      border-radius: 2px;
-      margin-top: 0.5rem;
-      overflow: hidden;
-    }
-
-    .progress-mini-fill {
-      height: 100%;
-      background: var(--accent-color);
-      transition: width 0.3s ease;
-    }
-
-    /* Empty States */
-    .empty-state {
-      text-align: center;
-      padding: 2rem;
-      color: var(--text-muted-color);
-    }
-
-    .empty-state i {
-      font-size: 3rem;
-      margin-bottom: 1rem;
-      opacity: 0.5;
-    }
-
-    .empty-state p {
-      margin: 0.5rem 0;
-    }
-
-    .empty-state a {
-      color: var(--accent-color);
-      text-decoration: none;
-    }
-
-    .empty-state a:hover {
-      text-decoration: underline;
-    }
-
-    /* Section Headers */
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.5rem;
-    }
-
-    .section-title {
-      font-size: 1.5rem;
-      color: var(--accent-color);
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .view-all-link {
-      color: var(--text-muted-color);
-      text-decoration: none;
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      transition: color 0.3s ease;
-    }
-
-    .view-all-link:hover {
-      color: var(--accent-color);
-      text-decoration: none;
+    @media (max-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .test-run-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
     }
   </style>
 {% endblock %}
@@ -382,33 +500,140 @@
     <div class="welcome-banner">
       <div class="welcome-content">
         <h1 class="welcome-title">Welcome back, {{ current_user.username }}!</h1>
-        <p class="welcome-subtitle">Your AI Security Testing Platform</p>
+        <p class="welcome-subtitle">
+          <span class="real-time-indicator"></span>
+          AI Security Testing Platform with Adaptive Execution Engine
+        </p>
       </div>
     </div>
 
-    <!-- Statistics Overview -->
+    <!-- Enhanced Statistics Overview -->
     <div class="stats-grid">
       <div class="stat-card">
         <i class="fas fa-vial stat-icon"></i>
         <span class="stat-number">{{ stats.total_test_runs|default(0) }}</span>
         <span class="stat-label">Test Runs</span>
+        <div class="stat-sublabel">{{ stats.successful_executions|default(0) }} successful executions</div>
       </div>
+      
       <div class="stat-card">
         <i class="fas fa-layer-group stat-icon"></i>
         <span class="stat-number">{{ stats.total_test_suites|default(0) }}</span>
         <span class="stat-label">Test Suites</span>
+        <div class="stat-sublabel">{{ stats.total_endpoints|default(0) }} endpoints, {{ stats.total_chains|default(0) }} chains</div>
       </div>
-      <div class="stat-card">
-        <i class="fas fa-plug stat-icon"></i>
-        <span class="stat-number">{{ stats.total_endpoints|default(0) }}</span>
-        <span class="stat-label">Endpoints</span>
+      
+      <div class="stat-card execution-stat">
+        <i class="fas fa-cogs stat-icon"></i>
+        <span class="stat-number">{{ stats.total_test_cases_executed|default(0) }}</span>
+        <span class="stat-label">Cases Executed</span>
+        <div class="stat-sublabel">{{ (stats.overall_success_rate * 100)|round(1)|default(0) }}% success rate</div>
       </div>
-      <div class="stat-card">
-        <i class="fas fa-shield-alt stat-icon"></i>
-        <span class="stat-number">{{ stats.tests_passed|default(0) }}</span>
-        <span class="stat-label">Tests Passed</span>
+      
+      <div class="stat-card execution-stat">
+        <i class="fas fa-tachometer-alt stat-icon"></i>
+        <span class="stat-number">{{ stats.active_executions|default(0) }}</span>
+        <span class="stat-label">Active Executions</span>
+        <div class="stat-sublabel">{{ (stats.avg_response_time_ms or 0)|round(0) }}ms avg response</div>
       </div>
     </div>
+
+    <!-- Execution Engine Overview -->
+    {% if execution_overview.active_sessions or execution_overview.recent_performance %}
+    <section class="execution-overview">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-chart-line"></i>
+          Execution Engine Status
+        </h2>
+      </div>
+      
+      <div class="execution-grid">
+        
+        <!-- Active Executions -->
+        {% if execution_overview.active_sessions %}
+        <div class="execution-card">
+          <h3><i class="fas fa-play"></i> Active Executions</h3>
+          {% for session in execution_overview.active_sessions %}
+          <div class="active-execution-item">
+            <div class="execution-header">
+              <span class="execution-name">{{ session.test_run_name }}</span>
+              <span class="strategy-badge">{{ session.strategy_name }}</span>
+            </div>
+            <div class="execution-metrics">
+              <div class="metric-item">
+                <span class="health-indicator health-{{ session.health_status }}"></span>
+                {{ session.health_status|title }}
+              </div>
+              <div class="metric-item">
+                <i class="fas fa-percentage"></i>
+                {{ session.progress_percentage }}%
+              </div>
+              <div class="metric-item">
+                <i class="fas fa-clock"></i>
+                {{ (session.duration_seconds / 60)|round(1) }}m
+              </div>
+              {% if session.requests_per_second > 0 %}
+              <div class="metric-item">
+                <i class="fas fa-tachometer-alt"></i>
+                {{ session.requests_per_second|round(1) }} req/s
+              </div>
+              {% endif %}
+            </div>
+            <div class="progress-container">
+              <div class="progress-bar animated" style="width: {{ session.progress_percentage }}%"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        
+        <!-- Recent Performance -->
+        {% if execution_overview.recent_performance %}
+        <div class="execution-card">
+          <h3><i class="fas fa-chart-bar"></i> Recent Performance (24h)</h3>
+          <div class="metric-item" style="margin-bottom: 0.5rem;">
+            <i class="fas fa-vial"></i>
+            <strong>{{ execution_overview.recent_performance.total_cases_executed }}</strong> test cases executed
+          </div>
+          <div class="metric-item" style="margin-bottom: 0.5rem;">
+            <i class="fas fa-check-circle"></i>
+            <strong>{{ (execution_overview.recent_performance.success_rate * 100)|round(1) }}%</strong> success rate
+          </div>
+          <div class="metric-item" style="margin-bottom: 0.5rem;">
+            <i class="fas fa-stopwatch"></i>
+            <strong>{{ execution_overview.recent_performance.avg_response_time_ms|round(0) }}ms</strong> avg response time
+          </div>
+          <div class="metric-item">
+            <i class="fas fa-layer-group"></i>
+            <strong>{{ execution_overview.recent_performance.sessions_count }}</strong> execution sessions
+          </div>
+        </div>
+        {% endif %}
+        
+        <!-- Strategy Efficiency -->
+        {% if execution_overview.strategy_efficiency %}
+        <div class="execution-card">
+          <h3><i class="fas fa-brain"></i> Strategy Efficiency (7d)</h3>
+          {% for strategy, stats in execution_overview.strategy_efficiency.items() %}
+          <div style="margin-bottom: 0.75rem; padding: 0.5rem; background: rgba(0, 255, 65, 0.05); border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span class="strategy-badge">{{ strategy }}</span>
+              <span style="font-size: 0.8rem; color: var(--text-muted-color);">{{ stats.usage_count }} uses</span>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted-color); margin-top: 0.25rem;">
+              {{ (stats.avg_success_rate * 100)|round(1) }}% success • 
+              {{ stats.avg_response_time_ms|round(0) }}ms avg • 
+              {{ stats.avg_adjustments|round(1) }} avg adjustments
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        
+      </div>
+    </section>
+    {% endif %}
 
     <!-- Quick Actions -->
     <section class="quick-actions">
@@ -423,7 +648,7 @@
           <i class="fas fa-plus-circle action-icon"></i>
           <div class="action-content">
             <h3>Create Test Run</h3>
-            <p>Start a new security test against your endpoints</p>
+            <p>Start a new security test with adaptive execution</p>
           </div>
         </a>
         <a href="{{ url_for('endpoints_bp.create_endpoint') }}" class="action-card">
@@ -458,7 +683,7 @@
         <h2><i class="fas fa-running"></i> Active Test Runs</h2>
         {% if active_test_runs %}
           {% for run in active_test_runs %}
-            <div class="test-run-item">
+            <div class="test-run-item {% if run.uses_execution_engine() %}execution-enabled{% endif %}">
               <div class="test-run-header">
                 <a href="{{ url_for('test_runs_bp.view_test_run', run_id=run.id) }}" class="test-run-name">
                   {{ run.name or 'Test Run #' + run.id|string }}
@@ -471,10 +696,19 @@
               <div class="test-run-meta">
                 <span><i class="fas fa-target"></i> {{ run.get_target_name() }}</span>
                 <span><i class="fas fa-clock"></i> {{ run.created_at.strftime('%m/%d %H:%M') }}</span>
+                {% if run.uses_execution_engine() %}
+                  <span class="execution-info"><i class="fas fa-cogs"></i> Execution Engine</span>
+                {% endif %}
+                {% if run.current_execution_session %}
+                  <span class="execution-info">
+                    <i class="fas fa-brain"></i> {{ run.current_execution_session.strategy_name }}
+                  </span>
+                {% endif %}
               </div>
-              {% if run.progress_total > 0 %}
-                <div class="progress-mini">
-                  <div class="progress-mini-fill" style="width: {{ run.progress_percent }}%"></div>
+              {% if run.progress_percentage > 0 %}
+                <div class="progress-container">
+                  <div class="progress-bar {% if run.status == 'running' %}animated{% endif %}" 
+                       style="width: {{ run.progress_percentage }}%"></div>
                 </div>
               {% endif %}
             </div>
@@ -498,7 +732,15 @@
                 <i class="{{ activity.icon }}"></i>
               </div>
               <div class="activity-content">
-                <div class="activity-title">{{ activity.title }}</div>
+                <div class="activity-title">
+                  {% if activity.link %}
+                    <a href="{{ activity.link }}" style="color: var(--text-color); text-decoration: none;">
+                      {{ activity.title }}
+                    </a>
+                  {% else %}
+                    {{ activity.title }}
+                  {% endif %}
+                </div>
                 <div class="activity-meta">{{ activity.time_ago }}</div>
               </div>
             </div>
@@ -525,8 +767,8 @@
           </a>
         </div>
         {% if user_test_runs %}
-          {% for run in user_test_runs %}
-            <div class="test-run-item">
+          {% for run in user_test_runs[:5] %}
+            <div class="test-run-item {% if run.uses_execution_engine() %}execution-enabled{% endif %}">
               <div class="test-run-header">
                 <a href="{{ url_for('test_runs_bp.view_test_run', run_id=run.id) }}" class="test-run-name">
                   {{ run.name or 'Test Run #' + run.id|string }}
@@ -538,13 +780,16 @@
               <div class="test-run-meta">
                 <span><i class="fas fa-target"></i> {{ run.get_target_description() }}</span>
                 <span><i class="fas fa-calendar"></i> {{ run.created_at.strftime('%m/%d %H:%M') }}</span>
-                {% if run.iterations > 1 %}
-                  <span><i class="fas fa-redo"></i> {{ run.iterations }}x</span>
+                {% if run.uses_execution_engine() %}
+                  <span class="execution-info"><i class="fas fa-cogs"></i> Engine</span>
+                {% endif %}
+                {% if run.total_executions > 1 %}
+                  <span><i class="fas fa-redo"></i> {{ run.total_executions }} executions</span>
                 {% endif %}
               </div>
-              {% if run.progress_total > 0 %}
-                <div class="progress-mini">
-                  <div class="progress-mini-fill" style="width: {{ run.progress_percent }}%"></div>
+              {% if run.progress_percentage > 0 %}
+                <div class="progress-container">
+                  <div class="progress-bar" style="width: {{ run.progress_percentage }}%"></div>
                 </div>
               {% endif %}
             </div>
@@ -558,15 +803,33 @@
         {% endif %}
       </div>
 
-      <!-- Test Suites & Resources -->
+      <!-- Resources & Health -->
       <div class="dashboard-card">
         <div class="section-header">
-          <h2><i class="fas fa-layer-group"></i> Your Resources</h2>
-          <a href="{{ url_for('test_suites_bp.list_test_suites') }}" class="view-all-link">
-            View All <i class="fas fa-arrow-right"></i>
-          </a>
+          <h2><i class="fas fa-heart-pulse"></i> System Health</h2>
         </div>
         
+        <!-- Execution Health -->
+        {% if execution_overview.health_summary %}
+        <div style="margin-bottom: 1.5rem;">
+          <h4 style="margin: 0 0 0.5rem 0; color: var(--text-color);">Execution Health</h4>
+          {% for health, count in execution_overview.health_summary.items() %}
+            {% if count > 0 %}
+            <div class="activity-item" style="padding: 0.5rem 0;">
+              <div class="activity-icon {{ 'success' if health == 'excellent' else 'info' if health == 'good' else 'warning' if health == 'warning' else 'error' if health == 'critical' else 'info' }}">
+                <span class="health-indicator health-{{ health }}"></span>
+              </div>
+              <div class="activity-content">
+                <div class="activity-title">{{ health|title }} Performance</div>
+                <div class="activity-meta">{{ count }} execution{{ 's' if count != 1 else '' }}</div>
+              </div>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+        
+        <!-- Resources Summary -->
         <div class="activity-item">
           <div class="activity-icon info">
             <i class="fas fa-layer-group"></i>
@@ -597,25 +860,6 @@
           </div>
         </div>
 
-        {% if recent_test_suites %}
-          <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-color-light);">
-          <div style="margin-bottom: 0.5rem; font-weight: 500; color: var(--text-color);">Recently Created:</div>
-          {% for suite in recent_test_suites[:3] %}
-            <div class="activity-item">
-              <div class="activity-icon success">
-                <i class="fas fa-plus"></i>
-              </div>
-              <div class="activity-content">
-                <div class="activity-title">
-                  <a href="{{ url_for('test_suites_bp.test_suite_details', suite_id=suite.id) }}" style="color: var(--text-color); text-decoration: none;">
-                    {{ suite.description|truncate(50) }}
-                  </a>
-                </div>
-                <div class="activity-meta">{{ suite.created_at.strftime('%m/%d at %H:%M') }}</div>
-              </div>
-            </div>
-          {% endfor %}
-        {% endif %}
       </div>
 
     </div>
@@ -625,7 +869,7 @@
     <div class="welcome-banner">
       <div class="welcome-content">
         <h1 class="welcome-title">FuzzyPrompts</h1>
-        <p class="welcome-subtitle">AI Security Testing Platform</p>
+        <p class="welcome-subtitle">AI Security Testing Platform with Adaptive Execution Engine</p>
         <a href="{{ url_for('auth_bp.login') }}" class="btn btn-primary" style="margin-top: 1rem;">
           <i class="fas fa-sign-in-alt"></i> Sign In to Get Started
         </a>
@@ -636,5 +880,82 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+// Real-time dashboard updates
+let updateInterval;
 
+function updateDashboard() {
+    fetch('/api/dashboard-stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.stats) {
+                // Update stat numbers
+                document.querySelectorAll('.stat-number').forEach((el, index) => {
+                    const statValue = Object.values(data.stats)[index];
+                    if (statValue !== undefined) {
+                        el.textContent = statValue;
+                    }
+                });
+                
+                // Update execution overview if present
+                if (data.execution_overview && data.execution_overview.active_sessions) {
+                    updateActiveExecutions(data.execution_overview.active_sessions);
+                }
+            }
+        })
+        .catch(error => console.error('Dashboard update failed:', error));
+}
+
+function updateActiveExecutions(activeSessions) {
+    activeSessions.forEach(session => {
+        const progressBars = document.querySelectorAll(`[data-session-id="${session.session_id}"] .progress-bar`);
+        progressBars.forEach(bar => {
+            bar.style.width = session.progress_percentage + '%';
+        });
+    });
+}
+
+function updateExecutionStatus(testRunId) {
+    fetch(`/api/execution-status/${testRunId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.has_active_session) {
+                // Update progress bars and status
+                const progressBars = document.querySelectorAll(`[data-test-run-id="${testRunId}"] .progress-bar`);
+                progressBars.forEach(bar => {
+                    bar.style.width = data.progress.progress_percentage + '%';
+                });
+                
+                // Update metrics if displayed
+                const metricsElements = document.querySelectorAll(`[data-test-run-id="${testRunId}"] .execution-metrics`);
+                metricsElements.forEach(el => {
+                    // Update specific metrics
+                });
+            }
+        })
+        .catch(error => console.error('Status update failed:', error));
+}
+
+// Start real-time updates when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Update dashboard every 5 seconds
+    updateInterval = setInterval(updateDashboard, 5000);
+    
+    // Update individual active executions every 2 seconds
+    const activeTestRuns = document.querySelectorAll('[data-test-run-id]');
+    activeTestRuns.forEach(el => {
+        const testRunId = el.dataset.testRunId;
+        if (testRunId) {
+            setInterval(() => updateExecutionStatus(testRunId), 2000);
+        }
+    });
+});
+
+// Clean up interval when leaving page
+window.addEventListener('beforeunload', function() {
+    if (updateInterval) {
+        clearInterval(updateInterval);
+    }
+});
+</script>
 {% endblock %}

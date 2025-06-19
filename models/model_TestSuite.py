@@ -17,7 +17,6 @@ class TestSuite(db.Model):
 
     # Relationships
     test_cases = db.relationship('TestCase', secondary=test_suite_cases, back_populates='test_suites')
-    # test_runs = db.relationship('TestRun', secondary='test_run_suites', back_populates='test_suites')
     test_runs = db.relationship(
         'TestRun',
         secondary=test_run_suites, 

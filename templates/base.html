@@ -105,13 +105,8 @@
                     </ul>
                 </li>
 
-                <li
-                    class="dropdown {% if request.endpoint and (request.endpoint.startswith('report_bp') or request.endpoint.startswith('reports_bp')) %}active{% endif %}">
-                    <a href="#"><i class="fas fa-chart-pie"></i> Reports</a>
-                    <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('reports_bp.dashboard') }}"><i class="fas fa-chart-line"></i> Analytics Dashboard</a></li>
-                        <li><a href="{{ url_for('report_bp.report') }}"><i class="fas fa-chart-bar"></i> Legacy Reports</a></li>
-                    </ul>
+                <li class="{% if request.endpoint and request.endpoint.startswith('report_bp') %}active{% endif %}">
+                    <a href="{{ url_for('report_bp.dashboard') }}"><i class="fas fa-chart-line"></i> Analytics</a>
                 </li>
 
                 <li

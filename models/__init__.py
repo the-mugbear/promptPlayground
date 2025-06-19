@@ -10,9 +10,9 @@ from .model_User import User
 from .model_Endpoints import Endpoint, EndpointHeader 
 from .model_TestCase import TestCase
 from .model_TestSuite import TestSuite
-from .model_TestExecution import TestExecution
-from .model_TestRunAttempt import TestRunAttempt 
+# TestExecution and TestRunAttempt removed - replaced by ExecutionSession/ExecutionResult
 from .model_TestRun import TestRun
+from .model_ExecutionSession import ExecutionSession, ExecutionResult
 from .model_PromptFilter import PromptFilter
 from .model_Invitation import Invitation
 from .model_Dialogue import Dialogue 
@@ -28,8 +28,8 @@ from .model_PayloadTemplate import PayloadTemplate
 __all__ = [
     'db',
     'User', 'EndpointHeader', 'Endpoint', 'TestCase', 'TestSuite',
-    'TestExecution', 'TestRunAttempt', 'TestRun', 'PromptFilter',
-    'Invitation', 'Dialogue', 'ManualTestRecord',
-    'APIChain', 'APIChainStep',
-    'test_suite_cases', 'test_run_suites', 'test_run_filters', 'PayloadTemplate'
+    'TestRun', 'ExecutionSession', 'ExecutionResult', 
+    'PromptFilter', 'Invitation', 'Dialogue', 'ManualTestRecord',
+    'APIChain', 'APIChainStep', 'PayloadTemplate',
+    'test_suite_cases', 'test_run_suites', 'test_run_filters'
 ]

@@ -22,8 +22,8 @@ class TestCase(db.Model):
         secondary=test_suite_cases,
         back_populates='test_cases'
     )
-    executions = db.relationship(
-        'TestExecution',
+    execution_results = db.relationship(
+        'ExecutionResult',
         back_populates='test_case',
         cascade='all, delete-orphan'
     )

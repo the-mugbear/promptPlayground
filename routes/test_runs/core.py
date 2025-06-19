@@ -12,9 +12,9 @@ from datetime import datetime
 from models.model_Endpoints import Endpoint
 from models.model_TestSuite import TestSuite
 from models.model_TestRun import TestRun
-from models.model_TestRunAttempt import TestRunAttempt
-from models.model_TestExecution import TestExecution
+from models.model_ExecutionSession import ExecutionSession, ExecutionResult
 from models.model_PromptFilter import PromptFilter
+from models.model_APIChain import APIChain
 from . import test_runs_bp
 
 
@@ -43,137 +43,89 @@ def list_test_runs():
 @login_required
 def view_test_run(run_id):
     """
-    View detailed information about a specific test run.
+    View detailed information about a specific test run (Fresh Implementation).
 
     Args:
         run_id: The ID of the test run to view
 
     Returns:
-        Rendered template with test run details including:
-        - Test case responses and status
-        - Overall execution statistics
-        - Per‐attempt execution counts
-        - Associated prompt filters
-        - Run‐level transformations
+        Rendered template with test run details using execution engine data
     """
-    # 1) Eager load the run, its endpoint, test suites → test cases,
-    #    and all attempts → executions → test_case
+    # Get test run with fresh model relationships
     run = (
         TestRun.query
         .options(
             selectinload(TestRun.endpoint),
-            selectinload(TestRun.test_suites).selectinload(
-                TestSuite.test_cases),
-            selectinload(TestRun.attempts)
-            .selectinload(TestRunAttempt.executions)
-            .selectinload(TestExecution.test_case)
+            selectinload(TestRun.chain),
+            selectinload(TestRun.test_suites).selectinload(TestSuite.test_cases),
+            selectinload(TestRun.execution_sessions)
         )
         .get_or_404(run_id)
     )
 
-    # 2) Deserialize run‐level transformations JSON into a Python list
-    run_transformations = run.run_transformations if run.run_transformations is not None else []
-
-    # 3) Build a map of test_case_id → { test_case, attempts: [ … ] }
-    test_case_map = {}
-    for attempt in run.attempts:
-        for execution in attempt.executions:
-            if not execution.test_case:
-                continue
-            tc_id = execution.test_case.id
-            if tc_id not in test_case_map:
-                test_case_map[tc_id] = {
-                    'test_case': execution.test_case,
-                    'attempts': []
-                }
-            test_case_map[tc_id]['attempts'].append({
-                'execution_id': execution.id,
-                'attempt_number': attempt.attempt_number,
-                'status': execution.status,
-                'response': execution.response_data,
-                'started_at': execution.started_at,
-                'finished_at': execution.finished_at,
-                'processed_prompt': execution.processed_prompt,
-                # Enhanced debugging information
-                'request_method': execution.request_method,
-                'request_url': execution.request_url,
-                'request_headers': execution.request_headers,
-                'request_payload': execution.request_payload,
-                'request_duration_ms': execution.request_duration_ms,
-                'response_headers': execution.response_headers,
-                'status_code': execution.status_code,
-                'error_message': execution.error_message,
-                'error_details': execution.error_details
+    # Get the latest execution session
+    latest_session = run.latest_execution_session
+    
+    # Build execution results if we have a session
+    execution_results = []
+    result_stats = {
+        'total': 0,
+        'successful': 0,
+        'failed': 0,
+        'success_rate': 0.0
+    }
+    
+    if latest_session:
+        # Get execution results for this session
+        results = (
+            ExecutionResult.query
+            .filter(ExecutionResult.session_id == latest_session.id)
+            .options(selectinload(ExecutionResult.test_case))
+            .order_by(ExecutionResult.sequence_number)
+            .all()
+        )
+        
+        # Build execution results for display
+        for result in results:
+            execution_results.append({
+                'id': result.id,
+                'test_case': result.test_case,
+                'sequence_number': result.sequence_number,
+                'success': result.success,
+                'status_code': result.status_code,
+                'response_time_ms': result.response_time_ms,
+                'error_message': result.error_message,
+                'executed_at': result.executed_at,
+                'started_at': result.started_at,
+                'request_data': result.request_data,
+                'response_data': result.response_data
             })
+        
+        # Calculate statistics
+        result_stats = {
+            'total': len(results),
+            'successful': sum(1 for r in results if r.success),
+            'failed': sum(1 for r in results if not r.success),
+            'success_rate': (sum(1 for r in results if r.success) / len(results) * 100) if results else 0
+        }
 
-    # 4) Sort each test case’s executions by attempt_number
-    for item in test_case_map.values():
-        item['attempts'].sort(key=lambda x: x['attempt_number'])
-
-    # Calculate overall execution statistics
-    overall_counts = (
-        db.session.query(
-            func.lower(TestExecution.status),
-            func.count(TestExecution.id)
-        )
-        .join(TestRunAttempt)
-        .filter(TestRunAttempt.test_run_id == run_id)
-        .group_by(TestExecution.status)
-        .all()
-    )
-
-    # 5) Calculate overall execution statistics (passed, failed, etc.)
-    overall_counts = (
-        db.session.query(
-            func.lower(TestExecution.status),
-            func.count(TestExecution.id)
-        )
-        .join(TestRunAttempt)
-        .filter(TestRunAttempt.test_run_id == run_id)
-        .group_by(TestExecution.status)
-        .all()
-    )
-    overall_counts_dict = {status: count for status, count in overall_counts}
-    passed_count = overall_counts_dict.get('passed', 0)
-    failed_count = overall_counts_dict.get('failed', 0)
-    skipped_count = overall_counts_dict.get('skipped', 0)
-    pending_review_count = overall_counts_dict.get('pending_review', 0)
-
-    # 6) Calculate per‐attempt execution counts
-    per_attempt_counts = (
-        db.session.query(
-            TestRunAttempt.attempt_number,
-            TestExecution.status,
-            func.count(TestExecution.id)
-        )
-        .join(TestRunAttempt.executions)
-        .filter(TestRunAttempt.test_run_id == run_id)
-        .group_by(TestRunAttempt.attempt_number, TestExecution.status)
-        .all()
-    )
-    attempt_counts = {}
-    for attempt_number, status, count in per_attempt_counts:
-        if attempt_number not in attempt_counts:
-            attempt_counts[attempt_number] = {
-                "passed": 0, "failed": 0, "skipped": 0, "pending_review": 0}
-        attempt_counts[attempt_number][status] = count
-
-    # 7) Load all prompt filters (for the “Add Filter” form)
+    # Load all prompt filters (for backward compatibility)
     all_filters = PromptFilter.query.order_by(PromptFilter.name).all()
 
-    # 8) Render template, passing in run_transformations as a Python list
+    # Get execution config for display
+    execution_config = run.get_execution_config()
+    run_transformations = execution_config.get('transformations', [])
+
+    # Render template with fresh execution engine data
     return render_template(
         'test_runs/view_test_run.html',
         run=run,
-        run_transformations=run_transformations,
-        test_case_map=test_case_map,
+        latest_session=latest_session,
+        execution_results=execution_results,
+        result_stats=result_stats,
         current_time=datetime.now(),
-        passed_count=passed_count,
-        failed_count=failed_count,
-        skipped_count=skipped_count,
-        pending_review_count=pending_review_count,
-        attempt_counts=attempt_counts,
-        prompt_filters=all_filters
+        prompt_filters=all_filters,
+        run_transformations=run_transformations
     )
 
 
@@ -184,37 +136,43 @@ def create_test_run_form():
     Display the form for creating a new test run.
 
     Returns:
-        Rendered template with:
-        - Paginated list of available test suites
-        - List of available endpoints
-        - List of available prompt filters
+        Rendered template with the test run creation form
     """
-    page = request.args.get('page', 1, type=int)
-    search = request.args.get('search', '', type=str)
-
-    # Filter test suites by search term if provided
-    suites_query = TestSuite.query
-    if search:
-        suites_query = suites_query.filter(
-            TestSuite.description.ilike(f'%{search}%'))
-
-    pagination = suites_query.paginate(page=page, per_page=10, error_out=False)
-    test_suites = pagination.items
     endpoints = Endpoint.query.filter_by(user_id=current_user.id).all()
-    prompt_filters = PromptFilter.query.order_by(PromptFilter.name).all()
+    chains = APIChain.query.filter_by(user_id=current_user.id).all()
     
-    # Add chains for the current user
-    from models.model_APIChain import APIChain
-    chains = APIChain.query.filter_by(user_id=current_user.id).order_by(APIChain.name).all()
+    # Get search parameter
+    search = request.args.get('search', '').strip()
+    page = request.args.get('page', 1, type=int)
+    
+    # Build test suites query with search functionality
+    test_suites_query = TestSuite.query.filter_by(user_id=current_user.id)
+    
+    if search:
+        test_suites_query = test_suites_query.filter(
+            TestSuite.description.contains(search)
+        )
+    
+    # Apply pagination
+    pagination = test_suites_query.order_by(TestSuite.id.desc()).paginate(
+        page=page, per_page=10, error_out=False
+    )
+    test_suites = pagination.items
+    
+    filters = PromptFilter.query.order_by(PromptFilter.name).all()
 
+    # If specific test suite is requested via URL parameter
+    selected_suite_id = request.args.get('test_suite_id')
+    
     return render_template(
         'test_runs/create_test_run.html',
         endpoints=endpoints,
-        test_suites=test_suites,
         chains=chains,
+        test_suites=test_suites,
+        prompt_filters=filters,
+        selected_suite_id=selected_suite_id,
         pagination=pagination,
-        search=search,
-        prompt_filters=prompt_filters
+        search=search
     )
 
 
@@ -224,191 +182,84 @@ def create_test_run():
     """
     Handle the submission of the test run creation form.
 
-    Creates a new test run with:
-    - Associated endpoint
-    - Selected test suites
-    - Selected prompt filters
-    - Initial test run attempt
-    - Pending test executions for each test case
-
     Returns:
-        Redirect to the new test run's view page on success,
-        or back to the creation form with error message on failure
+        Redirect to the new test run's detail page or back to the form with errors
     """
-    run_name = request.form.get('run_name')
-    target_type = request.form.get('target_type', 'endpoint')
+    name = request.form.get('run_name')
+    description = request.form.get('run_description', '')
+    target_type = request.form.get('target_type')
     endpoint_id = request.form.get('endpoint_id')
     chain_id = request.form.get('chain_id')
-    selected_suite_ids = request.form.getlist('suite_ids')
-    selected_filter_ids = request.form.getlist('filter_ids')
-    payload_override = request.form.get('endpointPayload')
-    iterations = request.form.get('iterations', 1, type=int)
-    delay_between_requests = request.form.get('delay_between_requests', 0, type=float)
-    run_serially = request.form.get('run_serially') is not None
+    test_suite_ids = request.form.getlist('suite_ids')
     
-    # Parse header overrides
-    override_keys = request.form.getlist('override_key')
-    override_values = request.form.getlist('override_value')
-    header_overrides = {}
-    
-    print(f"DEBUG: Raw override keys from form: {override_keys}")
-    print(f"DEBUG: Raw override values from form: {override_values}")
-    
-    for key, value in zip(override_keys, override_values):
-        if key.strip() and value.strip():  # Only include non-empty key-value pairs
-            header_overrides[key.strip()] = value.strip()
-    
-    print(f"DEBUG: Processed header overrides: {header_overrides}")
+    # Execution configuration from form
+    execution_config = {
+        'strategy': request.form.get('strategy', 'adaptive'),
+        'batch_size': int(request.form.get('batch_size', 4)),
+        'concurrency': int(request.form.get('concurrency', 2)),
+        'delay_between_requests': float(request.form.get('delay_between_requests', 0.5)),
+        'iterations': int(request.form.get('iterations', 1)),
+        'auto_adjust': request.form.get('auto_adjust') == 'true',
+        'error_threshold': float(request.form.get('error_threshold', 0.1)),
+        'execution_mode': request.form.get('execution_mode', 'production'),
+        'max_retries': int(request.form.get('max_retries', 2)),
+        'timeout': int(request.form.get('timeout', 30))
+    }
 
-    # 2) Parse the ordered list of transformation names from our hidden field
-    ordered_json = request.form.get('ordered_transformations', '[]')
-    try:
-        ordered_names = json.loads(ordered_json)
-    except ValueError:
-        ordered_names = []
-        flash("Invalid transformation order data.", 'danger')
+    # Validation
+    errors = []
+    if not name:
+        errors.append("Test run name is required")
+    if not target_type:
+        errors.append("Target type is required")
+    if target_type == 'endpoint' and not endpoint_id:
+        errors.append("Endpoint is required when target type is 'endpoint'")
+    if target_type == 'chain' and not chain_id:
+        errors.append("Chain is required when target type is 'chain'")
+    if not test_suite_ids:
+        errors.append("At least one test suite must be selected")
 
-    # 3) Build a list of {name, params} in exactly that order
-    transform_configs = []
-    for transform_name in ordered_names:
-        if transform_name == 'prepend_text':
-            # read the associated text field
-            text = request.form.get('text_to_prepend', '').strip()
-            if not text:
-                flash("Selected “Prepend Text” but left the text blank.", 'warning')
-                # You could choose to skip or return here. Let’s skip if blank:
-                continue
-            transform_configs.append({
-                'name': 'prepend_text',
-                'params': {'text_to_prepend': text}
-            })
-
-        elif transform_name == 'postpend_text':
-            text = request.form.get('text_to_postpend', '').strip()
-            if not text:
-                flash("Selected “Postpend Text” but left the text blank.", 'warning')
-                continue
-            transform_configs.append({
-                'name': 'postpend_text',
-                'params': {'text_to_postpend': text}
-            })
-
-        else:
-            # All other transforms have no extra parameters
-            transform_configs.append({'name': transform_name, 'params': {}})
-
-    # run_transformations_json = json.dumps(transform_configs)
-
-    # Generate default name if none provided
-    if not run_name:
-        if target_type == 'chain' and chain_id:
-            run_name = f"Chain Run {chain_id} at {datetime.now()}"
-        elif endpoint_id:
-            run_name = f"Endpoint Run {endpoint_id} at {datetime.now()}"
-        else:
-            run_name = f"Test Run at {datetime.now()}"
-    
-    # Validate required fields based on target type
-    if target_type == 'endpoint':
-        if not endpoint_id or not selected_suite_ids:
-            flash("Missing required fields: endpoint must be selected for endpoint runs, and at least one test suite", 'error')
-            return redirect(url_for('test_runs_bp.create_test_run_form'))
-    elif target_type == 'chain':
-        if not chain_id or not selected_suite_ids:
-            flash("Missing required fields: chain must be selected for chain runs, and at least one test suite", 'error')
-            return redirect(url_for('test_runs_bp.create_test_run_form'))
-    else:
-        flash("Invalid target type", 'error')
+    if errors:
+        for error in errors:
+            flash(error, 'danger')
         return redirect(url_for('test_runs_bp.create_test_run_form'))
 
     try:
-        # Handle validation based on target type
-        if target_type == 'endpoint':
-            # Validate and update endpoint if payload override provided
-            endpoint_to_update = Endpoint.query.get(endpoint_id)
-            if not endpoint_to_update:
-                flash(
-                    f"Selected endpoint with ID {endpoint_id} not found.", 'error')
-                return redirect(url_for('test_runs_bp.create_test_run_form'))
-
-            # Check if endpoint has required {{INJECT_PROMPT}} token for test runs
-            current_payload = payload_override.strip() if payload_override and payload_override.strip() else None
-            
-            # Get the payload to check - either override or from endpoint's template
-            payload_to_check = current_payload
-            if not payload_to_check and endpoint_to_update.payload_template:
-                payload_to_check = endpoint_to_update.payload_template.template
-            
-            # Validate that payload contains {{INJECT_PROMPT}} token
-            if not payload_to_check or "{{INJECT_PROMPT}}" not in payload_to_check:
-                # Create a helpful error message with a suggested payload
-                suggested_payload = '{\n  "messages": [\n    {\n      "role": "user",\n      "content": "{{INJECT_PROMPT}}"\n    }\n  ]\n}'
-                
-                flash(
-                    f"Error: This endpoint cannot be used for test runs because its payload doesn't contain the required '{{{{INJECT_PROMPT}}}}' token. "
-                    f"Test cases need this token to substitute their prompts. You can either: "
-                    f"1) Edit the endpoint to add a payload template with the token, or "
-                    f"2) Use the 'Payload Override' field below with a payload like: {suggested_payload}", 
-                    'error')
-                return redirect(url_for('test_runs_bp.create_test_run_form'))
-
-            # Update endpoint payload if override provided
-            if current_payload:
-                endpoint_to_update.http_payload = current_payload
-                
-        elif target_type == 'chain':
-            # Validate chain exists and belongs to user
-            from models.model_APIChain import APIChain
-            chain_to_use = APIChain.query.filter_by(id=chain_id, user_id=current_user.id).first()
-            if not chain_to_use:
-                flash(
-                    f"Selected chain with ID {chain_id} not found or doesn't belong to you.", 'error')
-                return redirect(url_for('test_runs_bp.create_test_run_form'))
-            
-            # For chain runs, we don't need to validate {{INJECT_PROMPT}} tokens
-            # as chains handle data flow differently
-            endpoint_to_update = None  # Not applicable for chain runs
-
-        # Create new test run
-        new_run = TestRun(
-            name=run_name,
-            target_type=target_type,
-            endpoint_id=endpoint_id if target_type == 'endpoint' else None,
-            chain_id=chain_id if target_type == 'chain' else None,
-            status='Not Started',
+        # Create test run
+        test_run = TestRun(
+            name=name,
+            description=description,
             user_id=current_user.id,
-            run_transformations=transform_configs,
-            header_overrides=header_overrides if header_overrides else None,
-            iterations=iterations,
-            delay_between_requests=delay_between_requests,
-            run_serially=run_serially
+            target_type=target_type,
+            endpoint_id=int(endpoint_id) if endpoint_id else None,
+            chain_id=int(chain_id) if chain_id else None,
+            execution_config=execution_config
         )
-        
-        print(f"DEBUG: Created test run with header_overrides: {new_run.header_overrides}")
-        
-        db.session.add(new_run)
 
-        # Associate selected test suites
-        for suite_id in selected_suite_ids:
-            suite = TestSuite.query.get(suite_id)
-            if not suite:
-                flash(f"Test suite with ID {suite_id} not found", "error")
-                return redirect(url_for('test_runs_bp.create_test_run_form'))
-            new_run.test_suites.append(suite)
+        db.session.add(test_run)
+        db.session.flush()  # Get the ID
 
-        # Associate selected prompt filters
-        for pf_id in selected_filter_ids:
-            pf = PromptFilter.query.get(pf_id)
-            if pf:
-                new_run.filters.append(pf)
+        # Associate test suites
+        for suite_id in test_suite_ids:
+            suite = TestSuite.query.get(int(suite_id))
+            if suite and suite.user_id == current_user.id:
+                test_run.test_suites.append(suite)
+
+        # Validate configuration
+        validation_errors = test_run.validate_configuration()
+        if validation_errors:
+            for error in validation_errors:
+                flash(error, 'danger')
+            db.session.rollback()
+            return redirect(url_for('test_runs_bp.create_test_run_form'))
 
         db.session.commit()
-        flash("Test run created successfully!", "success")
-        return redirect(url_for('test_runs_bp.view_test_run', run_id=new_run.id))
+        flash(f'Test run "{name}" created successfully!', 'success')
+        return redirect(url_for('test_runs_bp.view_test_run', run_id=test_run.id))
 
     except Exception as e:
         db.session.rollback()
-        flash(f"Failed to create test run: {e}", 'error')
+        flash(f'Error creating test run: {str(e)}', 'danger')
         return redirect(url_for('test_runs_bp.create_test_run_form'))
 
 
@@ -418,38 +269,79 @@ def delete_test_run(run_id):
     """
     Delete a test run and all its associated data.
 
-    This includes:
-    - All test executions
-    - All test run attempts
-    - Associations with test suites and filters
-    - The test run itself
-
     Args:
         run_id: The ID of the test run to delete
 
     Returns:
-        Redirect to test runs list with success/error message
+        Redirect to the test runs list with a success or error message
     """
-    run = TestRun.query.get_or_404(run_id)
-
-    # Delete all attempts and their executions
-    for attempt in run.attempts:
-        for execution in attempt.executions:
-            db.session.delete(execution)
-        db.session.delete(attempt)
-
-    # Remove associations with test suites and filters
-    run.test_suites = []
-    run.filters = []
-
-    # Delete the test run
-    db.session.delete(run)
+    test_run = TestRun.query.get_or_404(run_id)
+    
+    # Check permissions
+    if test_run.user_id != current_user.id and not current_user.is_admin:
+        flash('You do not have permission to delete this test run.', 'danger')
+        return redirect(url_for('test_runs_bp.list_test_runs'))
 
     try:
+        # Delete associated execution sessions (cascade should handle this, but explicit for clarity)
+        ExecutionSession.query.filter_by(test_run_id=run_id).delete()
+        
+        # Delete the test run itself
+        db.session.delete(test_run)
         db.session.commit()
-        flash('Test run deleted successfully', 'success')
+        
+        flash(f'Test run "{test_run.name}" deleted successfully.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error deleting test run: {str(e)}', 'error')
+        flash(f'Error deleting test run: {str(e)}', 'danger')
 
     return redirect(url_for('test_runs_bp.list_test_runs'))
+
+
+@test_runs_bp.route('/recent', methods=['GET'])
+@login_required
+def recent_test_runs():
+    """
+    Get recent test runs for the current user (API endpoint for dashboard).
+
+    Returns:
+        JSON response with recent test runs data
+    """
+    try:
+        recent_runs = (
+            TestRun.query
+            .filter_by(user_id=current_user.id)
+            .options(
+                selectinload(TestRun.endpoint),
+                selectinload(TestRun.execution_sessions)
+            )
+            .order_by(TestRun.created_at.desc())
+            .limit(5)
+            .all()
+        )
+
+        runs_data = []
+        for run in recent_runs:
+            latest_session = run.latest_execution_session
+            runs_data.append({
+                'id': run.id,
+                'name': run.name,
+                'target_type': run.target_type,
+                'target_name': run.get_target_name(),
+                'status': run.status,
+                'created_at': run.created_at.isoformat(),
+                'progress_percentage': run.progress_percentage,
+                'session_count': len(run.execution_sessions),
+                'latest_session': latest_session.to_dict() if latest_session else None
+            })
+
+        return jsonify({
+            'success': True,
+            'data': runs_data
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

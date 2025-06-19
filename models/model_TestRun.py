@@ -1,152 +1,281 @@
+# models/model_TestRun.py
+"""
+TestRun model optimized for the execution engine
+
+This model is designed from the ground up for the new execution engine
+with no legacy baggage and modern SQLAlchemy patterns.
+"""
+
 from extensions import db
-from sqlalchemy.dialects.postgresql import JSONB, ARRAY
-from sqlalchemy import Enum as SQLAlchemyEnum
-from models.associations import test_run_suites
-from enum import Enum as PythonEnum 
-import datetime
+from datetime import datetime
+from sqlalchemy import func
+from sqlalchemy.orm import relationship
+
 
 class TestRun(db.Model):
+    """
+    Modern TestRun model - pure configuration with execution engine integration
+    
+    This model focuses solely on configuration and delegates all execution
+    state to the ExecutionSession model managed by the execution engine.
+    """
     __tablename__ = 'test_run'
 
+    # Primary key
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False, default=lambda: f"Test Run - {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}") 
-    description = db.Column(db.Text, nullable=True) 
+    
+    # Basic information
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    # Timestamps 
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    # Target configuration (either endpoint OR chain)
+    target_type = db.Column(db.String(20), nullable=False, index=True)  # 'endpoint' or 'chain'
+    endpoint_id = db.Column(db.Integer, db.ForeignKey('endpoints.id'), nullable=True, index=True)
+    chain_id = db.Column(db.Integer, db.ForeignKey('api_chains.id'), nullable=True, index=True)
+
+    # Execution configuration (JSON for flexibility)
+    execution_config = db.Column(db.JSON, nullable=True)
+
+    # Simple status tracking
+    status = db.Column(db.String(50), default='not_started', nullable=False)
+    # Possible values: 'not_started', 'running', 'paused', 'completed', 'failed', 'cancelled'
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     started_at = db.Column(db.DateTime, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
 
-    # Flag to assist application 
-    run_serially = db.Column(db.Boolean, default=False, nullable=False) # server_default removed for broader DB compatibility unless specifically needed for PostgreSQL
-
-    # Configuration for the run 
-    iterations = db.Column(db.Integer, default=1, nullable=False)
-    delay_between_requests = db.Column(db.Float, default=0.0, nullable=False)
-
-    # --- NEW FIELDS FOR TRANSFORMATIONS AT RUN LEVEL ---
-    # {
-    #     "name": "reverse_string",
-    #     "params": {}
-    # },
-    # {
-    #     "name": "prepend_text",
-    #     "params": {"text_to_prepend": "UserPrefix: "}
-    # }
-    run_transformations = db.Column(db.JSON, nullable=True)
+    # Relationships (using modern SQLAlchemy patterns)
+    user = relationship('User', backref='test_runs')
+    endpoint = relationship('Endpoint', back_populates='test_runs')
+    chain = relationship('APIChain', back_populates='test_runs')
     
-    # --- HEADER OVERRIDES FOR RUN-SPECIFIC AUTHENTICATION ---
-    # Allows users to override specific headers (especially Authorization) for this test run
-    # Format: {"Authorization": "Bearer new-token", "X-API-Key": "updated-key"}
-    header_overrides = db.Column(db.JSON, nullable=True) 
-
-    # --- Status Field ---
-    # Default to 'not_started'.
-    # Documented possibilities: 'not_started', 'pending', 'running', 'pausing',
-    # 'paused', 'cancelling', 'cancelled', 'completed', 'failed'
-    status = db.Column(db.String(50), default='not_started', nullable=False)
-
-    # --- New fields for WebSocket-based progress and control (from your version) ---
-    progress_current = db.Column(db.Integer, default=0, nullable=False)
-    progress_total = db.Column(db.Integer, default=0, nullable=False)
-    celery_task_id = db.Column(db.String(255), nullable=True)
-
-    # --- Target Configuration: Either endpoint OR chain ---
-    target_type = db.Column(db.String(20), nullable=False, default='endpoint')  # 'endpoint' or 'chain'
-    
-    # --- Relationships ---
-    endpoint = db.relationship('Endpoint', back_populates="test_runs") # Ensure Endpoint model has 'test_runs' relationship
-    endpoint_id = db.Column(
-        db.Integer,
-        db.ForeignKey("endpoints.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True
+    # Test suites (many-to-many)
+    test_suites = relationship(
+        'TestSuite',
+        secondary='test_run_suites',
+        back_populates='test_runs',
+        lazy='select'
     )
     
-    # Chain relationship
-    chain = db.relationship('APIChain', back_populates="test_runs") 
-    chain_id = db.Column(
-        db.Integer,
-        db.ForeignKey("api_chains.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True
-    )
-    # TestRunAttempt is looking for via back_populates='attempts'
-    attempts = db.relationship(
-        'TestRunAttempt',
+    # Execution sessions (one-to-many, managed by execution engine)
+    execution_sessions = relationship(
+        'ExecutionSession',
         back_populates='test_run',
         cascade='all, delete-orphan',
-        lazy=True
-    )
-    test_suites = db.relationship(
-        'TestSuite',
-        secondary=test_run_suites, # <-- USE IMPORTED TABLE
-        lazy='subquery',
-        back_populates='test_runs' # This will populate 'test_runs' on TestSuite model
+        lazy='select'
     )
 
-    # User (from your version, slight modification for consistency)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False) # Changed nullable to False as user is likely required
-    user = db.relationship('User', backref=db.backref('test_runs_owned', lazy=True)) # Changed backref name to avoid conflict if 'test_runs' is used elsewhere on User
-
-    # Prompt Filters relationship
-    filters = db.relationship(
-        'PromptFilter',
-        secondary='test_run_filters',  # Uses the string name of the table from associations.py
-        backref=db.backref('runs_with_this_filter', lazy=True)
-    )
-
-    # Optional notes or summary for the run (my addition)
-    notes = db.Column(db.Text, nullable=True)
-
-    # --- Helper property for progress percentage (from your version) ---
+    # Properties for execution engine integration
     @property
-    def progress_percent(self):
-        if self.status == 'completed':
-            return 100
-        if self.progress_total > 0 and self.progress_current is not None:
-            current_capped = min(self.progress_current, self.progress_total)
-            percent = int((current_capped / self.progress_total) * 100)
-            return min(percent, 100)
-        return 0
+    def current_execution_session(self):
+        """Get the currently active execution session"""
+        return db.session.query(ExecutionSession).filter(
+            ExecutionSession.test_run_id == self.id,
+            ExecutionSession.state.in_(['pending', 'running', 'paused'])
+        ).first()
 
-    # --- Helper method to get data for SocketIO events (from your version) ---
-    def get_status_data(self):
-        return {
-            'run_id': self.id,
-            'name': self.name,
-            'status': self.status,
-            'current': self.progress_current,
-            'total': self.progress_total,
-            'percent': self.progress_percent,
-            'celery_task_id': self.celery_task_id,
-            'start_time': self.started_at.isoformat() if self.started_at else None, # Changed from start_time to started_at to match column
-            'end_time': self.completed_at.isoformat() if self.completed_at else None, # Changed from end_time to completed_at
-        }
+    @property
+    def latest_execution_session(self):
+        """Get the most recent execution session"""
+        return db.session.query(ExecutionSession).filter(
+            ExecutionSession.test_run_id == self.id
+        ).order_by(ExecutionSession.started_at.desc()).first()
 
-    def __repr__(self):
-        # Using f-string for consistency
-        return f"<TestRun id={self.id}, name='{self.name}', status={self.status.value if self.status else 'N/A'}>"
+    @property
+    def execution_count(self):
+        """Get total number of execution sessions"""
+        return db.session.query(func.count(ExecutionSession.id)).filter(
+            ExecutionSession.test_run_id == self.id
+        ).scalar()
+
+    @property
+    def successful_execution_count(self):
+        """Get number of successful execution sessions"""
+        return db.session.query(func.count(ExecutionSession.id)).filter(
+            ExecutionSession.test_run_id == self.id,
+            ExecutionSession.state == 'completed'
+        ).scalar()
+
+    @property
+    def progress_percentage(self):
+        """Get current progress percentage from active session"""
+        session = self.current_execution_session
+        return session.progress_percentage if session else 0
+
+    @property
+    def is_active(self):
+        """Check if test run has an active execution session"""
+        return self.current_execution_session is not None
+
+    @property
+    def total_executions(self):
+        """Get total number of execution sessions (alias for execution_count)"""
+        return self.execution_count
+
+
+    # Configuration management
+    def get_execution_config(self):
+        """Get unified execution configuration with defaults"""
+        config = self.execution_config.copy() if self.execution_config else {}
+        
+        # Set modern defaults optimized for execution engine
+        config.setdefault('strategy', 'adaptive')
+        config.setdefault('batch_size', 4)
+        config.setdefault('concurrency', 2)
+        config.setdefault('delay_between_requests', 0.5)
+        config.setdefault('auto_adjust', True)
+        config.setdefault('error_threshold', 0.1)
+        config.setdefault('execution_mode', 'production')
+        config.setdefault('max_retries', 2)
+        config.setdefault('timeout', 30)
+        config.setdefault('iterations', 1)
+        
+        return config
+
+    def update_execution_config(self, updates: dict):
+        """Update execution configuration"""
+        current_config = self.get_execution_config()
+        current_config.update(updates)
+        self.execution_config = current_config
+        self.updated_at = datetime.utcnow()
+
+    def uses_execution_engine(self):
+        """Always use execution engine in fresh implementation"""
+        return True
+
+
+    # Target information helpers
+    def get_target(self):
+        """Get the target object (endpoint or chain)"""
+        if self.target_type == 'endpoint':
+            return self.endpoint
+        elif self.target_type == 'chain':
+            return self.chain
+        return None
 
     def get_target_name(self):
-        """Helper method to get the name of the target (endpoint or chain)"""
-        if self.target_type == 'endpoint' and self.endpoint:
-            return self.endpoint.name
-        elif self.target_type == 'chain' and self.chain:
-            return self.chain.name
-        return 'N/A'
-    
+        """Get a display name for the target"""
+        target = self.get_target()
+        if target:
+            return getattr(target, 'name', f'{self.target_type.title()} #{target.id}')
+        return 'Unknown Target'
+
     def get_target_description(self):
-        """Helper method to get a description of the target"""
+        """Get a description of the target"""
         if self.target_type == 'endpoint' and self.endpoint:
             return f"{self.endpoint.method} {self.endpoint.base_url}{self.endpoint.path}"
         elif self.target_type == 'chain' and self.chain:
-            return f"Chain with {len(self.chain.steps)} steps"
-        return 'N/A'
+            # Use scalar count to avoid SQLAlchemy issues
+            step_count = db.session.query(func.count('*')).select_from(
+                db.session.query(APIChainStep).filter(APIChainStep.chain_id == self.chain.id).subquery()
+            ).scalar()
+            return f"Chain with {step_count} steps"
+        return 'No target configured'
 
-    def to_dict(self): # Added from my previous version, expanded
+    def get_test_case_count(self):
+        """Get total number of test cases from all suites (modern SQLAlchemy)"""
+        if not self.test_suites:
+            return 0
+        
+        # Use scalar query to avoid count() issues
+        total = 0
+        for suite in self.test_suites:
+            count = db.session.query(func.count(TestCase.id)).filter(
+                TestCase.test_suites.any(TestSuite.id == suite.id)
+            ).scalar()
+            total += count
+        return total
+
+    # Status management
+    def start_execution(self):
+        """Mark test run as started"""
+        self.status = 'running'
+        self.started_at = datetime.utcnow()
+        self.updated_at = datetime.utcnow()
+
+    def complete_execution(self, final_status='completed'):
+        """Mark test run as completed"""
+        self.status = final_status
+        self.completed_at = datetime.utcnow()
+        self.updated_at = datetime.utcnow()
+
+    def pause_execution(self):
+        """Mark test run as paused"""
+        self.status = 'paused'
+        self.updated_at = datetime.utcnow()
+
+    def resume_execution(self):
+        """Mark test run as resumed"""
+        self.status = 'running'
+        self.updated_at = datetime.utcnow()
+
+    # Validation
+    def validate_configuration(self):
+        """Validate test run configuration"""
+        errors = []
+        
+        # Must have target
+        if not self.target_type:
+            errors.append("Target type is required")
+        elif self.target_type not in ['endpoint', 'chain']:
+            errors.append("Target type must be 'endpoint' or 'chain'")
+        elif self.target_type == 'endpoint' and not self.endpoint_id:
+            errors.append("Endpoint is required when target type is 'endpoint'")
+        elif self.target_type == 'chain' and not self.chain_id:
+            errors.append("Chain is required when target type is 'chain'")
+        
+        # Validate mutually exclusive targets
+        if self.endpoint_id and self.chain_id:
+            errors.append("Cannot specify both endpoint and chain")
+        
+        # Must have test suites
+        if not self.test_suites:
+            errors.append("At least one test suite is required")
+        elif self.get_test_case_count() == 0:
+            errors.append("Test suites must contain test cases")
+        
+        # Validate execution configuration
+        config = self.get_execution_config()
+        if config.get('batch_size', 0) <= 0:
+            errors.append("Batch size must be greater than 0")
+        if config.get('concurrency', 0) <= 0:
+            errors.append("Concurrency must be greater than 0")
+        if config.get('delay_between_requests', 0) < 0:
+            errors.append("Delay between requests cannot be negative")
+        
+        return errors
+
+    # Serialization
+    def get_status_data(self):
+        """Get status data for real-time WebSocket updates"""
+        active_session = self.current_execution_session
+        
         return {
+            'run_id': self.id,
+            'status': self.status,
+            'progress_percentage': self.progress_percentage,
+            'is_active': self.is_active,
+            'target_name': self.get_target_name(),
+            'execution_count': self.execution_count,
+            'current_session': {
+                'id': active_session.id,
+                'state': active_session.state,
+                'strategy_name': active_session.strategy_name,
+                'progress_percentage': active_session.progress_percentage,
+                'health_status': active_session.health_status,
+                'completed_test_cases': active_session.completed_test_cases,
+                'total_test_cases': active_session.total_test_cases,
+                'success_rate': active_session.success_rate
+            } if active_session else None,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+
+    def to_dict(self, include_sessions=False):
+        """Convert to dictionary for API responses"""
+        data = {
             'id': self.id,
             'name': self.name,
             'description': self.description,
@@ -154,23 +283,35 @@ class TestRun(db.Model):
             'target_type': self.target_type,
             'endpoint_id': self.endpoint_id,
             'chain_id': self.chain_id,
-            'status': self.status.value if self.status else None,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'execution_config': self.execution_config,
+            'status': self.status,
+            'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
-            'run_serially': self.run_serially,
-            'iterations': self.iterations,
-            'delay_between_requests': self.delay_between_requests,
-            'run_transformations': self.run_transformations,
-            'progress_current': self.progress_current,
-            'progress_total': self.progress_total,
-            'progress_percent': self.progress_percent,
-            'celery_task_id': self.celery_task_id,
-            'test_suite_ids': [suite.id for suite in self.test_suites],
-            'filter_ids': [f.id for f in self.filters], # Assuming PromptFilter has an id
             'target_name': self.get_target_name(),
             'target_description': self.get_target_description(),
-            'user_name': self.user.username if self.user else None, # Assuming User has username
-            'notes': self.notes
+            'test_case_count': self.get_test_case_count(),
+            'progress_percentage': self.progress_percentage,
+            'is_active': self.is_active,
+            'execution_count': self.execution_count,
+            'successful_execution_count': self.successful_execution_count,
+            'uses_execution_engine': True  # Always true in fresh implementation
         }
+
+        if include_sessions:
+            data['execution_sessions'] = [
+                session.to_dict() for session in self.execution_sessions
+            ]
+
+        return data
+
+    def __repr__(self):
+        return f"<TestRun id={self.id}, name='{self.name}', status='{self.status}', target_type='{self.target_type}'>"
+
+
+# Import other models at the end to avoid circular imports
+from .model_ExecutionSession import ExecutionSession
+from .model_TestSuite import TestSuite
+from .model_TestCase import TestCase
+from .model_APIChain import APIChain, APIChainStep
